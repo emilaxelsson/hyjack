@@ -16,9 +16,9 @@ checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 
 [[package]]
 name = "bitflags"
-version = "2.11.0"
+version = "2.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "843867be96c8daad0d758b57df9392b6d8d271134fce549de6ce169ff98a92af"
+checksum = "b588b76d00fde79687d7646a9b5bdf3cc0f655e0bbd080335a95d7e96f3587da"
 
 [[package]]
 name = "cassowary"
@@ -122,6 +122,7 @@ dependencies = [
  "crossterm",
  "nonempty",
  "ratatui",
+ "tui-scrollview",
 ]
 
 [[package]]
@@ -454,6 +455,16 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
+]
+
+[[package]]
+name = "tui-scrollview"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cea93a4789dc04a89aa6aeda29dd581b18f88cbbcf19702baf8325814b4af394"
+dependencies = [
+ "indoc",
+ "ratatui",
 ]
 
 [[package]]
