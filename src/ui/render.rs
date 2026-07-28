@@ -179,6 +179,45 @@ fn pattern_focus_position(state: &AppState) -> Position {
   }
 }
 
+pub fn scroll_cursor_into_view(
+  state: &AppState,
+  pattern_scroll_state: &mut ScrollViewState,
+  viewport_size: Size,
+) {
+  let focus_position = pattern_focus_position(state);
+  let mut scroll_offset = pattern_scroll_state.offset();
+  let viewport_width = viewport_size.width.max(1);
+  let viewport_height = viewport_size.height.max(1);
+
+  if focus_position.x <= scroll_offset.x {
+    scroll_offset.x = focus_position.x.saturating_sub(1);
+  } else {
+    let last_visible_column = scroll_offset
+      .x
+      .saturating_add(viewport_width.saturating_sub(1));
+    if focus_position.x >= last_visible_column {
+      scroll_offset.x = focus_position
+        .x
+        .saturating_sub(viewport_width.saturating_sub(3));
+    }
+  }
+
+  if focus_position.y <= scroll_offset.y {
+    scroll_offset.y = focus_position.y.saturating_sub(1);
+  } else {
+    let last_visible_row = scroll_offset
+      .y
+      .saturating_add(viewport_height.saturating_sub(1));
+    if focus_position.y >= last_visible_row {
+      scroll_offset.y = focus_position
+        .y
+        .saturating_sub(viewport_height.saturating_sub(2));
+    }
+  }
+
+  pattern_scroll_state.set_offset(scroll_offset);
+}
+
 /// Compute the effective visible viewport inside the pattern panel after accounting for
 /// scrollbars that may appear when the content overflows in either dimension.
 fn scrollable_viewport_size(inner_area: Rect, content_size: Size) -> Size {
@@ -274,7 +313,7 @@ fn draw_pattern_panel(
   state: &AppState,
   pattern_scroll_state: &mut ScrollViewState,
   area: Rect,
-) {
+) -> Size {
   let [pattern_area, details_area] = Layout::default()
     .direction(Direction::Vertical)
     .constraints([Constraint::Min(0), Constraint::Length(2)])
@@ -344,6 +383,8 @@ fn draw_pattern_panel(
   }
 
   draw_pattern_details(frame, current_pattern, details_area);
+
+  viewport_size
 }
 
 pub fn draw_ui(
@@ -351,7 +392,7 @@ pub fn draw_ui(
   state: &AppState,
   pattern_scroll_state: &mut ScrollViewState,
   optional_dialog: Option<&InputDialog<AppState>>,
-) {
+) -> Size {
   // Set default colors for the entire frame
   frame.render_widget(
     Block::default().style(Style::default().bg(DEFAULT_BG).fg(DEFAULT_FG)),
@@ -361,9 +402,12 @@ pub fn draw_ui(
   let remaining_area = frame.area();
   let remaining_area = draw_head(frame, state, remaining_area);
   let remaining_area = draw_sequence_panel(frame, remaining_area, &state.sequence, &state.focus);
-  draw_pattern_panel(frame, state, pattern_scroll_state, remaining_area);
+  let pattern_viewport_size =
+    draw_pattern_panel(frame, state, pattern_scroll_state, remaining_area);
 
   if let Some(dialog) = optional_dialog {
     dialog.draw(frame);
   }
+
+  pattern_viewport_size
 }

@@ -5,12 +5,13 @@ use anyhow::Result;
 use crossterm::event::{self, Event, KeyCode, KeyModifiers};
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
+use ratatui::layout::Size;
 use tui_scrollview::ScrollViewState;
 
 use crate::state::AppState;
 use crate::ui::common::{Component, ComponentAction};
 use crate::ui::component::input_dialog::InputDialog;
-use crate::ui::render::draw_ui;
+use crate::ui::render::{draw_ui, scroll_cursor_into_view};
 
 enum UIMode {
   EditPattern,
@@ -34,6 +35,7 @@ fn handle_event(
   event: Event,
   state: &mut AppState,
   pattern_scroll_state: &mut ScrollViewState,
+  pattern_viewport_size: Size,
   optional_dialog: &mut Option<InputDialog<AppState>>,
 ) -> Result<bool> {
   if let Some(dialog) = optional_dialog.as_mut() {
@@ -64,6 +66,7 @@ fn handle_event(
       }
       KeyCode::Up => {
         state.to_previous_row();
+        scroll_cursor_into_view(state, pattern_scroll_state, pattern_viewport_size);
         false
       }
       KeyCode::Down if key.modifiers == KeyModifiers::CONTROL => {
@@ -72,6 +75,7 @@ fn handle_event(
       }
       KeyCode::Down => {
         state.to_next_row();
+        scroll_cursor_into_view(state, pattern_scroll_state, pattern_viewport_size);
         false
       }
       KeyCode::Left if key.modifiers == KeyModifiers::CONTROL => {
@@ -80,6 +84,7 @@ fn handle_event(
       }
       KeyCode::Left => {
         state.to_previous_track_field();
+        scroll_cursor_into_view(state, pattern_scroll_state, pattern_viewport_size);
         false
       }
       KeyCode::Right if key.modifiers == KeyModifiers::CONTROL => {
@@ -88,6 +93,7 @@ fn handle_event(
       }
       KeyCode::Right => {
         state.to_next_track_field();
+        scroll_cursor_into_view(state, pattern_scroll_state, pattern_viewport_size);
         false
       }
       _ => false,
@@ -100,10 +106,12 @@ fn handle_event(
       }
       KeyCode::Up => {
         state.to_previous_pattern();
+        scroll_cursor_into_view(state, pattern_scroll_state, pattern_viewport_size);
         false
       }
       KeyCode::Down => {
         state.to_next_pattern();
+        scroll_cursor_into_view(state, pattern_scroll_state, pattern_viewport_size);
         false
       }
       _ => false,
@@ -116,9 +124,12 @@ pub fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Result<
   let mut mode = UIMode::EditPattern;
   let mut dialog: Option<InputDialog<AppState>> = None;
   let mut pattern_scroll_state = ScrollViewState::default();
+  let mut pattern_viewport_size = Size::new(1, 1);
 
   loop {
-    terminal.draw(|frame| draw_ui(frame, &state, &mut pattern_scroll_state, dialog.as_ref()))?;
+    terminal.draw(|frame| {
+      pattern_viewport_size = draw_ui(frame, &state, &mut pattern_scroll_state, dialog.as_ref());
+    })?;
 
     if event::poll(Duration::from_millis(100))? {
       let event = event::read()?;
@@ -127,6 +138,7 @@ pub fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Result<
         event,
         &mut state,
         &mut pattern_scroll_state,
+        pattern_viewport_size,
         &mut dialog,
       )?;
       if quit {
