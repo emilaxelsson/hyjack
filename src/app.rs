@@ -2,9 +2,10 @@ use std::io;
 use std::time::Duration;
 
 use anyhow::Result;
-use crossterm::event::{self, Event, KeyCode};
+use crossterm::event::{self, Event, KeyCode, KeyModifiers};
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
+use tui_scrollview::ScrollViewState;
 
 use crate::state::AppState;
 use crate::ui::common::{Component, ComponentAction};
@@ -32,6 +33,7 @@ fn handle_event(
   mode: &mut UIMode,
   event: Event,
   state: &mut AppState,
+  pattern_scroll_state: &mut ScrollViewState,
   optional_dialog: &mut Option<InputDialog<AppState>>,
 ) -> Result<bool> {
   if let Some(dialog) = optional_dialog.as_mut() {
@@ -56,16 +58,32 @@ fn handle_event(
         *mode = UIMode::EditSequence;
         false
       }
+      KeyCode::Up if key.modifiers == KeyModifiers::CONTROL => {
+        pattern_scroll_state.scroll_up();
+        false
+      }
       KeyCode::Up => {
         state.to_previous_row();
+        false
+      }
+      KeyCode::Down if key.modifiers == KeyModifiers::CONTROL => {
+        pattern_scroll_state.scroll_down();
         false
       }
       KeyCode::Down => {
         state.to_next_row();
         false
       }
+      KeyCode::Left if key.modifiers == KeyModifiers::CONTROL => {
+        pattern_scroll_state.scroll_left();
+        false
+      }
       KeyCode::Left => {
         state.to_previous_track_field();
+        false
+      }
+      KeyCode::Right if key.modifiers == KeyModifiers::CONTROL => {
+        pattern_scroll_state.scroll_right();
         false
       }
       KeyCode::Right => {
@@ -97,13 +115,20 @@ pub fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Result<
   let mut state = AppState::default();
   let mut mode = UIMode::EditPattern;
   let mut dialog: Option<InputDialog<AppState>> = None;
+  let mut pattern_scroll_state = ScrollViewState::default();
 
   loop {
-    terminal.draw(|frame| draw_ui(frame, &state, dialog.as_ref()))?;
+    terminal.draw(|frame| draw_ui(frame, &state, &mut pattern_scroll_state, dialog.as_ref()))?;
 
     if event::poll(Duration::from_millis(100))? {
       let event = event::read()?;
-      let quit = handle_event(&mut mode, event, &mut state, &mut dialog)?;
+      let quit = handle_event(
+        &mut mode,
+        event,
+        &mut state,
+        &mut pattern_scroll_state,
+        &mut dialog,
+      )?;
       if quit {
         break;
       }

@@ -206,26 +206,18 @@ fn scrollable_viewport_size(inner_area: Rect, content_size: Size) -> Size {
   }
 }
 
-fn visible_scroll_offset(state: &AppState, viewport_size: Size, content_size: Size) -> Position {
-  let focus = pattern_focus_position(state);
+fn is_focus_visible(
+  focus_position: Position,
+  scroll_offset: Position,
+  viewport_size: Size,
+) -> bool {
   let viewport_width = viewport_size.width.max(1);
   let viewport_height = viewport_size.height.max(1);
-  let max_offset_x = content_size.width.saturating_sub(viewport_width);
-  let max_offset_y = content_size.height.saturating_sub(viewport_height);
 
-  let offset_x = focus
-    .x
-    .saturating_sub(viewport_width.saturating_sub(1))
-    .min(max_offset_x);
-  let offset_y = focus
-    .y
-    .saturating_sub(viewport_height.saturating_sub(1))
-    .min(max_offset_y);
-
-  Position {
-    x: offset_x,
-    y: offset_y,
-  }
+  focus_position.x >= scroll_offset.x
+    && focus_position.x < scroll_offset.x.saturating_add(viewport_width)
+    && focus_position.y >= scroll_offset.y
+    && focus_position.y < scroll_offset.y.saturating_add(viewport_height)
 }
 
 fn draw_track(
@@ -277,7 +269,12 @@ fn draw_pattern_details(frame: &mut Frame<'_>, current_pattern: &Pattern, area: 
   frame.render_widget(table, area);
 }
 
-fn draw_pattern_panel(frame: &mut Frame, state: &AppState, area: Rect) {
+fn draw_pattern_panel(
+  frame: &mut Frame,
+  state: &AppState,
+  pattern_scroll_state: &mut ScrollViewState,
+  area: Rect,
+) {
   let [pattern_area, details_area] = Layout::default()
     .direction(Direction::Vertical)
     .constraints([Constraint::Min(0), Constraint::Length(2)])
@@ -308,10 +305,8 @@ fn draw_pattern_panel(frame: &mut Frame, state: &AppState, area: Rect) {
     .saturating_add(1);
   let content_size = Size::new(content_width, content_height);
   let viewport_size = scrollable_viewport_size(inner_area, content_size);
-  let scroll_offset = visible_scroll_offset(state, viewport_size, content_size);
   let mut scroll_view =
     ScrollView::new(content_size).scrollbars_visibility(ScrollbarVisibility::Automatic);
-  let mut scroll_state = ScrollViewState::with_offset(scroll_offset);
 
   let active_row_area = Rect {
     x: 0,
@@ -339,10 +334,14 @@ fn draw_pattern_panel(frame: &mut Frame, state: &AppState, area: Rect) {
     });
   }
 
-  frame.render_stateful_widget(scroll_view, inner_area, &mut scroll_state);
+  frame.render_stateful_widget(scroll_view, inner_area, pattern_scroll_state);
 
-  let cursor_pos = get_cursor_position(inner_area, pattern_focus_position(state), scroll_offset);
-  frame.set_cursor_position(cursor_pos);
+  let scroll_offset = pattern_scroll_state.offset();
+  let focus_position = pattern_focus_position(state);
+  if is_focus_visible(focus_position, scroll_offset, viewport_size) {
+    let cursor_pos = get_cursor_position(inner_area, focus_position, scroll_offset);
+    frame.set_cursor_position(cursor_pos);
+  }
 
   draw_pattern_details(frame, current_pattern, details_area);
 }
@@ -350,6 +349,7 @@ fn draw_pattern_panel(frame: &mut Frame, state: &AppState, area: Rect) {
 pub fn draw_ui(
   frame: &mut Frame,
   state: &AppState,
+  pattern_scroll_state: &mut ScrollViewState,
   optional_dialog: Option<&InputDialog<AppState>>,
 ) {
   // Set default colors for the entire frame
@@ -361,7 +361,7 @@ pub fn draw_ui(
   let remaining_area = frame.area();
   let remaining_area = draw_head(frame, state, remaining_area);
   let remaining_area = draw_sequence_panel(frame, remaining_area, &state.sequence, &state.focus);
-  draw_pattern_panel(frame, state, remaining_area);
+  draw_pattern_panel(frame, state, pattern_scroll_state, remaining_area);
 
   if let Some(dialog) = optional_dialog {
     dialog.draw(frame);

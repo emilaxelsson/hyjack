@@ -42,11 +42,6 @@ pub enum TrackFocus {
   Effect,
 }
 
-pub struct PatternScrollOffset {
-  pub rows: usize,
-  pub columns: usize,
-}
-
 impl TrackFocus {
   fn next(&self) -> Self {
     match self {
@@ -73,7 +68,6 @@ pub struct Focus {
   pub pattern_row_index: usize,
   pub pattern_track_index: usize,
   pub track_focus: TrackFocus,
-  pub pattern_scroll_offset: PatternScrollOffset,
 }
 
 pub struct AppState {
@@ -422,10 +416,6 @@ pub fn default_state() -> AppState {
       pattern_row_index: 0,
       pattern_track_index: 0,
       track_focus: TrackFocus::Note,
-      pattern_scroll_offset: PatternScrollOffset {
-        rows: 0,
-        columns: 0,
-      },
     },
     player: PlayerState {
       time: PlayerTime {
