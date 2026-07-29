@@ -159,14 +159,10 @@ fn draw_sequence_panel(frame: &mut Frame, area: Rect, sequence: &[String], focus
 ///
 /// The caller is expected to ensure the focus is currently visible inside the viewport
 /// before using this result to place the terminal cursor.
-fn get_cursor_position(
-  inner_area: Rect,
-  focus_position: Position,
-  scroll_offset: Position,
-) -> Position {
+fn get_cursor_position(area: Rect, focus_position: Position, scroll_offset: Position) -> Position {
   Position {
-    x: inner_area.x + focus_position.x.saturating_sub(scroll_offset.x),
-    y: inner_area.y + focus_position.y.saturating_sub(scroll_offset.y),
+    x: area.x + focus_position.x.saturating_sub(scroll_offset.x),
+    y: area.y + focus_position.y.saturating_sub(scroll_offset.y),
   }
 }
 
@@ -175,7 +171,7 @@ fn pattern_focus_position(state: &AppState) -> Position {
     + track_focus_offset(&state.focus.track_focus);
   Position {
     x: cursor_x_offset as u16,
-    y: state.focus.pattern_row_index as u16 + 1,
+    y: state.focus.pattern_row_index as u16,
   }
 }
 
@@ -266,13 +262,7 @@ fn draw_track(
   track: &Track,
 ) {
   let active_row_track_area = active_row_area.intersection(current_track_area);
-  scroll_view.render_widget(
-    TitleBlock::default()
-      .title(track.name.clone())
-      .title_style(SUB_TITLE_STYLE)
-      .style(PANEL_AREA_STYLE),
-    current_track_area,
-  );
+  scroll_view.render_widget(Block::default().style(PANEL_AREA_STYLE), current_track_area);
   scroll_view.render_widget(
     Block::default().style(ACTIVE_ROW_STYLE),
     active_row_track_area,
@@ -283,12 +273,45 @@ fn draw_track(
     let cell_text = note_cell_text(note);
     let cell_area = Rect {
       x: current_track_area.x,
-      y: row_idx as u16 + 1,
+      y: row_idx as u16,
       width: TRACK_COLUMN_WIDTH,
       height: 1,
     };
     scroll_view.render_widget(Paragraph::new(cell_text), cell_area);
   }
+}
+
+fn draw_track_names(
+  frame: &mut Frame,
+  tracks_area: Rect,
+  horizontal_scroll_offset: u16,
+  current_pattern: &Pattern,
+  content_width: u16,
+) {
+  let mut scroll_view =
+    ScrollView::new(Size::new(content_width, 1)).scrollbars_visibility(ScrollbarVisibility::Never);
+
+  let distance = TRACK_COLUMN_WIDTH as i32 + 1;
+  let offset = Offset { x: distance, y: 0 };
+  let mut current_track_area = Rect {
+    x: 0,
+    y: 0,
+    width: TRACK_COLUMN_WIDTH,
+    height: 1,
+  };
+  for track in current_pattern.tracks.iter() {
+    scroll_view.render_widget(
+      Paragraph::new(track.name.clone()).style(SUB_TITLE_STYLE),
+      current_track_area,
+    );
+    current_track_area = current_track_area.offset(offset);
+  }
+
+  let mut scroll_state = ScrollViewState::with_offset(Position {
+    x: horizontal_scroll_offset,
+    y: 0,
+  });
+  frame.render_stateful_widget(scroll_view, tracks_area, &mut scroll_state);
 }
 
 fn draw_pattern_details(frame: &mut Frame<'_>, current_pattern: &Pattern, area: Rect) {
@@ -331,6 +354,11 @@ fn draw_pattern_panel(
     .title_style(TITLE_STYLE);
   let inner_area = panel_block.inner(pattern_area);
 
+  let [track_names_area, notes_area] = Layout::default()
+    .direction(Direction::Vertical)
+    .constraints([Constraint::Length(1), Constraint::Min(0)])
+    .areas(inner_area);
+
   frame.render_widget(panel_block, pattern_area);
 
   let num_tracks = current_pattern.tracks.len();
@@ -340,16 +368,15 @@ fn draw_pattern_panel(
     .iter()
     .map(|track| track.notes.len() as u16)
     .max()
-    .unwrap_or(0)
-    .saturating_add(1);
+    .unwrap_or(0);
   let content_size = Size::new(content_width, content_height);
-  let viewport_size = scrollable_viewport_size(inner_area, content_size);
+  let viewport_size = scrollable_viewport_size(notes_area, content_size);
   let mut scroll_view =
     ScrollView::new(content_size).scrollbars_visibility(ScrollbarVisibility::Automatic);
 
   let active_row_area = Rect {
     x: 0,
-    y: state.focus.pattern_row_index as u16 + 1,
+    y: state.focus.pattern_row_index as u16,
     width: content_width,
     height: 1,
   };
@@ -364,7 +391,6 @@ fn draw_pattern_panel(
     width: TRACK_COLUMN_WIDTH,
     height: content_height,
   };
-  current_track_area.width = TRACK_COLUMN_WIDTH;
   for track in current_pattern.tracks.iter() {
     draw_track(&mut scroll_view, active_row_area, current_track_area, track);
     current_track_area = current_track_area.offset(Offset {
@@ -373,12 +399,20 @@ fn draw_pattern_panel(
     });
   }
 
-  frame.render_stateful_widget(scroll_view, inner_area, pattern_scroll_state);
+  frame.render_stateful_widget(scroll_view, notes_area, pattern_scroll_state);
 
   let scroll_offset = pattern_scroll_state.offset();
+  draw_track_names(
+    frame,
+    track_names_area,
+    scroll_offset.x,
+    current_pattern,
+    content_width,
+  );
+
   let focus_position = pattern_focus_position(state);
   if is_focus_visible(focus_position, scroll_offset, viewport_size) {
-    let cursor_pos = get_cursor_position(inner_area, focus_position, scroll_offset);
+    let cursor_pos = get_cursor_position(notes_area, focus_position, scroll_offset);
     frame.set_cursor_position(cursor_pos);
   }
 
