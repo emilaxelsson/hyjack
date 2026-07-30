@@ -11,7 +11,7 @@ use tui_scrollview::ScrollViewState;
 use crate::state::AppState;
 use crate::ui::common::{Component, ComponentAction};
 use crate::ui::component::input_dialog::InputDialog;
-use crate::ui::render::{draw_ui, scroll_cursor_into_view};
+use crate::ui::render::{CursorMoveDirection, draw_ui, scroll_cursor_into_view};
 
 enum UIMode {
   EditPattern,
@@ -66,7 +66,12 @@ fn handle_event(
       }
       KeyCode::Up => {
         state.to_previous_row();
-        scroll_cursor_into_view(state, pattern_scroll_state, pattern_viewport_size);
+        scroll_cursor_into_view(
+          state,
+          pattern_scroll_state,
+          pattern_viewport_size,
+          CursorMoveDirection::Up,
+        );
         false
       }
       KeyCode::Down if key.modifiers == KeyModifiers::CONTROL => {
@@ -75,7 +80,12 @@ fn handle_event(
       }
       KeyCode::Down => {
         state.to_next_row();
-        scroll_cursor_into_view(state, pattern_scroll_state, pattern_viewport_size);
+        scroll_cursor_into_view(
+          state,
+          pattern_scroll_state,
+          pattern_viewport_size,
+          CursorMoveDirection::Down,
+        );
         false
       }
       KeyCode::Left if key.modifiers == KeyModifiers::CONTROL => {
@@ -84,7 +94,12 @@ fn handle_event(
       }
       KeyCode::Left => {
         state.to_previous_track_field();
-        scroll_cursor_into_view(state, pattern_scroll_state, pattern_viewport_size);
+        scroll_cursor_into_view(
+          state,
+          pattern_scroll_state,
+          pattern_viewport_size,
+          CursorMoveDirection::Left,
+        );
         false
       }
       KeyCode::Right if key.modifiers == KeyModifiers::CONTROL => {
@@ -93,7 +108,12 @@ fn handle_event(
       }
       KeyCode::Right => {
         state.to_next_track_field();
-        scroll_cursor_into_view(state, pattern_scroll_state, pattern_viewport_size);
+        scroll_cursor_into_view(
+          state,
+          pattern_scroll_state,
+          pattern_viewport_size,
+          CursorMoveDirection::Right,
+        );
         false
       }
       _ => false,
@@ -106,12 +126,22 @@ fn handle_event(
       }
       KeyCode::Up => {
         state.to_previous_pattern();
-        scroll_cursor_into_view(state, pattern_scroll_state, pattern_viewport_size);
+        scroll_cursor_into_view(
+          state,
+          pattern_scroll_state,
+          pattern_viewport_size,
+          CursorMoveDirection::Up,
+        );
         false
       }
       KeyCode::Down => {
         state.to_next_pattern();
-        scroll_cursor_into_view(state, pattern_scroll_state, pattern_viewport_size);
+        scroll_cursor_into_view(
+          state,
+          pattern_scroll_state,
+          pattern_viewport_size,
+          CursorMoveDirection::Down,
+        );
         false
       }
       _ => false,

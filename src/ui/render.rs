@@ -24,6 +24,13 @@ const BEHIND_ACTIVE_ROW_STYLE: Style = Style::new().bg(Color::Rgb(45, 45, 120));
 
 const TRACK_COLUMN_WIDTH: u16 = 15;
 
+pub enum CursorMoveDirection {
+  Up,
+  Down,
+  Left,
+  Right,
+}
+
 fn midi_pitch_to_tracker(pitch: u8) -> String {
   const NAMES: [&str; 12] = [
     "C-", "C#", "D-", "D#", "E-", "F-", "F#", "G-", "G#", "A-", "A#", "B-",
@@ -179,36 +186,47 @@ pub fn scroll_cursor_into_view(
   state: &AppState,
   pattern_scroll_state: &mut ScrollViewState,
   viewport_size: Size,
+  move_direction: CursorMoveDirection,
 ) {
   let focus_position = pattern_focus_position(state);
   let mut scroll_offset = pattern_scroll_state.offset();
   let viewport_width = viewport_size.width.max(1);
   let viewport_height = viewport_size.height.max(1);
+  let current_track_start = state.focus.pattern_track_index as u16 * (TRACK_COLUMN_WIDTH + 1);
+  let current_track_end = current_track_start.saturating_add(TRACK_COLUMN_WIDTH.saturating_sub(1));
 
-  if focus_position.x <= scroll_offset.x {
-    scroll_offset.x = focus_position.x.saturating_sub(1);
-  } else {
-    let last_visible_column = scroll_offset
-      .x
-      .saturating_add(viewport_width.saturating_sub(1));
-    if focus_position.x >= last_visible_column {
-      scroll_offset.x = focus_position
-        .x
-        .saturating_sub(viewport_width.saturating_sub(3));
+  match move_direction {
+    CursorMoveDirection::Up => {
+      if focus_position.y <= scroll_offset.y {
+        scroll_offset.y = focus_position.y.saturating_sub(1);
+      }
     }
-  }
-
-  if focus_position.y <= scroll_offset.y {
-    scroll_offset.y = focus_position.y.saturating_sub(1);
-  } else {
-    let last_visible_row = scroll_offset
-      .y
-      .saturating_add(viewport_height.saturating_sub(1));
-    if focus_position.y >= last_visible_row {
-      scroll_offset.y = focus_position
+    CursorMoveDirection::Down => {
+      let last_visible_row = scroll_offset
         .y
-        .saturating_sub(viewport_height.saturating_sub(2));
+        .saturating_add(viewport_height.saturating_sub(1));
+      if focus_position.y >= last_visible_row {
+        scroll_offset.y = focus_position
+          .y
+          .saturating_sub(viewport_height.saturating_sub(2));
+      }
     }
+    CursorMoveDirection::Left if matches!(state.focus.track_focus, TrackFocus::Effect) => {
+      if current_track_start < scroll_offset.x {
+        scroll_offset.x = current_track_start;
+      }
+    }
+    CursorMoveDirection::Right if matches!(state.focus.track_focus, TrackFocus::Note) => {
+      let last_visible_column = scroll_offset
+        .x
+        .saturating_add(viewport_width.saturating_sub(1));
+      if current_track_end > last_visible_column {
+        scroll_offset.x = current_track_end
+          .saturating_add(1)
+          .saturating_sub(viewport_width);
+      }
+    }
+    _ => {}
   }
 
   pattern_scroll_state.set_offset(scroll_offset);
