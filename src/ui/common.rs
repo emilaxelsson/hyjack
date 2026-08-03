@@ -2,7 +2,7 @@ use std::io;
 
 use crossterm::event::Event;
 use ratatui::Frame;
-use ratatui::layout::Rect;
+use ratatui::layout::{Position, Rect};
 use ratatui::style::Color;
 
 pub const DEFAULT_BG: Color = Color::Rgb(0, 0, 0);
@@ -63,5 +63,18 @@ impl AdjustableArea for Rect {
       height: self.height.saturating_sub(y),
       ..self
     }
+  }
+}
+
+/// Convert a logical focus position relative to a scrollable content area into a position
+/// relative to the visible viewport.
+pub fn get_absolute_position(
+  area: Rect,
+  scroll_offset: Position,
+  relative_position: Position,
+) -> Position {
+  Position {
+    x: area.x + relative_position.x.saturating_sub(scroll_offset.x),
+    y: area.y + relative_position.y.saturating_sub(scroll_offset.y),
   }
 }

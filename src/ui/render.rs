@@ -5,7 +5,7 @@ use ratatui::widgets::{Block, Cell, List, ListItem, Paragraph, Row, Table};
 use tui_scrollview::{ScrollView, ScrollViewState, ScrollbarVisibility};
 
 use crate::state::*;
-use crate::ui::common::{AdjustableArea, Component, DEFAULT_BG, DEFAULT_FG};
+use crate::ui::common::{AdjustableArea, Component, DEFAULT_BG, DEFAULT_FG, get_absolute_position};
 use crate::ui::component::input_dialog::InputDialog;
 use crate::ui::widgets::horizontal_rule::HorizontalRule;
 use crate::ui::widgets::title_block::TitleBlock;
@@ -43,18 +43,6 @@ fn note_cell_text(note: &Option<Note>) -> String {
     )
   } else {
     "... ..  ..  ...".to_string()
-  }
-}
-
-/// Convert a logical focus position within a scrollable content area into a terminal
-/// cursor position relative to the visible viewport.
-///
-/// The caller is expected to ensure the focus is currently visible inside the viewport
-/// before using this result to place the terminal cursor.
-fn get_cursor_position(area: Rect, focus_position: Position, scroll_offset: Position) -> Position {
-  Position {
-    x: area.x + focus_position.x.saturating_sub(scroll_offset.x),
-    y: area.y + focus_position.y.saturating_sub(scroll_offset.y),
   }
 }
 
@@ -420,7 +408,7 @@ fn draw_pattern_panel(
 
   let focus_position = pattern_focus_position(state);
   if is_focus_visible(focus_position, scroll_offset, viewport_size) {
-    let cursor_pos = get_cursor_position(notes_area, focus_position, scroll_offset);
+    let cursor_pos = get_absolute_position(notes_area, scroll_offset, focus_position);
     frame.set_cursor_position(cursor_pos);
   }
 
