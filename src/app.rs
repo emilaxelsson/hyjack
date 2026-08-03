@@ -11,7 +11,7 @@ use tui_scrollview::ScrollViewState;
 use crate::state::AppState;
 use crate::ui::common::{Component, ComponentAction};
 use crate::ui::component::input_dialog::InputDialog;
-use crate::ui::render::{CursorMoveDirection, draw_ui, scroll_cursor_into_view};
+use crate::ui::render::{draw_ui, scroll_cursor_into_view};
 
 enum UIMode {
   EditPattern,
@@ -49,104 +49,65 @@ fn handle_event(
     return Ok(false);
   };
 
-  Ok(match mode {
+  if matches!(key.code, KeyCode::Char('q')) {
+    return Ok(true);
+  }
+
+  match mode {
     UIMode::EditPattern => match key.code {
-      KeyCode::Char('q') | KeyCode::Esc => true,
       KeyCode::F(2) => {
         *optional_dialog = Some(pattern_title_dialog(state));
-        false
       }
       KeyCode::Tab => {
         *mode = UIMode::EditSequence;
-        false
       }
       KeyCode::Up if key.modifiers == KeyModifiers::CONTROL => {
         pattern_scroll_state.scroll_up();
-        false
       }
       KeyCode::Up => {
         state.to_previous_row();
-        scroll_cursor_into_view(
-          state,
-          pattern_scroll_state,
-          pattern_viewport_size,
-          CursorMoveDirection::Up,
-        );
-        false
+        scroll_cursor_into_view(state, pattern_scroll_state, pattern_viewport_size);
       }
       KeyCode::Down if key.modifiers == KeyModifiers::CONTROL => {
         pattern_scroll_state.scroll_down();
-        false
       }
       KeyCode::Down => {
         state.to_next_row();
-        scroll_cursor_into_view(
-          state,
-          pattern_scroll_state,
-          pattern_viewport_size,
-          CursorMoveDirection::Down,
-        );
-        false
+        scroll_cursor_into_view(state, pattern_scroll_state, pattern_viewport_size);
       }
       KeyCode::Left if key.modifiers == KeyModifiers::CONTROL => {
         pattern_scroll_state.scroll_left();
-        false
       }
       KeyCode::Left => {
         state.to_previous_track_field();
-        scroll_cursor_into_view(
-          state,
-          pattern_scroll_state,
-          pattern_viewport_size,
-          CursorMoveDirection::Left,
-        );
-        false
+        scroll_cursor_into_view(state, pattern_scroll_state, pattern_viewport_size);
       }
       KeyCode::Right if key.modifiers == KeyModifiers::CONTROL => {
         pattern_scroll_state.scroll_right();
-        false
       }
       KeyCode::Right => {
         state.to_next_track_field();
-        scroll_cursor_into_view(
-          state,
-          pattern_scroll_state,
-          pattern_viewport_size,
-          CursorMoveDirection::Right,
-        );
-        false
+        scroll_cursor_into_view(state, pattern_scroll_state, pattern_viewport_size);
       }
-      _ => false,
+      _ => {}
     },
     UIMode::EditSequence => match key.code {
-      KeyCode::Char('q') | KeyCode::Esc => true,
       KeyCode::Tab => {
         *mode = UIMode::EditPattern;
-        false
       }
       KeyCode::Up => {
         state.to_previous_pattern();
-        scroll_cursor_into_view(
-          state,
-          pattern_scroll_state,
-          pattern_viewport_size,
-          CursorMoveDirection::Up,
-        );
-        false
+        scroll_cursor_into_view(state, pattern_scroll_state, pattern_viewport_size);
       }
       KeyCode::Down => {
         state.to_next_pattern();
-        scroll_cursor_into_view(
-          state,
-          pattern_scroll_state,
-          pattern_viewport_size,
-          CursorMoveDirection::Down,
-        );
-        false
+        scroll_cursor_into_view(state, pattern_scroll_state, pattern_viewport_size);
       }
-      _ => false,
+      _ => {}
     },
-  })
+  }
+
+  Ok(false)
 }
 
 pub fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Result<()> {
