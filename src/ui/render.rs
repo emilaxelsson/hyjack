@@ -1,22 +1,23 @@
+pub mod head;
 pub mod style;
 pub mod track;
 
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Position, Rect, Size};
 use ratatui::style::{Modifier, Style, Stylize};
-use ratatui::widgets::{Block, Cell, List, ListItem, Paragraph, Row, Table};
+use ratatui::widgets::{Block, Cell, List, ListItem, Row, Table};
 use tui_scrollview::{ScrollView, ScrollViewState, ScrollbarVisibility};
 
 use crate::state::*;
-use crate::ui::common::{AdjustableArea, Component, get_absolute_position};
+use crate::ui::common::{Component, get_absolute_position};
 use crate::ui::component::input_dialog::InputDialog;
+use crate::ui::render::head::draw_head;
 use crate::ui::render::style::{
   ACTIVE_ROW_BG, BEHIND_ACTIVE_ROW_STYLE, DEFAULT_BG, DEFAULT_FG, PANEL_AREA_STYLE, TITLE_STYLE,
 };
 use crate::ui::render::track::{
   TRACK_COLUMN_WIDTH, draw_track_names, draw_tracks, track_column_offset, track_start_offset,
 };
-use crate::ui::widgets::horizontal_rule::HorizontalRule;
 use crate::ui::widgets::title_block::TitleBlock;
 
 /// Compute the logical position of the current focus within the pattern content area.
@@ -27,33 +28,6 @@ fn pattern_focus_position(state: &AppState) -> Position {
     x: cursor_x_offset as u16,
     y: state.focus.pattern_row_index as u16,
   }
-}
-
-fn draw_head(frame: &mut Frame, state: &AppState, area: Rect) -> Rect {
-  let top_line = format!(
-    "Dracker {}    {:02}:{:02}:{:02}.{:03} | {} - {}",
-    state.dracker_version,
-    state.player.time.hour,
-    state.player.time.minute,
-    state.player.time.second,
-    state.player.time.millis,
-    state.song_title,
-    state.sequence.get(state.player.sequence_index).unwrap(),
-  );
-  let editing_line = format!(
-    "Editing        Octave {} | Velocity {} | Step {:2} | Instrument  {}",
-    3, 50, 4, "3/Kick",
-  );
-
-  frame.render_widget(Paragraph::new(top_line), area);
-  let area = area.squeeze_down(1);
-  frame.render_widget(HorizontalRule, area);
-  let area = area.squeeze_down(1);
-  frame.render_widget(Paragraph::new(editing_line), area);
-  let area = area.squeeze_down(1);
-  frame.render_widget(HorizontalRule, area);
-
-  area.squeeze_down(1)
 }
 
 fn draw_list_block(
