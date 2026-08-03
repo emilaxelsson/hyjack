@@ -46,12 +46,13 @@ fn note_cell_text(note: &Option<Note>) -> String {
   }
 }
 
-fn track_focus_offset(track_focus: &TrackFocus) -> usize {
-  match track_focus {
-    TrackFocus::Note => 0,
-    TrackFocus::Instrument => 4,
-    TrackFocus::Velocity => 8,
-    TrackFocus::Effect => 12,
+/// Compute the x offset of a track column within a track.
+fn track_column_offset(column: &TrackColumn) -> usize {
+  match column {
+    TrackColumn::Note => 0,
+    TrackColumn::Instrument => 4,
+    TrackColumn::Velocity => 8,
+    TrackColumn::Effect => 12,
   }
 }
 
@@ -63,7 +64,7 @@ fn track_start_offset(track_index: usize) -> usize {
 /// Compute the logical position of the current focus within the pattern content area.
 fn pattern_focus_position(state: &AppState) -> Position {
   let cursor_x_offset = track_start_offset(state.focus.pattern_track_index)
-    + track_focus_offset(&state.focus.track_focus);
+    + track_column_offset(&state.focus.track_column);
   Position {
     x: cursor_x_offset as u16,
     y: state.focus.pattern_row_index as u16,

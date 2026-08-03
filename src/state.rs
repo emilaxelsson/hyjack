@@ -35,14 +35,14 @@ pub struct PlayerState {
   pub sequence_index: usize,
 }
 
-pub enum TrackFocus {
+pub enum TrackColumn {
   Note,
   Instrument,
   Velocity,
   Effect,
 }
 
-impl TrackFocus {
+impl TrackColumn {
   fn next(&self) -> Self {
     match self {
       Self::Note => Self::Instrument,
@@ -67,7 +67,7 @@ pub struct Focus {
   pub pattern_index: usize,
   pub pattern_row_index: usize,
   pub pattern_track_index: usize,
-  pub track_focus: TrackFocus,
+  pub track_column: TrackColumn,
 }
 
 pub struct AppState {
@@ -203,15 +203,15 @@ impl AppState {
 
   /// Move to the previous editable field in the current pattern row.
   pub fn to_previous_track_field(&mut self) {
-    match self.focus.track_focus {
-      TrackFocus::Note => {
+    match self.focus.track_column {
+      TrackColumn::Note => {
         if self.focus.pattern_track_index > 0 {
           self.focus.pattern_track_index -= 1;
-          self.focus.track_focus = self.focus.track_focus.previous();
+          self.focus.track_column = self.focus.track_column.previous();
         }
       }
       _ => {
-        self.focus.track_focus = self.focus.track_focus.previous();
+        self.focus.track_column = self.focus.track_column.previous();
       }
     }
   }
@@ -221,15 +221,15 @@ impl AppState {
     let current_pattern = self.get_current_pattern();
     let number_of_tracks = nonzero_len(&current_pattern.tracks);
 
-    match self.focus.track_focus {
-      TrackFocus::Effect => {
+    match self.focus.track_column {
+      TrackColumn::Effect => {
         if self.focus.pattern_track_index + 1 < number_of_tracks.get() {
           self.focus.pattern_track_index += 1;
-          self.focus.track_focus = self.focus.track_focus.next();
+          self.focus.track_column = self.focus.track_column.next();
         }
       }
       _ => {
-        self.focus.track_focus = self.focus.track_focus.next();
+        self.focus.track_column = self.focus.track_column.next();
       }
     }
   }
@@ -415,7 +415,7 @@ pub fn default_state() -> AppState {
       pattern_index: 1,
       pattern_row_index: 0,
       pattern_track_index: 0,
-      track_focus: TrackFocus::Note,
+      track_column: TrackColumn::Note,
     },
     player: PlayerState {
       time: PlayerTime {
@@ -476,22 +476,22 @@ mod tests {
   fn test_move_to_next_track_field_advances_track_after_effect() {
     let mut state = default_state();
     state.focus.pattern_track_index = 1;
-    state.focus.track_focus = TrackFocus::Note;
+    state.focus.track_column = TrackColumn::Note;
 
     state.to_next_track_field();
-    assert!(matches!(state.focus.track_focus, TrackFocus::Instrument));
+    assert!(matches!(state.focus.track_column, TrackColumn::Instrument));
     assert_eq!(state.focus.pattern_track_index, 1);
 
     state.to_next_track_field();
-    assert!(matches!(state.focus.track_focus, TrackFocus::Velocity));
+    assert!(matches!(state.focus.track_column, TrackColumn::Velocity));
     assert_eq!(state.focus.pattern_track_index, 1);
 
     state.to_next_track_field();
-    assert!(matches!(state.focus.track_focus, TrackFocus::Effect));
+    assert!(matches!(state.focus.track_column, TrackColumn::Effect));
     assert_eq!(state.focus.pattern_track_index, 1);
 
     state.to_next_track_field();
-    assert!(matches!(state.focus.track_focus, TrackFocus::Note));
+    assert!(matches!(state.focus.track_column, TrackColumn::Note));
     assert_eq!(state.focus.pattern_track_index, 2);
   }
 
@@ -499,11 +499,11 @@ mod tests {
   fn test_move_to_previous_track_field_moves_to_previous_track_note() {
     let mut state = default_state();
     state.focus.pattern_track_index = 1;
-    state.focus.track_focus = TrackFocus::Note;
+    state.focus.track_column = TrackColumn::Note;
 
     state.to_previous_track_field();
 
-    assert!(matches!(state.focus.track_focus, TrackFocus::Effect));
+    assert!(matches!(state.focus.track_column, TrackColumn::Effect));
     assert_eq!(state.focus.pattern_track_index, 0);
   }
 
@@ -511,11 +511,11 @@ mod tests {
   fn test_move_to_previous_track_field_stops_on_first_track() {
     let mut state = default_state();
     state.focus.pattern_track_index = 0;
-    state.focus.track_focus = TrackFocus::Note;
+    state.focus.track_column = TrackColumn::Note;
 
     state.to_previous_track_field();
 
-    assert!(matches!(state.focus.track_focus, TrackFocus::Note));
+    assert!(matches!(state.focus.track_column, TrackColumn::Note));
     assert_eq!(state.focus.pattern_track_index, 0);
   }
 
@@ -523,11 +523,11 @@ mod tests {
   fn test_move_to_next_track_field_stops_on_last_track() {
     let mut state = default_state();
     state.focus.pattern_track_index = 3;
-    state.focus.track_focus = TrackFocus::Effect;
+    state.focus.track_column = TrackColumn::Effect;
 
     state.to_next_track_field();
 
-    assert!(matches!(state.focus.track_focus, TrackFocus::Effect));
+    assert!(matches!(state.focus.track_column, TrackColumn::Effect));
     assert_eq!(state.focus.pattern_track_index, 3);
   }
 }
