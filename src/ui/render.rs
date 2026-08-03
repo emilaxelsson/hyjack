@@ -1,20 +1,20 @@
 pub mod head;
+pub mod sequence;
 pub mod style;
 pub mod track;
 
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Position, Rect, Size};
-use ratatui::style::{Modifier, Style, Stylize};
-use ratatui::widgets::{Block, Cell, List, ListItem, Row, Table};
+use ratatui::style::{Style, Stylize};
+use ratatui::widgets::{Block, Cell, Row, Table};
 use tui_scrollview::{ScrollView, ScrollViewState, ScrollbarVisibility};
 
 use crate::state::*;
 use crate::ui::common::{Component, get_absolute_position};
 use crate::ui::component::input_dialog::InputDialog;
 use crate::ui::render::head::draw_head;
-use crate::ui::render::style::{
-  ACTIVE_ROW_BG, BEHIND_ACTIVE_ROW_STYLE, DEFAULT_BG, DEFAULT_FG, PANEL_AREA_STYLE, TITLE_STYLE,
-};
+use crate::ui::render::sequence::draw_sequence_panel;
+use crate::ui::render::style::{BEHIND_ACTIVE_ROW_STYLE, DEFAULT_BG, DEFAULT_FG, TITLE_STYLE};
 use crate::ui::render::track::{
   TRACK_COLUMN_WIDTH, draw_track_names, draw_tracks, track_column_offset, track_start_offset,
 };
@@ -28,78 +28,6 @@ fn pattern_focus_position(state: &AppState) -> Position {
     x: cursor_x_offset as u16,
     y: state.focus.pattern_row_index as u16,
   }
-}
-
-fn draw_list_block(
-  frame: &mut Frame,
-  area: Rect,
-  title: &str,
-  items: &[String],
-  active_index: usize,
-) {
-  let block = TitleBlock::new()
-    .title(title)
-    .title_style(TITLE_STYLE)
-    .style(PANEL_AREA_STYLE);
-  let inner_area = block.inner(area);
-
-  frame.render_widget(block, area);
-
-  let list_items: Vec<ListItem> = items
-    .iter()
-    .enumerate()
-    .map(|(idx, name)| {
-      if idx == active_index {
-        ListItem::new(name.clone()).bg(ACTIVE_ROW_BG)
-      } else {
-        ListItem::new(name.clone())
-      }
-    })
-    .collect();
-
-  let list = List::new(list_items).highlight_style(Style::default().add_modifier(Modifier::BOLD));
-
-  frame.render_widget(list, inner_area);
-}
-
-fn draw_sequence_panel(frame: &mut Frame, area: Rect, sequence: &[String], focus: &Focus) -> Rect {
-  let width = sequence.iter().map(|s| s.len()).max().unwrap_or(0) as u16 + 1;
-  let width = width.max(15) + 1;
-
-  let [sequence_panel_area, _gap, remaining_area] = Layout::default()
-    .direction(Direction::Horizontal)
-    .constraints([
-      Constraint::Length(width),
-      Constraint::Length(1),
-      Constraint::Min(0),
-    ])
-    .areas(area);
-
-  let [sequence_area, _gap, pool_area] = Layout::default()
-    .direction(Direction::Vertical)
-    .constraints([
-      Constraint::Percentage(70),
-      Constraint::Length(1),
-      Constraint::Percentage(30),
-    ])
-    .areas(sequence_panel_area);
-
-  draw_list_block(
-    frame,
-    sequence_area,
-    "Sequence",
-    sequence,
-    focus.sequence_index,
-  );
-  draw_list_block(
-    frame,
-    pool_area,
-    "Pool",
-    &["Bridge B".to_string(), "Intro X".to_string()],
-    0,
-  );
-
-  remaining_area
 }
 
 pub fn scroll_cursor_into_view(
