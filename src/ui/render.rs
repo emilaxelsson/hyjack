@@ -1,65 +1,23 @@
+pub mod style;
+pub mod track;
+
 use ratatui::Frame;
-use ratatui::layout::{Constraint, Direction, Layout, Offset, Position, Rect, Size};
-use ratatui::style::{Color, Modifier, Style, Stylize};
+use ratatui::layout::{Constraint, Direction, Layout, Position, Rect, Size};
+use ratatui::style::{Modifier, Style, Stylize};
 use ratatui::widgets::{Block, Cell, List, ListItem, Paragraph, Row, Table};
 use tui_scrollview::{ScrollView, ScrollViewState, ScrollbarVisibility};
 
 use crate::state::*;
-use crate::ui::common::{AdjustableArea, Component, DEFAULT_BG, DEFAULT_FG, get_absolute_position};
+use crate::ui::common::{AdjustableArea, Component, get_absolute_position};
 use crate::ui::component::input_dialog::InputDialog;
+use crate::ui::render::style::{
+  ACTIVE_ROW_BG, BEHIND_ACTIVE_ROW_STYLE, DEFAULT_BG, DEFAULT_FG, PANEL_AREA_STYLE, TITLE_STYLE,
+};
+use crate::ui::render::track::{
+  TRACK_COLUMN_WIDTH, draw_track_names, draw_tracks, track_column_offset, track_start_offset,
+};
 use crate::ui::widgets::horizontal_rule::HorizontalRule;
 use crate::ui::widgets::title_block::TitleBlock;
-
-const SUB_TITLE_BG: Color = Color::Rgb(60, 60, 60);
-const TITLE_BG: Color = Color::Rgb(40, 80, 40);
-const TITLE_STYLE: Style = Style::new()
-  .bg(TITLE_BG)
-  .fg(DEFAULT_FG)
-  .add_modifier(Modifier::BOLD);
-const SUB_TITLE_STYLE: Style = Style::new().bg(SUB_TITLE_BG).fg(DEFAULT_FG);
-const PANEL_AREA_STYLE: Style = Style::new().bg(Color::Rgb(35, 35, 35)).fg(DEFAULT_FG);
-const ACTIVE_ROW_BG: Color = Color::Rgb(55, 55, 150);
-const ACTIVE_ROW_STYLE: Style = Style::new().bg(ACTIVE_ROW_BG);
-const BEHIND_ACTIVE_ROW_STYLE: Style = Style::new().bg(Color::Rgb(45, 45, 120));
-
-const TRACK_COLUMN_WIDTH: u16 = 15;
-
-fn midi_pitch_to_tracker(pitch: u8) -> String {
-  const NAMES: [&str; 12] = [
-    "C-", "C#", "D-", "D#", "E-", "F-", "F#", "G-", "G#", "A-", "A#", "B-",
-  ];
-  let name = NAMES[(pitch as usize) % 12];
-  let octave = (pitch / 12).saturating_sub(1);
-  format!("{}{}", name, octave)
-}
-
-fn note_cell_text(note: &Option<Note>) -> String {
-  if let Some(note) = note {
-    format!(
-      "{} {:02} v{:02}  ...",
-      midi_pitch_to_tracker(note.pitch),
-      note.instrument,
-      note.velocity,
-    )
-  } else {
-    "... ..  ..  ...".to_string()
-  }
-}
-
-/// Compute the x offset of a track column within a track.
-fn track_column_offset(column: &TrackColumn) -> usize {
-  match column {
-    TrackColumn::Note => 0,
-    TrackColumn::Instrument => 4,
-    TrackColumn::Velocity => 8,
-    TrackColumn::Effect => 12,
-  }
-}
-
-/// Compute the starting x offset of a track based on its index in the pattern.
-fn track_start_offset(track_index: usize) -> usize {
-  track_index * (TRACK_COLUMN_WIDTH as usize + 1)
-}
 
 /// Compute the logical position of the current focus within the pattern content area.
 fn pattern_focus_position(state: &AppState) -> Position {
@@ -249,72 +207,6 @@ fn is_focus_visible(
     && focus_position.y < scroll_offset.y.saturating_add(viewport_height)
 }
 
-fn draw_track(
-  scroll_view: &mut ScrollView,
-  active_row_area: Rect,
-  content_height: u16,
-  track_index: usize,
-  track: &Track,
-) {
-  let current_track_area = Rect {
-    x: track_start_offset(track_index) as u16,
-    y: 0,
-    width: TRACK_COLUMN_WIDTH,
-    height: content_height,
-  };
-  let active_row_track_area = active_row_area.intersection(current_track_area);
-  scroll_view.render_widget(Block::default().style(PANEL_AREA_STYLE), current_track_area);
-  scroll_view.render_widget(
-    Block::default().style(ACTIVE_ROW_STYLE),
-    active_row_track_area,
-  );
-
-  for row_idx in 0..track.notes.len() {
-    let note = &track.notes[row_idx];
-    let cell_text = note_cell_text(note);
-    let cell_area = Rect {
-      x: current_track_area.x,
-      y: row_idx as u16,
-      width: TRACK_COLUMN_WIDTH,
-      height: 1,
-    };
-    scroll_view.render_widget(Paragraph::new(cell_text), cell_area);
-  }
-}
-
-fn draw_track_names(
-  frame: &mut Frame,
-  tracks_area: Rect,
-  horizontal_scroll_offset: u16,
-  current_pattern: &Pattern,
-  content_width: u16,
-) {
-  let mut scroll_view =
-    ScrollView::new(Size::new(content_width, 1)).scrollbars_visibility(ScrollbarVisibility::Never);
-
-  let distance = TRACK_COLUMN_WIDTH as i32 + 1;
-  let offset = Offset { x: distance, y: 0 };
-  let mut current_track_area = Rect {
-    x: 0,
-    y: 0,
-    width: TRACK_COLUMN_WIDTH,
-    height: 1,
-  };
-  for track in current_pattern.tracks.iter() {
-    scroll_view.render_widget(
-      Paragraph::new(track.name.clone()).style(SUB_TITLE_STYLE),
-      current_track_area,
-    );
-    current_track_area = current_track_area.offset(offset);
-  }
-
-  let mut scroll_state = ScrollViewState::with_offset(Position {
-    x: horizontal_scroll_offset,
-    y: 0,
-  });
-  frame.render_stateful_widget(scroll_view, tracks_area, &mut scroll_state);
-}
-
 fn draw_pattern_details(frame: &mut Frame<'_>, current_pattern: &Pattern, area: Rect) {
   let widths = vec![Constraint::Length(7), Constraint::Min(0)];
   let rows = vec![
@@ -386,15 +278,12 @@ fn draw_pattern_panel(
     active_row_area,
   );
 
-  for (track_index, track) in current_pattern.tracks.iter().enumerate() {
-    draw_track(
-      &mut scroll_view,
-      active_row_area,
-      content_height,
-      track_index,
-      track,
-    );
-  }
+  draw_tracks(
+    current_pattern,
+    content_height,
+    &mut scroll_view,
+    active_row_area,
+  );
 
   frame.render_stateful_widget(scroll_view, notes_area, pattern_scroll_state);
 

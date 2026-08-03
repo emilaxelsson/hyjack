@@ -6,7 +6,8 @@ use ratatui::layout::Rect;
 use ratatui::style::{Color, Style};
 use ratatui::widgets::{Block, Borders, Clear, Paragraph, Widget};
 
-use crate::ui::common::{Component, ComponentAction, DEFAULT_FG};
+use crate::ui::common::{Component, ComponentAction};
+use crate::ui::render::style::DEFAULT_FG;
 use crate::ui::widgets::centered::Centered;
 
 pub struct InputDialog<S> {

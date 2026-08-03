@@ -3,10 +3,6 @@ use std::io;
 use crossterm::event::Event;
 use ratatui::Frame;
 use ratatui::layout::{Position, Rect};
-use ratatui::style::Color;
-
-pub const DEFAULT_BG: Color = Color::Rgb(0, 0, 0);
-pub const DEFAULT_FG: Color = Color::Rgb(230, 230, 230);
 
 pub enum ComponentAction {
   None,
