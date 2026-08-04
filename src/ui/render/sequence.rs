@@ -57,28 +57,12 @@ pub fn draw_sequence_panel(
     ])
     .areas(area);
 
-  let [sequence_area, _gap, pool_area] = Layout::default()
-    .direction(Direction::Vertical)
-    .constraints([
-      Constraint::Percentage(70),
-      Constraint::Length(1),
-      Constraint::Percentage(30),
-    ])
-    .areas(sequence_panel_area);
-
   draw_list_block(
     frame,
-    sequence_area,
+    sequence_panel_area,
     "Sequence",
     sequence,
     focus.sequence_index,
-  );
-  draw_list_block(
-    frame,
-    pool_area,
-    "Pool",
-    &["Bridge B".to_string(), "Intro X".to_string()],
-    0,
   );
 
   remaining_area
