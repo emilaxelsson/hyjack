@@ -11,7 +11,8 @@ use tui_scrollview::ScrollViewState;
 use crate::state::AppState;
 use crate::ui::common::{Component, ComponentAction};
 use crate::ui::component::input_dialog::InputDialog;
-use crate::ui::render::{draw_ui, scroll_cursor_into_view};
+use crate::ui::render::draw_ui;
+use crate::ui::render::pattern::scroll_cursor_into_view;
 
 enum UIMode {
   EditPattern,
