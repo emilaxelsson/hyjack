@@ -20,7 +20,7 @@ pub struct Pattern {
   pub title: String,
   pub tracks: NonEmpty<Track>,
   pub beats: NonZeroU8,
-  pub rpb: NonZeroU8,
+  pub rows_per_beat: NonZeroU8,
 }
 
 pub struct PlayerTime {
@@ -87,7 +87,7 @@ impl Default for AppState {
 
 impl Pattern {
   pub fn number_of_rows(&self) -> NonZero<usize> {
-    NonZero::new((self.beats.get() as usize) * (self.rpb.get() as usize)).unwrap()
+    NonZero::new((self.beats.get() as usize) * (self.rows_per_beat.get() as usize)).unwrap()
   }
 }
 
@@ -283,7 +283,7 @@ pub fn default_state() -> AppState {
         title: "Intro A".to_string(),
         tracks: NonEmpty::new(empty_track("Track 1")),
         beats: NonZeroU8::new(2).unwrap(),
-        rpb: NonZeroU8::new(4).unwrap(),
+        rows_per_beat: NonZeroU8::new(4).unwrap(),
       },
       Pattern {
         title: "Intro B".to_string(),
@@ -359,43 +359,43 @@ pub fn default_state() -> AppState {
         ])
         .unwrap(),
         beats: NonZeroU8::new(4).unwrap(),
-        rpb: NonZeroU8::new(4).unwrap(),
+        rows_per_beat: NonZeroU8::new(4).unwrap(),
       },
       Pattern {
         title: "Verse 1 A".to_string(),
         tracks: NonEmpty::new(empty_track("Track 1")),
         beats: NonZeroU8::new(2).unwrap(),
-        rpb: NonZeroU8::new(4).unwrap(),
+        rows_per_beat: NonZeroU8::new(4).unwrap(),
       },
       Pattern {
         title: "Verse 1 B".to_string(),
         tracks: NonEmpty::new(empty_track("Track 1")),
         beats: NonZeroU8::new(2).unwrap(),
-        rpb: NonZeroU8::new(4).unwrap(),
+        rows_per_beat: NonZeroU8::new(4).unwrap(),
       },
       Pattern {
         title: "Verse 1 C".to_string(),
         tracks: NonEmpty::new(empty_track("Track 1")),
         beats: NonZeroU8::new(2).unwrap(),
-        rpb: NonZeroU8::new(4).unwrap(),
+        rows_per_beat: NonZeroU8::new(4).unwrap(),
       },
       Pattern {
         title: "Verse 1 D".to_string(),
         tracks: NonEmpty::new(empty_track("Track 1")),
         beats: NonZeroU8::new(2).unwrap(),
-        rpb: NonZeroU8::new(4).unwrap(),
+        rows_per_beat: NonZeroU8::new(4).unwrap(),
       },
       Pattern {
         title: "Bridge A".to_string(),
         tracks: NonEmpty::new(empty_track("Track 1")),
         beats: NonZeroU8::new(2).unwrap(),
-        rpb: NonZeroU8::new(4).unwrap(),
+        rows_per_beat: NonZeroU8::new(4).unwrap(),
       },
       Pattern {
         title: "Bridge B".to_string(),
         tracks: NonEmpty::new(empty_track("Track 1")),
         beats: NonZeroU8::new(2).unwrap(),
-        rpb: NonZeroU8::new(4).unwrap(),
+        rows_per_beat: NonZeroU8::new(4).unwrap(),
       },
     ])
     .unwrap(),
