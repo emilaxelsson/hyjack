@@ -115,7 +115,7 @@ fn draw_pattern_details(frame: &mut Frame<'_>, current_pattern: &Pattern, area: 
     ]),
     Row::new(vec![
       Cell::from("Pattern").style(Style::default().bold()),
-      Cell::from(format!("{} beats", current_pattern.beats)),
+      Cell::from(format!("{} rows", current_pattern.num_rows.get())),
       Cell::from(format!("RPB {:2}", current_pattern.rows_per_beat)),
     ]),
   ];

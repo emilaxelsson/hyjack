@@ -19,7 +19,7 @@ pub struct Track {
 pub struct Pattern {
   pub title: String,
   pub tracks: NonEmpty<Track>,
-  pub beats: NonZeroU8,
+  pub num_rows: NonZero<usize>,
   pub rows_per_beat: NonZeroU8,
 }
 
@@ -85,12 +85,6 @@ impl Default for AppState {
   }
 }
 
-impl Pattern {
-  pub fn number_of_rows(&self) -> NonZero<usize> {
-    NonZero::new((self.beats.get() as usize) * (self.rows_per_beat.get() as usize)).unwrap()
-  }
-}
-
 /// Trim and validate a user-facing song or pattern name.
 ///
 /// # Examples
@@ -146,10 +140,9 @@ impl AppState {
   /// pattern.
   pub fn refocus_pattern_cursor(&mut self) {
     let current_pattern = self.get_current_pattern();
-    let number_of_rows = current_pattern.number_of_rows();
     let number_of_tracks = nonzero_len(&current_pattern.tracks);
-    if self.focus.pattern_row_index >= number_of_rows.get() {
-      self.focus.pattern_row_index = sub_one(number_of_rows);
+    if self.focus.pattern_row_index >= current_pattern.num_rows.get() {
+      self.focus.pattern_row_index = sub_one(current_pattern.num_rows);
     }
     if self.focus.pattern_track_index >= number_of_tracks.get() {
       self.focus.pattern_track_index = sub_one(number_of_tracks);
@@ -194,9 +187,8 @@ impl AppState {
   /// Move to the next row in the current pattern.
   pub fn to_next_row(&mut self) {
     let current_pattern = self.get_current_pattern();
-    let number_of_rows = current_pattern.number_of_rows();
     let next_row = self.focus.pattern_row_index + 1;
-    if next_row < number_of_rows.get() {
+    if next_row < current_pattern.num_rows.get() {
       self.focus.pattern_row_index = next_row;
     }
   }
@@ -282,7 +274,7 @@ pub fn default_state() -> AppState {
       Pattern {
         title: "Intro A".to_string(),
         tracks: NonEmpty::new(empty_track("Track 1")),
-        beats: NonZeroU8::new(2).unwrap(),
+        num_rows: NonZero::new(8).unwrap(),
         rows_per_beat: NonZeroU8::new(4).unwrap(),
       },
       Pattern {
@@ -358,43 +350,43 @@ pub fn default_state() -> AppState {
           },
         ])
         .unwrap(),
-        beats: NonZeroU8::new(4).unwrap(),
+        num_rows: NonZero::new(16).unwrap(),
         rows_per_beat: NonZeroU8::new(4).unwrap(),
       },
       Pattern {
         title: "Verse 1 A".to_string(),
         tracks: NonEmpty::new(empty_track("Track 1")),
-        beats: NonZeroU8::new(2).unwrap(),
+        num_rows: NonZero::new(8).unwrap(),
         rows_per_beat: NonZeroU8::new(4).unwrap(),
       },
       Pattern {
         title: "Verse 1 B".to_string(),
         tracks: NonEmpty::new(empty_track("Track 1")),
-        beats: NonZeroU8::new(2).unwrap(),
+        num_rows: NonZero::new(8).unwrap(),
         rows_per_beat: NonZeroU8::new(4).unwrap(),
       },
       Pattern {
         title: "Verse 1 C".to_string(),
         tracks: NonEmpty::new(empty_track("Track 1")),
-        beats: NonZeroU8::new(2).unwrap(),
+        num_rows: NonZero::new(8).unwrap(),
         rows_per_beat: NonZeroU8::new(4).unwrap(),
       },
       Pattern {
         title: "Verse 1 D".to_string(),
         tracks: NonEmpty::new(empty_track("Track 1")),
-        beats: NonZeroU8::new(2).unwrap(),
+        num_rows: NonZero::new(8).unwrap(),
         rows_per_beat: NonZeroU8::new(4).unwrap(),
       },
       Pattern {
         title: "Bridge A".to_string(),
         tracks: NonEmpty::new(empty_track("Track 1")),
-        beats: NonZeroU8::new(2).unwrap(),
+        num_rows: NonZero::new(8).unwrap(),
         rows_per_beat: NonZeroU8::new(4).unwrap(),
       },
       Pattern {
         title: "Bridge B".to_string(),
         tracks: NonEmpty::new(empty_track("Track 1")),
-        beats: NonZeroU8::new(2).unwrap(),
+        num_rows: NonZero::new(8).unwrap(),
         rows_per_beat: NonZeroU8::new(4).unwrap(),
       },
     ])
