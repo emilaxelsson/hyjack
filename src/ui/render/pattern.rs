@@ -12,7 +12,7 @@ use crate::ui::render::track::{
 };
 use crate::ui::widgets::title_block::TitleBlock;
 
-/// Compute the logical position of the current focus within the pattern content area.
+/// Compute the logical position of the current focus in the pattern area.
 fn pattern_focus_position(state: &AppState) -> Position {
   let cursor_x_offset = track_start_offset(state.focus.pattern_track_index)
     + track_column_offset(&state.focus.track_column);
@@ -43,16 +43,19 @@ pub fn scroll_cursor_into_view(
   if focus_position.y <= scroll_offset.y {
     scroll_offset.y = focus_position.y.saturating_sub(1);
   }
+
   if focus_position.y >= last_visible_row {
     scroll_offset.y = focus_position
       .y
       .saturating_sub(viewport_height.saturating_sub(2));
   }
+
   if current_track_end > last_visible_column {
     scroll_offset.x = current_track_end
       .saturating_add(1)
       .saturating_sub(viewport_width);
   }
+
   if current_track_start < scroll_offset.x {
     scroll_offset.x = current_track_start;
   }
