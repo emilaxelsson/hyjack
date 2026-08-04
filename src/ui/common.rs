@@ -2,7 +2,7 @@ use std::io;
 
 use crossterm::event::Event;
 use ratatui::Frame;
-use ratatui::layout::{Position, Rect};
+use ratatui::layout::{Position, Rect, Size};
 
 pub enum ComponentAction {
   None,
@@ -72,5 +72,15 @@ pub fn get_absolute_position(
   Position {
     x: area.x + relative_position.x.saturating_sub(scroll_offset.x),
     y: area.y + relative_position.y.saturating_sub(scroll_offset.y),
+  }
+}
+
+/// Create a `Rect` with the given size, positioned at the origin (0, 0).
+pub fn rect_from_origin(size: Size) -> Rect {
+  Rect {
+    x: 0,
+    y: 0,
+    width: size.width,
+    height: size.height,
   }
 }

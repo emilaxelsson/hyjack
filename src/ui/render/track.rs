@@ -4,7 +4,10 @@ use ratatui::widgets::{Block, Paragraph};
 use tui_scrollview::{ScrollView, ScrollViewState, ScrollbarVisibility};
 
 use crate::state::*;
-use crate::ui::render::style::{ACTIVE_ROW_STYLE, PANEL_AREA_STYLE, SUB_TITLE_STYLE};
+use crate::ui::common::rect_from_origin;
+use crate::ui::render::style::{
+  ACTIVE_ROW_STYLE, PANEL_AREA_STYLE, SUB_TITLE_STYLE, default_block,
+};
 
 pub const TRACK_COLUMN_WIDTH: u16 = 15;
 
@@ -105,6 +108,8 @@ pub fn draw_track_names(
   let mut scroll_view =
     ScrollView::new(Size::new(content_width, 1)).scrollbars_visibility(ScrollbarVisibility::Never);
 
+  scroll_view.render_widget(default_block(), rect_from_origin(tracks_area.as_size()));
+
   let distance = TRACK_COLUMN_WIDTH as i32 + 1;
   let offset = Offset { x: distance, y: 0 };
   let mut current_track_area = Rect {
@@ -121,9 +126,10 @@ pub fn draw_track_names(
     current_track_area = current_track_area.offset(offset);
   }
 
-  let mut scroll_state = ScrollViewState::with_offset(Position {
+  let scroll_offset = Position {
     x: horizontal_scroll_offset,
     y: 0,
-  });
+  };
+  let mut scroll_state = ScrollViewState::with_offset(scroll_offset);
   frame.render_stateful_widget(scroll_view, tracks_area, &mut scroll_state);
 }

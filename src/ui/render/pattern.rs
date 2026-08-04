@@ -5,8 +5,8 @@ use ratatui::widgets::{Block, Cell, Row, Table};
 use tui_scrollview::{ScrollView, ScrollViewState, ScrollbarVisibility};
 
 use crate::state::*;
-use crate::ui::common::get_absolute_position;
-use crate::ui::render::style::{BEHIND_ACTIVE_ROW_STYLE, TITLE_STYLE};
+use crate::ui::common::{get_absolute_position, rect_from_origin};
+use crate::ui::render::style::{BEHIND_ACTIVE_ROW_STYLE, TITLE_STYLE, default_block};
 use crate::ui::render::track::{
   TRACK_COLUMN_WIDTH, draw_track_names, draw_tracks, track_column_offset, track_start_offset,
 };
@@ -160,6 +160,8 @@ pub fn draw_pattern_panel(
   let viewport_size = scrollable_viewport_size(notes_area, content_size);
   let mut scroll_view =
     ScrollView::new(content_size).scrollbars_visibility(ScrollbarVisibility::Automatic);
+
+  scroll_view.render_widget(default_block(), rect_from_origin(viewport_size));
 
   let active_row_area = Rect {
     x: 0,
