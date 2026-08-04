@@ -1,11 +1,36 @@
 use ratatui::Frame;
-use ratatui::layout::{Constraint, Direction, Layout, Rect};
+use ratatui::layout::{Constraint, Direction, Layout, Rect, Size};
 use ratatui::style::{Modifier, Style, Stylize};
-use ratatui::widgets::{List, ListItem};
+use ratatui::widgets::{Block, List, ListItem};
+use tui_scrollview::{ScrollView, ScrollViewState, ScrollbarVisibility};
 
 use crate::state::*;
+use crate::ui::common::rect_from_origin;
 use crate::ui::render::style::{ACTIVE_ROW_BG, PANEL_AREA_STYLE, TITLE_STYLE};
 use crate::ui::widgets::title_block::TitleBlock;
+
+pub fn scroll_active_sequence_into_view(
+  focus: &Focus,
+  sequence_scroll_state: &mut ScrollViewState,
+  viewport_height: u16,
+) {
+  let mut scroll_offset = sequence_scroll_state.offset();
+  let viewport_height = viewport_height.max(1);
+  let active_row = focus.sequence_index as u16;
+  let last_visible_row = scroll_offset
+    .y
+    .saturating_add(viewport_height.saturating_sub(1));
+
+  if active_row < scroll_offset.y {
+    scroll_offset.y = active_row;
+  }
+
+  if active_row > last_visible_row {
+    scroll_offset.y = active_row.saturating_add(1).saturating_sub(viewport_height);
+  }
+
+  sequence_scroll_state.set_offset(scroll_offset);
+}
 
 fn draw_list_block(
   frame: &mut Frame,
@@ -13,7 +38,8 @@ fn draw_list_block(
   title: &str,
   items: &[String],
   active_index: usize,
-) {
+  sequence_scroll_state: &mut ScrollViewState,
+) -> u16 {
   let block = TitleBlock::new()
     .title(title)
     .title_style(TITLE_STYLE)
@@ -36,7 +62,22 @@ fn draw_list_block(
 
   let list = List::new(list_items).highlight_style(Style::default().add_modifier(Modifier::BOLD));
 
-  frame.render_widget(list, inner_area);
+  let content_height = (items.len() as u16).max(1);
+  let content_width = inner_area
+    .width
+    .saturating_sub(u16::from(content_height > inner_area.height))
+    .max(1);
+  let content_size = Size::new(content_width, content_height);
+  let content_area = rect_from_origin(content_size);
+  let mut scroll_view =
+    ScrollView::new(content_size).scrollbars_visibility(ScrollbarVisibility::Automatic);
+
+  scroll_view.render_widget(Block::default().style(PANEL_AREA_STYLE), content_area);
+  scroll_view.render_widget(list, content_area);
+
+  frame.render_stateful_widget(scroll_view, inner_area, sequence_scroll_state);
+
+  inner_area.height.max(1)
 }
 
 pub fn draw_sequence_panel(
@@ -44,7 +85,8 @@ pub fn draw_sequence_panel(
   area: Rect,
   sequence: &[String],
   focus: &Focus,
-) -> Rect {
+  sequence_scroll_state: &mut ScrollViewState,
+) -> (Rect, u16) {
   let width = sequence.iter().map(|s| s.len()).max().unwrap_or(0) as u16 + 1;
   let width = width.max(15) + 1;
 
@@ -57,13 +99,14 @@ pub fn draw_sequence_panel(
     ])
     .areas(area);
 
-  draw_list_block(
+  let viewport_height = draw_list_block(
     frame,
     sequence_panel_area,
     "Sequence",
     sequence,
     focus.sequence_index,
+    sequence_scroll_state,
   );
 
-  remaining_area
+  (remaining_area, viewport_height)
 }

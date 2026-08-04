@@ -8,6 +8,7 @@ use ratatui::Frame;
 use ratatui::layout::Size;
 use tui_scrollview::ScrollViewState;
 
+pub use self::sequence::scroll_active_sequence_into_view;
 use crate::state::*;
 use crate::ui::common::Component;
 use crate::ui::component::input_dialog::InputDialog;
@@ -19,15 +20,22 @@ use crate::ui::render::style::default_block;
 pub fn draw_ui(
   frame: &mut Frame,
   state: &AppState,
+  sequence_scroll_state: &mut ScrollViewState,
   pattern_scroll_state: &mut ScrollViewState,
   optional_dialog: Option<&InputDialog<AppState>>,
-) -> Size {
+) -> (u16, Size) {
   // Set default colors for the entire frame
   frame.render_widget(default_block(), frame.area());
 
   let remaining_area = frame.area();
   let remaining_area = draw_head(frame, state, remaining_area);
-  let remaining_area = draw_sequence_panel(frame, remaining_area, &state.sequence, &state.focus);
+  let (remaining_area, sequence_viewport_height) = draw_sequence_panel(
+    frame,
+    remaining_area,
+    &state.sequence,
+    &state.focus,
+    sequence_scroll_state,
+  );
   let pattern_viewport_size =
     draw_pattern_panel(frame, state, pattern_scroll_state, remaining_area);
 
@@ -35,5 +43,5 @@ pub fn draw_ui(
     dialog.draw(frame);
   }
 
-  pattern_viewport_size
+  (sequence_viewport_height, pattern_viewport_size)
 }
