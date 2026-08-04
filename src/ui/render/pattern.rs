@@ -107,7 +107,11 @@ fn is_focus_visible(
 }
 
 fn draw_pattern_details(frame: &mut Frame<'_>, current_pattern: &Pattern, area: Rect) {
-  let widths = vec![Constraint::Length(7), Constraint::Min(0)];
+  let widths = vec![
+    Constraint::Length(7),
+    Constraint::Length(7),
+    Constraint::Min(0),
+  ];
   let rows = vec![
     Row::new(vec![
       Cell::from("Note").style(Style::default().bold()),
