@@ -1,0 +1,67 @@
+use std::io;
+
+use crossterm::event::Event;
+use ratatui::Frame;
+use ratatui::layout::Rect;
+use ratatui::style::Color;
+
+pub const DEFAULT_BG: Color = Color::Rgb(0, 0, 0);
+pub const DEFAULT_FG: Color = Color::Rgb(230, 230, 230);
+
+pub enum ComponentAction {
+  None,
+  Close,
+}
+
+pub trait Component {
+  type State;
+
+  fn draw(&self, frame: &mut Frame);
+  fn handle_event(&mut self, event: Event, state: &mut Self::State) -> io::Result<ComponentAction>;
+}
+
+pub trait AdjustableArea {
+  /// Moves the area's left edge to the right by `x` units, reducing its width accordingly.
+  fn sequeeze_right(self, x: u16) -> Rect;
+
+  /// Moves the area's right edge to the left by `x` units, reducing its width accordingly.
+  fn squeeze_left(self, x: u16) -> Rect;
+
+  /// Moves the area's top edge down by `y` units, reducing its height accordingly.
+  fn squeeze_down(self, y: u16) -> Rect;
+
+  /// Moves the area's bottom edge up by `y` units, reducing its height accordingly.
+  fn squeeze_up(self, y: u16) -> Rect;
+}
+
+impl AdjustableArea for Rect {
+  fn sequeeze_right(self, x: u16) -> Rect {
+    Rect {
+      x: self.x.saturating_sub(x),
+      width: self.width.saturating_sub(x),
+      ..self
+    }
+  }
+
+  fn squeeze_left(self, x: u16) -> Rect {
+    Rect {
+      width: self.width.saturating_sub(x),
+      ..self
+    }
+  }
+
+  fn squeeze_down(self, y: u16) -> Rect {
+    Rect {
+      y: self.y.saturating_add(y),
+      height: self.height.saturating_sub(y),
+      ..self
+    }
+  }
+
+  fn squeeze_up(self, y: u16) -> Rect {
+    Rect {
+      height: self.height.saturating_sub(y),
+      ..self
+    }
+  }
+}
