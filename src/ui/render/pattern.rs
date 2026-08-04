@@ -6,7 +6,9 @@ use tui_scrollview::{ScrollView, ScrollViewState, ScrollbarVisibility};
 
 use crate::state::*;
 use crate::ui::common::{get_absolute_position, rect_from_origin};
-use crate::ui::render::style::{BEHIND_ACTIVE_ROW_STYLE, TITLE_STYLE, default_block};
+use crate::ui::render::style::{
+  BEHIND_FOCUSED_ROW_STYLE, BEHIND_INACTIVE_FOCUSED_ROW_STYLE, TITLE_STYLE, default_block,
+};
 use crate::ui::render::track::{
   TRACK_COLUMN_WIDTH, draw_track_names, draw_tracks, track_column_offset, track_start_offset,
 };
@@ -124,6 +126,7 @@ fn draw_pattern_details(frame: &mut Frame<'_>, current_pattern: &Pattern, area: 
 pub fn draw_pattern_panel(
   frame: &mut Frame,
   state: &AppState,
+  is_focused: bool,
   pattern_scroll_state: &mut ScrollViewState,
   area: Rect,
 ) -> Size {
@@ -166,22 +169,25 @@ pub fn draw_pattern_panel(
 
   scroll_view.render_widget(default_block(), rect_from_origin(viewport_size));
 
-  let active_row_area = Rect {
+  let focused_row_area = Rect {
     x: 0,
     y: state.focus.pattern_row_index as u16,
     width: content_width,
     height: 1,
   };
-  scroll_view.render_widget(
-    Block::default().style(BEHIND_ACTIVE_ROW_STYLE),
-    active_row_area,
-  );
+  let focused_row_style = if is_focused {
+    BEHIND_FOCUSED_ROW_STYLE
+  } else {
+    BEHIND_INACTIVE_FOCUSED_ROW_STYLE
+  };
+  scroll_view.render_widget(Block::default().style(focused_row_style), focused_row_area);
 
   draw_tracks(
     current_pattern,
     content_height,
     &mut scroll_view,
-    active_row_area,
+    focused_row_area,
+    is_focused,
   );
 
   frame.render_stateful_widget(scroll_view, notes_area, pattern_scroll_state);

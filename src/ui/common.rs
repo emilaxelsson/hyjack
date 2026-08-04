@@ -9,6 +9,12 @@ pub enum ComponentAction {
   Close,
 }
 
+#[derive(Clone, Copy)]
+pub enum UIMode {
+  EditPattern,
+  EditSequence,
+}
+
 pub trait Component {
   type State;
 

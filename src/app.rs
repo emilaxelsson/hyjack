@@ -9,15 +9,10 @@ use ratatui::layout::Size;
 use tui_scrollview::ScrollViewState;
 
 use crate::state::AppState;
-use crate::ui::common::{Component, ComponentAction};
+use crate::ui::common::{Component, ComponentAction, UIMode};
 use crate::ui::component::input_dialog::InputDialog;
 use crate::ui::render::pattern::scroll_cursor_into_view;
-use crate::ui::render::{draw_ui, scroll_active_sequence_into_view};
-
-enum UIMode {
-  EditPattern,
-  EditSequence,
-}
+use crate::ui::render::{draw_ui, scroll_focused_sequence_into_view};
 
 #[derive(Clone, Copy)]
 struct Viewports {
@@ -105,7 +100,7 @@ fn handle_event(
       }
       KeyCode::Up => {
         state.to_previous_pattern();
-        scroll_active_sequence_into_view(
+        scroll_focused_sequence_into_view(
           &state.focus,
           sequence_scroll_state,
           viewports.sequence_height,
@@ -113,7 +108,7 @@ fn handle_event(
       }
       KeyCode::Down => {
         state.to_next_pattern();
-        scroll_active_sequence_into_view(
+        scroll_focused_sequence_into_view(
           &state.focus,
           sequence_scroll_state,
           viewports.sequence_height,
@@ -142,6 +137,7 @@ pub fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Result<
       (viewports.sequence_height, viewports.pattern_size) = draw_ui(
         frame,
         &state,
+        mode,
         &mut sequence_scroll_state,
         &mut pattern_scroll_state,
         dialog.as_ref(),

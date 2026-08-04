@@ -6,27 +6,31 @@ use tui_scrollview::{ScrollView, ScrollViewState, ScrollbarVisibility};
 
 use crate::state::*;
 use crate::ui::common::rect_from_origin;
-use crate::ui::render::style::{ACTIVE_ROW_BG, PANEL_AREA_STYLE, TITLE_STYLE};
+use crate::ui::render::style::{
+  FOCUSED_ROW_BG, INACTIVE_FOCUSED_ROW_BG, PANEL_AREA_STYLE, TITLE_STYLE,
+};
 use crate::ui::widgets::title_block::TitleBlock;
 
-pub fn scroll_active_sequence_into_view(
+pub fn scroll_focused_sequence_into_view(
   focus: &Focus,
   sequence_scroll_state: &mut ScrollViewState,
   viewport_height: u16,
 ) {
   let mut scroll_offset = sequence_scroll_state.offset();
   let viewport_height = viewport_height.max(1);
-  let active_row = focus.sequence_index as u16;
+  let focused_row = focus.sequence_index as u16;
   let last_visible_row = scroll_offset
     .y
     .saturating_add(viewport_height.saturating_sub(1));
 
-  if active_row < scroll_offset.y {
-    scroll_offset.y = active_row;
+  if focused_row < scroll_offset.y {
+    scroll_offset.y = focused_row;
   }
 
-  if active_row > last_visible_row {
-    scroll_offset.y = active_row.saturating_add(1).saturating_sub(viewport_height);
+  if focused_row > last_visible_row {
+    scroll_offset.y = focused_row
+      .saturating_add(1)
+      .saturating_sub(viewport_height);
   }
 
   sequence_scroll_state.set_offset(scroll_offset);
@@ -37,7 +41,8 @@ fn draw_list_block(
   area: Rect,
   title: &str,
   items: &[String],
-  active_index: usize,
+  focused_index: usize,
+  is_focused: bool,
   sequence_scroll_state: &mut ScrollViewState,
 ) -> u16 {
   let block = TitleBlock::new()
@@ -52,8 +57,13 @@ fn draw_list_block(
     .iter()
     .enumerate()
     .map(|(idx, name)| {
-      if idx == active_index {
-        ListItem::new(name.clone()).bg(ACTIVE_ROW_BG)
+      if idx == focused_index {
+        let focused_row_bg = if is_focused {
+          FOCUSED_ROW_BG
+        } else {
+          INACTIVE_FOCUSED_ROW_BG
+        };
+        ListItem::new(name.clone()).bg(focused_row_bg)
       } else {
         ListItem::new(name.clone())
       }
@@ -85,6 +95,7 @@ pub fn draw_sequence_panel(
   area: Rect,
   sequence: &[String],
   focus: &Focus,
+  is_focused: bool,
   sequence_scroll_state: &mut ScrollViewState,
 ) -> (Rect, u16) {
   let width = sequence.iter().map(|s| s.len()).max().unwrap_or(0) as u16 + 1;
@@ -105,6 +116,7 @@ pub fn draw_sequence_panel(
     "Sequence",
     sequence,
     focus.sequence_index,
+    is_focused,
     sequence_scroll_state,
   );
 

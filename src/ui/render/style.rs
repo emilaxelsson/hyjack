@@ -11,9 +11,12 @@ pub const TITLE_STYLE: Style = Style::new()
 pub const SUB_TITLE_BG: Color = Color::Rgb(60, 60, 60);
 pub const SUB_TITLE_STYLE: Style = Style::new().bg(SUB_TITLE_BG).fg(DEFAULT_FG);
 pub const PANEL_AREA_STYLE: Style = Style::new().bg(Color::Rgb(35, 35, 35)).fg(DEFAULT_FG);
-pub const ACTIVE_ROW_BG: Color = Color::Rgb(55, 55, 150);
-pub const ACTIVE_ROW_STYLE: Style = Style::new().bg(ACTIVE_ROW_BG);
-pub const BEHIND_ACTIVE_ROW_STYLE: Style = Style::new().bg(Color::Rgb(45, 45, 120));
+pub const FOCUSED_ROW_BG: Color = Color::Rgb(60, 60, 160);
+pub const FOCUSED_ROW_STYLE: Style = Style::new().bg(FOCUSED_ROW_BG);
+pub const INACTIVE_FOCUSED_ROW_BG: Color = Color::Rgb(80, 80, 120);
+pub const INACTIVE_FOCUSED_ROW_STYLE: Style = Style::new().bg(INACTIVE_FOCUSED_ROW_BG);
+pub const BEHIND_FOCUSED_ROW_STYLE: Style = Style::new().bg(Color::Rgb(48, 48, 120));
+pub const BEHIND_INACTIVE_FOCUSED_ROW_STYLE: Style = Style::new().bg(Color::Rgb(65, 65, 90));
 
 pub fn default_block() -> Block<'static> {
   Block::default().style(Style::default().bg(DEFAULT_BG).fg(DEFAULT_FG))

@@ -6,7 +6,7 @@ use tui_scrollview::{ScrollView, ScrollViewState, ScrollbarVisibility};
 use crate::state::*;
 use crate::ui::common::rect_from_origin;
 use crate::ui::render::style::{
-  ACTIVE_ROW_STYLE, PANEL_AREA_STYLE, SUB_TITLE_STYLE, default_block,
+  FOCUSED_ROW_STYLE, INACTIVE_FOCUSED_ROW_STYLE, PANEL_AREA_STYLE, SUB_TITLE_STYLE, default_block,
 };
 
 pub const TRACK_COLUMN_WIDTH: u16 = 15;
@@ -50,8 +50,9 @@ pub fn track_start_offset(track_index: usize) -> usize {
 
 fn draw_track(
   scroll_view: &mut ScrollView,
-  active_row_area: Rect,
+  focused_row_area: Rect,
   content_height: u16,
+  is_focused: bool,
   track_index: usize,
   track: &Track,
 ) {
@@ -61,11 +62,16 @@ fn draw_track(
     width: TRACK_COLUMN_WIDTH,
     height: content_height,
   };
-  let active_row_track_area = active_row_area.intersection(current_track_area);
+  let focused_row_track_area = focused_row_area.intersection(current_track_area);
   scroll_view.render_widget(Block::default().style(PANEL_AREA_STYLE), current_track_area);
+  let focused_row_style = if is_focused {
+    FOCUSED_ROW_STYLE
+  } else {
+    INACTIVE_FOCUSED_ROW_STYLE
+  };
   scroll_view.render_widget(
-    Block::default().style(ACTIVE_ROW_STYLE),
-    active_row_track_area,
+    Block::default().style(focused_row_style),
+    focused_row_track_area,
   );
 
   for row_idx in 0..track.notes.len() {
@@ -85,13 +91,15 @@ pub fn draw_tracks(
   current_pattern: &Pattern,
   content_height: u16,
   scroll_view: &mut ScrollView,
-  active_row_area: Rect,
+  focused_row_area: Rect,
+  is_focused: bool,
 ) {
   for (track_index, track) in current_pattern.tracks.iter().enumerate() {
     draw_track(
       scroll_view,
-      active_row_area,
+      focused_row_area,
       content_height,
+      is_focused,
       track_index,
       track,
     );
