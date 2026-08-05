@@ -184,6 +184,35 @@ impl AppState {
     }
   }
 
+  /// Move the currently focused pattern in the sequence up by one position.
+  pub fn sequence_move_pattern_up(&mut self) {
+    if self.focus.sequence_index > 0 {
+      if self.sequence.end_of_song + 1 == self.focus.sequence_index {
+        // If the pattern is right after the end of the song, we move the end down instead
+        // of moving the pattern up
+        self.sequence.end_of_song += 1;
+      } else {
+        // Otherwise, move the pattern up
+        let idx = self.focus.sequence_index;
+        self.sequence.patterns.swap(idx, idx - 1);
+        self.focus.sequence_index = self.focus.sequence_index.saturating_sub(1);
+      }
+    }
+  }
+
+  /// Move the currently focused pattern in the sequence down by one position.
+  pub fn sequence_move_pattern_down(&mut self) {
+    if self.focus.sequence_index + 1 < self.sequence.patterns.len() {
+      if self.sequence.end_of_song == self.focus.sequence_index {
+        self.sequence.end_of_song = self.sequence.end_of_song.saturating_sub(1);
+      } else {
+        let idx = self.focus.sequence_index;
+        self.sequence.patterns.swap(idx, idx + 1);
+        self.focus.sequence_index += 1;
+      }
+    }
+  }
+
   /// Move to the previous row in the current pattern.
   pub fn pattern_to_previous_row(&mut self) {
     if self.focus.pattern_row_index > 0 {

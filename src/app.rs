@@ -102,11 +102,19 @@ fn handle_event(
         *mode = UIMode::EditPattern;
       }
       KeyCode::Up => {
-        state.sequence_to_previous_pattern();
+        if key.modifiers == KeyModifiers::CONTROL {
+          state.sequence_move_pattern_up();
+        } else {
+          state.sequence_to_previous_pattern();
+        }
         scroll_focused_sequence_into_view(state, sequence_scroll_state, viewports.sequence_height);
       }
       KeyCode::Down => {
-        state.sequence_to_next_pattern();
+        if key.modifiers == KeyModifiers::CONTROL {
+          state.sequence_move_pattern_down();
+        } else {
+          state.sequence_to_next_pattern();
+        }
         scroll_focused_sequence_into_view(state, sequence_scroll_state, viewports.sequence_height);
       }
       _ => {}
