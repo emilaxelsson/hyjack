@@ -210,7 +210,7 @@ pub fn draw_pattern_panel(
   );
 
   let focus_position = pattern_focus_position(state);
-  if is_focus_visible(focus_position, scroll_offset, viewport_size) {
+  if is_active && is_focus_visible(focus_position, scroll_offset, viewport_size) {
     let cursor_pos = get_absolute_position(notes_area, scroll_offset, focus_position);
     frame.set_cursor_position(cursor_pos);
   }
