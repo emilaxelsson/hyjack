@@ -95,6 +95,9 @@ fn handle_event(
       _ => {}
     },
     UIMode::EditSequence => match key.code {
+      KeyCode::F(2) => {
+        *optional_dialog = Some(pattern_title_dialog(state));
+      }
       KeyCode::Tab => {
         *mode = UIMode::EditPattern;
       }
