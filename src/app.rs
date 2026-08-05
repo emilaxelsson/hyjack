@@ -100,19 +100,11 @@ fn handle_event(
       }
       KeyCode::Up => {
         state.to_previous_pattern();
-        scroll_focused_sequence_into_view(
-          &state.focus,
-          sequence_scroll_state,
-          viewports.sequence_height,
-        );
+        scroll_focused_sequence_into_view(state, sequence_scroll_state, viewports.sequence_height);
       }
       KeyCode::Down => {
         state.to_next_pattern();
-        scroll_focused_sequence_into_view(
-          &state.focus,
-          sequence_scroll_state,
-          viewports.sequence_height,
-        );
+        scroll_focused_sequence_into_view(state, sequence_scroll_state, viewports.sequence_height);
       }
       _ => {}
     },

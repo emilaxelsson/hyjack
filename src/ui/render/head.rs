@@ -15,7 +15,11 @@ pub fn draw_head(frame: &mut Frame, state: &AppState, area: Rect) -> Rect {
     state.player.time.second,
     state.player.time.millis,
     state.song_title,
-    state.sequence.get(state.player.sequence_index).unwrap(),
+    state
+      .sequence
+      .patterns
+      .get(state.player.sequence_index)
+      .unwrap(),
   );
   let editing_line = format!(
     "Editing        Octave {} | Velocity {} | Step {:2} | Instrument  {}",

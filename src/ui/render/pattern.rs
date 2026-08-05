@@ -139,7 +139,11 @@ pub fn draw_pattern_panel(
     .constraints([Constraint::Min(0), Constraint::Length(2)])
     .areas(area);
 
-  let current_pattern_title = state.sequence.get(state.focus.sequence_index).unwrap();
+  let current_pattern_title = state
+    .sequence
+    .patterns
+    .get(state.focus.sequence_index)
+    .unwrap();
   let current_pattern = state
     .patterns
     .iter()

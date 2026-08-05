@@ -17,6 +17,9 @@ pub const INACTIVE_FOCUSED_ROW_BG: Color = Color::Rgb(80, 80, 120);
 pub const INACTIVE_FOCUSED_ROW_STYLE: Style = Style::new().bg(INACTIVE_FOCUSED_ROW_BG);
 pub const BEHIND_FOCUSED_ROW_STYLE: Style = Style::new().bg(Color::Rgb(48, 48, 120));
 pub const BEHIND_INACTIVE_FOCUSED_ROW_STYLE: Style = Style::new().bg(Color::Rgb(65, 65, 90));
+pub const SONG_END_BG: Color = Color::Rgb(100, 25, 25);
+pub const SONG_END_FG: Color = Color::Rgb(180, 180, 180);
+pub const SONG_END_STYLE: Style = Style::new().bg(SONG_END_BG).fg(SONG_END_FG);
 
 pub fn default_block() -> Block<'static> {
   Block::default().style(Style::default().bg(DEFAULT_BG).fg(DEFAULT_FG))

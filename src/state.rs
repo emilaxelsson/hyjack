@@ -62,6 +62,13 @@ impl TrackColumn {
   }
 }
 
+pub struct Sequence {
+  pub patterns: Vec<String>,
+  /// Index of the last pattern in the sequence that is part of the song. Patterns after
+  /// this index can be seen as a "pool" of patterns that can be used in the song.
+  pub end_of_song: usize,
+}
+
 pub struct Focus {
   pub sequence_index: usize,
   pub pattern_index: usize,
@@ -74,7 +81,7 @@ pub struct AppState {
   pub dracker_version: String,
   pub song_title: String,
   pub patterns: NonEmpty<Pattern>,
-  pub sequence: Vec<String>,
+  pub sequence: Sequence,
   pub focus: Focus,
   pub player: PlayerState,
 }
@@ -151,7 +158,7 @@ impl AppState {
 
   /// Update the pattern index in the focus based on the current sequence index.
   pub fn update_pattern_index(&mut self) {
-    let title = self.sequence[self.focus.sequence_index].clone();
+    let title = self.sequence.patterns[self.focus.sequence_index].clone();
     self.focus.pattern_index = self
       .patterns
       .iter()
@@ -161,7 +168,7 @@ impl AppState {
 
   /// Move to the next pattern in the sequence.
   pub fn to_next_pattern(&mut self) {
-    if self.focus.sequence_index + 1 < self.sequence.len() {
+    if self.focus.sequence_index + 1 < self.sequence.patterns.len() {
       self.focus.sequence_index += 1;
       self.update_pattern_index();
       self.refocus_pattern_cursor();
@@ -245,7 +252,7 @@ impl AppState {
 
     self.get_current_pattern_mut().title = normalized.clone();
 
-    self.sequence.iter_mut().for_each(|title| {
+    self.sequence.patterns.iter_mut().for_each(|title| {
       if *title == old_title {
         *title = normalized.clone();
       }
@@ -391,17 +398,19 @@ pub fn default_state() -> AppState {
       },
     ])
     .unwrap(),
-    sequence: vec![
-      "Intro A".to_string(),
-      "Intro B".to_string(),
-      "Verse 1 A".to_string(),
-      "Verse 1 B".to_string(),
-      "Verse 1 C".to_string(),
-      "Verse 1 D".to_string(),
-      "Intro B".to_string(),
-      "Bridge A".to_string(),
-      "Bridge B".to_string(),
-    ],
+    sequence: Sequence {
+      patterns: vec![
+        "Intro A".to_string(),
+        "Intro B".to_string(),
+        "Verse 1 A".to_string(),
+        "Verse 1 B".to_string(),
+        "Verse 1 C".to_string(),
+        "Verse 1 D".to_string(),
+        "Intro B".to_string(),
+        "Bridge A".to_string(),
+      ],
+      end_of_song: 0,
+    },
     focus: Focus {
       sequence_index: 1,
       pattern_index: 1,
