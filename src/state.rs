@@ -167,7 +167,7 @@ impl AppState {
   }
 
   /// Move to the next pattern in the sequence.
-  pub fn to_next_pattern(&mut self) {
+  pub fn sequence_to_next_pattern(&mut self) {
     if self.focus.sequence_index + 1 < self.sequence.patterns.len() {
       self.focus.sequence_index += 1;
       self.update_pattern_index();
@@ -176,7 +176,7 @@ impl AppState {
   }
 
   /// Move to the previous pattern in the sequence.
-  pub fn to_previous_pattern(&mut self) {
+  pub fn sequence_to_previous_pattern(&mut self) {
     if self.focus.sequence_index > 0 {
       self.focus.sequence_index -= 1;
       self.update_pattern_index();
@@ -185,14 +185,14 @@ impl AppState {
   }
 
   /// Move to the previous row in the current pattern.
-  pub fn to_previous_row(&mut self) {
+  pub fn pattern_to_previous_row(&mut self) {
     if self.focus.pattern_row_index > 0 {
       self.focus.pattern_row_index -= 1;
     }
   }
 
   /// Move to the next row in the current pattern.
-  pub fn to_next_row(&mut self) {
+  pub fn pattern_to_next_row(&mut self) {
     let current_pattern = self.get_current_pattern();
     let next_row = self.focus.pattern_row_index + 1;
     if next_row < current_pattern.num_rows.get() {
@@ -201,7 +201,7 @@ impl AppState {
   }
 
   /// Move to the previous editable field in the current pattern row.
-  pub fn to_previous_track_field(&mut self) {
+  pub fn pattern_to_previous_track_field(&mut self) {
     match self.focus.track_column {
       TrackColumn::Note => {
         if self.focus.pattern_track_index > 0 {
@@ -216,7 +216,7 @@ impl AppState {
   }
 
   /// Move to the next editable field in the current pattern row.
-  pub fn to_next_track_field(&mut self) {
+  pub fn pattern_to_next_track_field(&mut self) {
     let current_pattern = self.get_current_pattern();
     let number_of_tracks = nonzero_len(&current_pattern.tracks);
 
@@ -233,7 +233,7 @@ impl AppState {
     }
   }
 
-  pub fn rename_current_pattern(&mut self, new_title: String) -> Result<()> {
+  pub fn pattern_rename_current(&mut self, new_title: String) -> Result<()> {
     let normalized = normalize_and_validate_name("Pattern title", &new_title)?;
     let old_title = self.get_current_pattern().title.clone();
     let current_index = self.focus.pattern_index;
@@ -479,19 +479,19 @@ mod tests {
     state.focus.pattern_track_index = 1;
     state.focus.track_column = TrackColumn::Note;
 
-    state.to_next_track_field();
+    state.pattern_to_next_track_field();
     assert!(matches!(state.focus.track_column, TrackColumn::Instrument));
     assert_eq!(state.focus.pattern_track_index, 1);
 
-    state.to_next_track_field();
+    state.pattern_to_next_track_field();
     assert!(matches!(state.focus.track_column, TrackColumn::Velocity));
     assert_eq!(state.focus.pattern_track_index, 1);
 
-    state.to_next_track_field();
+    state.pattern_to_next_track_field();
     assert!(matches!(state.focus.track_column, TrackColumn::Effect));
     assert_eq!(state.focus.pattern_track_index, 1);
 
-    state.to_next_track_field();
+    state.pattern_to_next_track_field();
     assert!(matches!(state.focus.track_column, TrackColumn::Note));
     assert_eq!(state.focus.pattern_track_index, 2);
   }
@@ -502,7 +502,7 @@ mod tests {
     state.focus.pattern_track_index = 1;
     state.focus.track_column = TrackColumn::Note;
 
-    state.to_previous_track_field();
+    state.pattern_to_previous_track_field();
 
     assert!(matches!(state.focus.track_column, TrackColumn::Effect));
     assert_eq!(state.focus.pattern_track_index, 0);
@@ -514,7 +514,7 @@ mod tests {
     state.focus.pattern_track_index = 0;
     state.focus.track_column = TrackColumn::Note;
 
-    state.to_previous_track_field();
+    state.pattern_to_previous_track_field();
 
     assert!(matches!(state.focus.track_column, TrackColumn::Note));
     assert_eq!(state.focus.pattern_track_index, 0);
@@ -526,7 +526,7 @@ mod tests {
     state.focus.pattern_track_index = 3;
     state.focus.track_column = TrackColumn::Effect;
 
-    state.to_next_track_field();
+    state.pattern_to_next_track_field();
 
     assert!(matches!(state.focus.track_column, TrackColumn::Effect));
     assert_eq!(state.focus.pattern_track_index, 3);
