@@ -52,7 +52,7 @@ fn draw_track(
   scroll_view: &mut ScrollView,
   focused_row_area: Rect,
   content_height: u16,
-  is_focused: bool,
+  is_active: bool,
   track_index: usize,
   track: &Track,
 ) {
@@ -64,7 +64,7 @@ fn draw_track(
   };
   let focused_row_track_area = focused_row_area.intersection(current_track_area);
   scroll_view.render_widget(Block::default().style(PANEL_AREA_STYLE), current_track_area);
-  let focused_row_style = if is_focused {
+  let focused_row_style = if is_active {
     FOCUSED_ROW_STYLE
   } else {
     INACTIVE_FOCUSED_ROW_STYLE
@@ -92,14 +92,14 @@ pub fn draw_tracks(
   content_height: u16,
   scroll_view: &mut ScrollView,
   focused_row_area: Rect,
-  is_focused: bool,
+  is_active: bool,
 ) {
   for (track_index, track) in current_pattern.tracks.iter().enumerate() {
     draw_track(
       scroll_view,
       focused_row_area,
       content_height,
-      is_focused,
+      is_active,
       track_index,
       track,
     );

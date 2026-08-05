@@ -30,20 +30,20 @@ pub fn draw_ui(
 
   let remaining_area = frame.area();
   let remaining_area = draw_head(frame, state, remaining_area);
-  let sequence_is_focused = matches!(mode, UIMode::EditSequence);
-  let pattern_is_focused = matches!(mode, UIMode::EditPattern);
+  let sequence_is_active = matches!(mode, UIMode::EditSequence);
+  let pattern_is_active = matches!(mode, UIMode::EditPattern);
   let (remaining_area, sequence_viewport_height) = draw_sequence_panel(
     frame,
     remaining_area,
     &state.sequence,
     &state.focus,
-    sequence_is_focused,
+    sequence_is_active,
     sequence_scroll_state,
   );
   let pattern_viewport_size = draw_pattern_panel(
     frame,
     state,
-    pattern_is_focused,
+    pattern_is_active,
     pattern_scroll_state,
     remaining_area,
   );

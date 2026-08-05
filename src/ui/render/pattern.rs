@@ -130,7 +130,7 @@ fn draw_pattern_details(frame: &mut Frame<'_>, current_pattern: &Pattern, area: 
 pub fn draw_pattern_panel(
   frame: &mut Frame,
   state: &AppState,
-  is_focused: bool,
+  is_active: bool,
   pattern_scroll_state: &mut ScrollViewState,
   area: Rect,
 ) -> Size {
@@ -183,7 +183,7 @@ pub fn draw_pattern_panel(
     width: content_width,
     height: 1,
   };
-  let focused_row_style = if is_focused {
+  let focused_row_style = if is_active {
     BEHIND_FOCUSED_ROW_STYLE
   } else {
     BEHIND_INACTIVE_FOCUSED_ROW_STYLE
@@ -195,7 +195,7 @@ pub fn draw_pattern_panel(
     content_height,
     &mut scroll_view,
     focused_row_area,
-    is_focused,
+    is_active,
   );
 
   frame.render_stateful_widget(scroll_view, notes_area, pattern_scroll_state);

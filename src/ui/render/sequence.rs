@@ -48,7 +48,7 @@ fn draw_list_block(
   items: &[String],
   focused_index: usize,
   end_index: usize,
-  is_focused: bool,
+  is_active: bool,
   sequence_scroll_state: &mut ScrollViewState,
 ) -> u16 {
   let block = TitleBlock::new()
@@ -62,7 +62,7 @@ fn draw_list_block(
   let mut list_items: Vec<ListItem> = Vec::new();
   items.iter().enumerate().for_each(|(idx, name)| {
     if idx == focused_index {
-      let focused_row_bg = if is_focused {
+      let focused_row_bg = if is_active {
         FOCUSED_ROW_BG
       } else {
         INACTIVE_FOCUSED_ROW_BG
@@ -102,7 +102,7 @@ pub fn draw_sequence_panel(
   area: Rect,
   sequence: &Sequence,
   focus: &Focus,
-  is_focused: bool,
+  is_active: bool,
   sequence_scroll_state: &mut ScrollViewState,
 ) -> (Rect, u16) {
   let width = sequence.patterns.iter().map(|s| s.len()).max().unwrap_or(0) as u16 + 1;
@@ -124,7 +124,7 @@ pub fn draw_sequence_panel(
     &sequence.patterns,
     focus.sequence_index,
     sequence.end_of_song,
-    is_focused,
+    is_active,
     sequence_scroll_state,
   );
 
