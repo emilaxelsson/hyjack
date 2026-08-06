@@ -107,7 +107,11 @@ fn handle_event(
         } else {
           state.sequence_to_previous_pattern();
         }
-        scroll_focused_sequence_into_view(state, sequence_scroll_state, viewports.sequence_height);
+        scroll_focused_sequence_into_view(
+          &state.sequence,
+          sequence_scroll_state,
+          viewports.sequence_height,
+        );
       }
       KeyCode::Down => {
         if key.modifiers == KeyModifiers::CONTROL {
@@ -115,7 +119,11 @@ fn handle_event(
         } else {
           state.sequence_to_next_pattern();
         }
-        scroll_focused_sequence_into_view(state, sequence_scroll_state, viewports.sequence_height);
+        scroll_focused_sequence_into_view(
+          &state.sequence,
+          sequence_scroll_state,
+          viewports.sequence_height,
+        );
       }
       _ => {}
     },

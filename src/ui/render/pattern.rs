@@ -142,7 +142,7 @@ pub fn draw_pattern_panel(
   let current_pattern_title = state
     .sequence
     .patterns
-    .get(state.focus.sequence_index)
+    .get(state.sequence.focus_index)
     .unwrap();
   let current_pattern = state
     .patterns

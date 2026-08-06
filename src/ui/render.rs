@@ -36,7 +36,6 @@ pub fn draw_ui(
     frame,
     remaining_area,
     &state.sequence,
-    &state.focus,
     sequence_is_active,
     sequence_scroll_state,
   );

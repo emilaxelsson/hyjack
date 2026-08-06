@@ -12,13 +12,13 @@ use crate::ui::render::style::{
 use crate::ui::widgets::title_block::TitleBlock;
 
 pub fn scroll_focused_sequence_into_view(
-  state: &AppState,
+  state: &Sequence,
   sequence_scroll_state: &mut ScrollViewState,
   viewport_height: u16,
 ) {
   let mut scroll_offset = sequence_scroll_state.offset();
   let viewport_height = viewport_height.max(1);
-  let mut focused_row = state.focus.sequence_index as u16;
+  let mut focused_row = state.focus_index as u16;
   let last_visible_row = scroll_offset
     .y
     .saturating_add(viewport_height.saturating_sub(1));
@@ -27,7 +27,7 @@ pub fn scroll_focused_sequence_into_view(
     scroll_offset.y = focused_row;
   }
 
-  if state.sequence.end_of_song <= focused_row as usize {
+  if state.end_of_song <= focused_row as usize {
     focused_row += 1;
   }
 
@@ -101,7 +101,6 @@ pub fn draw_sequence_panel(
   frame: &mut Frame,
   area: Rect,
   sequence: &Sequence,
-  focus: &Focus,
   is_active: bool,
   sequence_scroll_state: &mut ScrollViewState,
 ) -> (Rect, u16) {
@@ -122,7 +121,7 @@ pub fn draw_sequence_panel(
     sequence_panel_area,
     "Sequence",
     &sequence.patterns,
-    focus.sequence_index,
+    sequence.focus_index,
     sequence.end_of_song,
     is_active,
     sequence_scroll_state,

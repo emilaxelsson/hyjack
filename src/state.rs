@@ -64,13 +64,13 @@ impl TrackColumn {
 
 pub struct Sequence {
   pub patterns: Vec<String>,
+  pub focus_index: usize,
   /// Index of the last pattern in the sequence that is part of the song. Patterns after
   /// this index can be seen as a "pool" of patterns that can be used in the song.
   pub end_of_song: usize,
 }
 
 pub struct Focus {
-  pub sequence_index: usize,
   pub pattern_index: usize,
   pub pattern_row_index: usize,
   pub pattern_track_index: usize,
@@ -158,7 +158,7 @@ impl AppState {
 
   /// Update the pattern index in the focus based on the current sequence index.
   pub fn update_pattern_index(&mut self) {
-    let title = self.sequence.patterns[self.focus.sequence_index].clone();
+    let title = self.sequence.patterns[self.sequence.focus_index].clone();
     self.focus.pattern_index = self
       .patterns
       .iter()
@@ -168,8 +168,8 @@ impl AppState {
 
   /// Move to the next pattern in the sequence.
   pub fn sequence_to_next_pattern(&mut self) {
-    if self.focus.sequence_index + 1 < self.sequence.patterns.len() {
-      self.focus.sequence_index += 1;
+    if self.sequence.focus_index + 1 < self.sequence.patterns.len() {
+      self.sequence.focus_index += 1;
       self.update_pattern_index();
       self.refocus_pattern_cursor();
     }
@@ -177,8 +177,8 @@ impl AppState {
 
   /// Move to the previous pattern in the sequence.
   pub fn sequence_to_previous_pattern(&mut self) {
-    if self.focus.sequence_index > 0 {
-      self.focus.sequence_index -= 1;
+    if self.sequence.focus_index > 0 {
+      self.sequence.focus_index -= 1;
       self.update_pattern_index();
       self.refocus_pattern_cursor();
     }
@@ -186,29 +186,29 @@ impl AppState {
 
   /// Move the currently focused pattern in the sequence up by one position.
   pub fn sequence_move_pattern_up(&mut self) {
-    if self.focus.sequence_index > 0 {
-      if self.sequence.end_of_song + 1 == self.focus.sequence_index {
+    if self.sequence.focus_index > 0 {
+      if self.sequence.end_of_song + 1 == self.sequence.focus_index {
         // If the pattern is right after the end of the song, we move the end down instead
         // of moving the pattern up
         self.sequence.end_of_song += 1;
       } else {
         // Otherwise, move the pattern up
-        let idx = self.focus.sequence_index;
+        let idx = self.sequence.focus_index;
         self.sequence.patterns.swap(idx, idx - 1);
-        self.focus.sequence_index = self.focus.sequence_index.saturating_sub(1);
+        self.sequence.focus_index = self.sequence.focus_index.saturating_sub(1);
       }
     }
   }
 
   /// Move the currently focused pattern in the sequence down by one position.
   pub fn sequence_move_pattern_down(&mut self) {
-    if self.focus.sequence_index + 1 < self.sequence.patterns.len() {
-      if self.sequence.end_of_song == self.focus.sequence_index {
+    if self.sequence.focus_index + 1 < self.sequence.patterns.len() {
+      if self.sequence.end_of_song == self.sequence.focus_index {
         self.sequence.end_of_song = self.sequence.end_of_song.saturating_sub(1);
       } else {
-        let idx = self.focus.sequence_index;
+        let idx = self.sequence.focus_index;
         self.sequence.patterns.swap(idx, idx + 1);
-        self.focus.sequence_index += 1;
+        self.sequence.focus_index += 1;
       }
     }
   }
@@ -438,10 +438,10 @@ pub fn default_state() -> AppState {
         "Intro B".to_string(),
         "Bridge A".to_string(),
       ],
+      focus_index: 1,
       end_of_song: 0,
     },
     focus: Focus {
-      sequence_index: 1,
       pattern_index: 1,
       pattern_row_index: 0,
       pattern_track_index: 0,
@@ -467,7 +467,7 @@ mod tests {
 
   fn setup_sequence_state(sequence_index: usize, end_of_song: usize) -> AppState {
     let mut state = default_state();
-    state.focus.sequence_index = sequence_index;
+    state.sequence.focus_index = sequence_index;
     state.sequence.end_of_song = end_of_song;
     state.update_pattern_index();
     state
@@ -520,55 +520,55 @@ mod tests {
 
     state.pattern_to_next_track_field();
     assert!(matches!(state.focus.track_column, TrackColumn::Instrument));
-    assert_eq!(state.focus.pattern_track_index, 1);
+    assert_eq!(state.sequence.focus_index, 1);
 
     state.pattern_to_next_track_field();
     assert!(matches!(state.focus.track_column, TrackColumn::Velocity));
-    assert_eq!(state.focus.pattern_track_index, 1);
+    assert_eq!(state.sequence.focus_index, 1);
 
     state.pattern_to_next_track_field();
     assert!(matches!(state.focus.track_column, TrackColumn::Effect));
-    assert_eq!(state.focus.pattern_track_index, 1);
+    assert_eq!(state.sequence.focus_index, 1);
 
     state.pattern_to_next_track_field();
     assert!(matches!(state.focus.track_column, TrackColumn::Note));
-    assert_eq!(state.focus.pattern_track_index, 2);
+    assert_eq!(state.sequence.focus_index, 2);
   }
 
   #[test]
   fn test_move_to_previous_track_field_moves_to_previous_track_note() {
     let mut state = default_state();
-    state.focus.pattern_track_index = 1;
+    state.sequence.focus_index = 1;
     state.focus.track_column = TrackColumn::Note;
 
     state.pattern_to_previous_track_field();
 
     assert!(matches!(state.focus.track_column, TrackColumn::Effect));
-    assert_eq!(state.focus.pattern_track_index, 0);
+    assert_eq!(state.sequence.focus_index, 0);
   }
 
   #[test]
   fn test_move_to_previous_track_field_stops_on_first_track() {
     let mut state = default_state();
-    state.focus.pattern_track_index = 0;
+    state.sequence.focus_index = 0;
     state.focus.track_column = TrackColumn::Note;
 
     state.pattern_to_previous_track_field();
 
     assert!(matches!(state.focus.track_column, TrackColumn::Note));
-    assert_eq!(state.focus.pattern_track_index, 0);
+    assert_eq!(state.sequence.focus_index, 0);
   }
 
   #[test]
   fn test_move_to_next_track_field_stops_on_last_track() {
     let mut state = default_state();
-    state.focus.pattern_track_index = 3;
+    state.sequence.focus_index = 3;
     state.focus.track_column = TrackColumn::Effect;
 
     state.pattern_to_next_track_field();
 
     assert!(matches!(state.focus.track_column, TrackColumn::Effect));
-    assert_eq!(state.focus.pattern_track_index, 3);
+    assert_eq!(state.sequence.focus_index, 3);
   }
 
   #[test]
@@ -579,7 +579,7 @@ mod tests {
 
     state.sequence_move_pattern_up();
 
-    assert_eq!(state.focus.sequence_index, 0);
+    assert_eq!(state.sequence.focus_index, 0);
     assert_eq!(state.sequence.patterns, patterns_before);
     assert_eq!(state.sequence.end_of_song, end_of_song_before);
   }
@@ -588,14 +588,14 @@ mod tests {
   fn test_sequence_move_pattern_down_cannot_move_from_last_position() {
     let mut state = default_state();
     let last_index = state.sequence.patterns.len() - 1;
-    state.focus.sequence_index = last_index;
+    state.sequence.focus_index = last_index;
     state.update_pattern_index();
     let patterns_before = state.sequence.patterns.clone();
     let end_of_song_before = state.sequence.end_of_song;
 
     state.sequence_move_pattern_down();
 
-    assert_eq!(state.focus.sequence_index, last_index);
+    assert_eq!(state.sequence.focus_index, last_index);
     assert_eq!(state.sequence.patterns, patterns_before);
     assert_eq!(state.sequence.end_of_song, end_of_song_before);
   }
@@ -608,7 +608,7 @@ mod tests {
 
     state.sequence_move_pattern_down();
 
-    assert_eq!(state.focus.sequence_index, 0);
+    assert_eq!(state.sequence.focus_index, 0);
     assert_eq!(state.sequence.patterns, patterns_before);
     assert_eq!(state.sequence.end_of_song, end_of_song_before);
   }
@@ -623,20 +623,20 @@ mod tests {
       prop_assume!(idx > 0 && idx + 1 < len);
 
       let end_of_song = end_seed % len;
-      state.focus.sequence_index = idx;
+      state.sequence.focus_index = idx;
       state.sequence.end_of_song = end_of_song;
       state.update_pattern_index();
 
       let original_patterns = state.sequence.patterns.clone();
       let original_end_of_song = state.sequence.end_of_song;
-      let original_index = state.focus.sequence_index;
+      let original_index = state.sequence.focus_index;
 
       state.sequence_move_pattern_up();
       state.sequence_move_pattern_down();
 
       prop_assert_eq!(state.sequence.patterns, original_patterns);
       prop_assert_eq!(state.sequence.end_of_song, original_end_of_song);
-      prop_assert_eq!(state.focus.sequence_index, original_index);
+      prop_assert_eq!(state.sequence.focus_index, original_index);
     }
 
     #[test]
@@ -658,7 +658,7 @@ mod tests {
 
       prop_assume!(!edge_case);
 
-      state.focus.sequence_index = idx;
+      state.sequence.focus_index = idx;
       state.sequence.end_of_song = end_of_song;
       state.update_pattern_index();
 
@@ -692,7 +692,7 @@ mod tests {
 
       prop_assume!(!edge_case);
 
-      state.focus.sequence_index = idx;
+      state.sequence.focus_index = idx;
       state.sequence.end_of_song = end_of_song;
       state.update_pattern_index();
 
