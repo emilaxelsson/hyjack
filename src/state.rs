@@ -127,6 +127,57 @@ pub fn normalize_and_validate_name(what: &str, name: &str) -> Result<String> {
   Ok(trimmed_name.to_string())
 }
 
+impl Sequence {
+  /// Move to the next pattern.
+  pub fn to_next_pattern(&mut self) -> bool {
+    if self.focus_index + 1 < self.patterns.len() {
+      self.focus_index += 1;
+      true
+    } else {
+      false
+    }
+  }
+
+  /// Move to the previous pattern.
+  pub fn to_previous_pattern(&mut self) -> bool {
+    if self.focus_index > 0 {
+      self.focus_index -= 1;
+      true
+    } else {
+      false
+    }
+  }
+
+  /// Move the currently focused pattern up by one position.
+  pub fn move_pattern_up(&mut self) {
+    if self.focus_index > 0 {
+      if self.end_of_song + 1 == self.focus_index {
+        // If the pattern is right after the end of the song, we move the end down instead
+        // of moving the pattern up
+        self.end_of_song += 1;
+      } else {
+        // Otherwise, move the pattern up
+        let idx = self.focus_index;
+        self.patterns.swap(idx, idx - 1);
+        self.focus_index = self.focus_index.saturating_sub(1);
+      }
+    }
+  }
+
+  /// Move the currently focused pattern down by one position.
+  pub fn move_pattern_down(&mut self) {
+    if self.focus_index + 1 < self.patterns.len() {
+      if self.end_of_song == self.focus_index {
+        self.end_of_song = self.end_of_song.saturating_sub(1);
+      } else {
+        let idx = self.focus_index;
+        self.patterns.swap(idx, idx + 1);
+        self.focus_index += 1;
+      }
+    }
+  }
+}
+
 impl AppState {
   pub fn rename_song(&mut self, new_title: String) -> Result<()> {
     let normalized = normalize_and_validate_name("Song title", &new_title)?;
@@ -166,49 +217,6 @@ impl AppState {
     }
     if self.focus.pattern_track_index >= number_of_tracks.get() {
       self.focus.pattern_track_index = sub_one(number_of_tracks);
-    }
-  }
-
-  /// Move to the next pattern in the sequence.
-  pub fn sequence_to_next_pattern(&mut self) {
-    if self.sequence.focus_index + 1 < self.sequence.patterns.len() {
-      self.sequence.focus_index += 1;
-    }
-  }
-
-  /// Move to the previous pattern in the sequence.
-  pub fn sequence_to_previous_pattern(&mut self) {
-    if self.sequence.focus_index > 0 {
-      self.sequence.focus_index -= 1;
-    }
-  }
-
-  /// Move the currently focused pattern in the sequence up by one position.
-  pub fn sequence_move_pattern_up(&mut self) {
-    if self.sequence.focus_index > 0 {
-      if self.sequence.end_of_song + 1 == self.sequence.focus_index {
-        // If the pattern is right after the end of the song, we move the end down instead
-        // of moving the pattern up
-        self.sequence.end_of_song += 1;
-      } else {
-        // Otherwise, move the pattern up
-        let idx = self.sequence.focus_index;
-        self.sequence.patterns.swap(idx, idx - 1);
-        self.sequence.focus_index = self.sequence.focus_index.saturating_sub(1);
-      }
-    }
-  }
-
-  /// Move the currently focused pattern in the sequence down by one position.
-  pub fn sequence_move_pattern_down(&mut self) {
-    if self.sequence.focus_index + 1 < self.sequence.patterns.len() {
-      if self.sequence.end_of_song == self.sequence.focus_index {
-        self.sequence.end_of_song = self.sequence.end_of_song.saturating_sub(1);
-      } else {
-        let idx = self.sequence.focus_index;
-        self.sequence.patterns.swap(idx, idx + 1);
-        self.sequence.focus_index += 1;
-      }
     }
   }
 
@@ -578,7 +586,7 @@ mod tests {
     let patterns_before = state.sequence.patterns.clone();
     let end_of_song_before = state.sequence.end_of_song;
 
-    state.sequence_move_pattern_up();
+    state.sequence.move_pattern_up();
 
     assert_eq!(state.sequence.focus_index, 0);
     assert_eq!(state.sequence.patterns, patterns_before);
@@ -593,7 +601,7 @@ mod tests {
     let patterns_before = state.sequence.patterns.clone();
     let end_of_song_before = state.sequence.end_of_song;
 
-    state.sequence_move_pattern_down();
+    state.sequence.move_pattern_down();
 
     assert_eq!(state.sequence.focus_index, last_index);
     assert_eq!(state.sequence.patterns, patterns_before);
@@ -606,7 +614,7 @@ mod tests {
     let patterns_before = state.sequence.patterns.clone();
     let end_of_song_before = state.sequence.end_of_song;
 
-    state.sequence_move_pattern_down();
+    state.sequence.move_pattern_down();
 
     assert_eq!(state.sequence.focus_index, 0);
     assert_eq!(state.sequence.patterns, patterns_before);
@@ -630,8 +638,8 @@ mod tests {
       let original_end_of_song = state.sequence.end_of_song;
       let original_index = state.sequence.focus_index;
 
-      state.sequence_move_pattern_up();
-      state.sequence_move_pattern_down();
+      state.sequence.move_pattern_up();
+      state.sequence.move_pattern_down();
 
       prop_assert_eq!(state.sequence.patterns, original_patterns);
       prop_assert_eq!(state.sequence.end_of_song, original_end_of_song);
@@ -663,9 +671,9 @@ mod tests {
       let before_len = state.sequence.patterns.len();
 
       if move_down {
-        state.sequence_move_pattern_down();
+        state.sequence.move_pattern_down();
       } else {
-        state.sequence_move_pattern_up();
+        state.sequence.move_pattern_up();
       }
 
       prop_assert_eq!(state.sequence.patterns.len(), before_len);
@@ -697,9 +705,9 @@ mod tests {
       let pool_len_before = state.sequence.patterns.len() - song_len_before;
 
       if move_down {
-        state.sequence_move_pattern_down();
+        state.sequence.move_pattern_down();
       } else {
-        state.sequence_move_pattern_up();
+        state.sequence.move_pattern_up();
       }
 
       let song_len_after = state.sequence.end_of_song + 1;

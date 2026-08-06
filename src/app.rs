@@ -103,9 +103,9 @@ fn handle_event(
       }
       KeyCode::Up => {
         if key.modifiers == KeyModifiers::CONTROL {
-          state.sequence_move_pattern_up();
+          state.sequence.move_pattern_up();
         } else {
-          state.sequence_to_previous_pattern();
+          state.sequence.to_previous_pattern();
         }
         scroll_focused_sequence_into_view(
           &state.sequence,
@@ -115,9 +115,9 @@ fn handle_event(
       }
       KeyCode::Down => {
         if key.modifiers == KeyModifiers::CONTROL {
-          state.sequence_move_pattern_down();
+          state.sequence.move_pattern_down();
         } else {
-          state.sequence_to_next_pattern();
+          state.sequence.to_next_pattern();
         }
         scroll_focused_sequence_into_view(
           &state.sequence,
