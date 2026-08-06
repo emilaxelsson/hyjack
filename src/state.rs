@@ -461,8 +461,7 @@ pub fn default_state() -> AppState {
 
 #[cfg(test)]
 mod tests {
-  use quickcheck::TestResult;
-  use quickcheck_macros::quickcheck;
+  use proptest::prelude::*;
 
   use super::*;
 
@@ -614,119 +613,106 @@ mod tests {
     assert_eq!(state.sequence.end_of_song, end_of_song_before);
   }
 
-  #[quickcheck]
-  fn prop_sequence_move_up_and_down_cancel_each_other(
-    index_seed: usize,
-    end_seed: usize,
-  ) -> TestResult {
-    let mut state = default_state();
-    let len = state.sequence.patterns.len();
-    let idx = index_seed % len;
+  proptest! {
+    #[test]
+    fn prop_sequence_move_up_and_down_cancel_each_other(index_seed: usize, end_seed: usize) {
+      let mut state = default_state();
+      let len = state.sequence.patterns.len();
+      let idx = index_seed % len;
 
-    if idx == 0 || idx + 1 >= len {
-      return TestResult::discard();
-    }
+      prop_assume!(idx > 0 && idx + 1 < len);
 
-    let end_of_song = end_seed % len;
-    state.focus.sequence_index = idx;
-    state.sequence.end_of_song = end_of_song;
-    state.update_pattern_index();
+      let end_of_song = end_seed % len;
+      state.focus.sequence_index = idx;
+      state.sequence.end_of_song = end_of_song;
+      state.update_pattern_index();
 
-    let original_patterns = state.sequence.patterns.clone();
-    let original_end_of_song = state.sequence.end_of_song;
-    let original_index = state.focus.sequence_index;
+      let original_patterns = state.sequence.patterns.clone();
+      let original_end_of_song = state.sequence.end_of_song;
+      let original_index = state.focus.sequence_index;
 
-    state.sequence_move_pattern_up();
-    state.sequence_move_pattern_down();
-
-    assert_eq!(state.sequence.patterns, original_patterns);
-    assert_eq!(state.sequence.end_of_song, original_end_of_song);
-    assert_eq!(state.focus.sequence_index, original_index);
-
-    TestResult::passed()
-  }
-
-  #[quickcheck]
-  fn prop_sequence_length_does_not_change_when_move_is_allowed(
-    index_seed: usize,
-    end_seed: usize,
-    move_down: bool,
-  ) -> TestResult {
-    let mut state = default_state();
-    let len = state.sequence.patterns.len();
-    let idx = index_seed % len;
-    let end_of_song = end_seed % len;
-
-    let edge_case = if move_down {
-      idx + 1 >= len || (idx == 0 && end_of_song == 0)
-    } else {
-      idx == 0
-    };
-
-    if edge_case {
-      return TestResult::discard();
-    }
-
-    state.focus.sequence_index = idx;
-    state.sequence.end_of_song = end_of_song;
-    state.update_pattern_index();
-
-    let before_len = state.sequence.patterns.len();
-
-    if move_down {
-      state.sequence_move_pattern_down();
-    } else {
       state.sequence_move_pattern_up();
-    }
-
-    assert_eq!(state.sequence.patterns.len(), before_len);
-
-    TestResult::passed()
-  }
-
-  #[quickcheck]
-  fn prop_song_and_pool_sizes_change_by_at_most_one_when_move_is_allowed(
-    index_seed: usize,
-    end_seed: usize,
-    move_down: bool,
-  ) -> TestResult {
-    let mut state = default_state();
-    let len = state.sequence.patterns.len();
-    let idx = index_seed % len;
-    let end_of_song = end_seed % len;
-
-    let edge_case = if move_down {
-      idx + 1 >= len || (idx == 0 && end_of_song == 0)
-    } else {
-      idx == 0
-    };
-
-    if edge_case {
-      return TestResult::discard();
-    }
-
-    state.focus.sequence_index = idx;
-    state.sequence.end_of_song = end_of_song;
-    state.update_pattern_index();
-
-    let song_len_before = state.sequence.end_of_song + 1;
-    let pool_len_before = state.sequence.patterns.len() - song_len_before;
-
-    if move_down {
       state.sequence_move_pattern_down();
-    } else {
-      state.sequence_move_pattern_up();
+
+      prop_assert_eq!(state.sequence.patterns, original_patterns);
+      prop_assert_eq!(state.sequence.end_of_song, original_end_of_song);
+      prop_assert_eq!(state.focus.sequence_index, original_index);
     }
 
-    let song_len_after = state.sequence.end_of_song + 1;
-    let pool_len_after = state.sequence.patterns.len() - song_len_after;
+    #[test]
+    fn prop_sequence_length_does_not_change_when_move_is_allowed(
+      index_seed: usize,
+      end_seed: usize,
+      move_down: bool,
+    ) {
+      let mut state = default_state();
+      let len = state.sequence.patterns.len();
+      let idx = index_seed % len;
+      let end_of_song = end_seed % len;
 
-    let song_diff = song_len_after.abs_diff(song_len_before);
-    let pool_diff = pool_len_after.abs_diff(pool_len_before);
+      let edge_case = if move_down {
+        idx + 1 >= len || (idx == 0 && end_of_song == 0)
+      } else {
+        idx == 0
+      };
 
-    assert!(song_diff <= 1, "Song length changed by more than 1");
-    assert!(pool_diff <= 1, "Pool length changed by more than 1");
+      prop_assume!(!edge_case);
 
-    TestResult::passed()
+      state.focus.sequence_index = idx;
+      state.sequence.end_of_song = end_of_song;
+      state.update_pattern_index();
+
+      let before_len = state.sequence.patterns.len();
+
+      if move_down {
+        state.sequence_move_pattern_down();
+      } else {
+        state.sequence_move_pattern_up();
+      }
+
+      prop_assert_eq!(state.sequence.patterns.len(), before_len);
+    }
+
+    #[test]
+    fn prop_song_and_pool_sizes_change_by_at_most_one_when_move_is_allowed(
+      index_seed: usize,
+      end_seed: usize,
+      move_down: bool,
+    ) {
+      let mut state = default_state();
+      let len = state.sequence.patterns.len();
+      let idx = index_seed % len;
+      let end_of_song = end_seed % len;
+
+      let edge_case = if move_down {
+        idx + 1 >= len || (idx == 0 && end_of_song == 0)
+      } else {
+        idx == 0
+      };
+
+      prop_assume!(!edge_case);
+
+      state.focus.sequence_index = idx;
+      state.sequence.end_of_song = end_of_song;
+      state.update_pattern_index();
+
+      let song_len_before = state.sequence.end_of_song + 1;
+      let pool_len_before = state.sequence.patterns.len() - song_len_before;
+
+      if move_down {
+        state.sequence_move_pattern_down();
+      } else {
+        state.sequence_move_pattern_up();
+      }
+
+      let song_len_after = state.sequence.end_of_song + 1;
+      let pool_len_after = state.sequence.patterns.len() - song_len_after;
+
+      let song_diff = song_len_after.abs_diff(song_len_before);
+      let pool_diff = pool_len_after.abs_diff(pool_len_before);
+
+      prop_assert!(song_diff <= 1, "Song length changed by more than 1");
+      prop_assert!(pool_diff <= 1, "Pool length changed by more than 1");
+    }
   }
 }

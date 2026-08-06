@@ -11,5 +11,4 @@ crossterm = "0.28"
 tui-scrollview = "0.5"
 
 [dev-dependencies]
-quickcheck = "1"
-quickcheck_macros = "1"
+proptest = "1"
