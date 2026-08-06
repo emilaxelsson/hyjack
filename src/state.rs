@@ -173,7 +173,6 @@ impl AppState {
   pub fn sequence_to_next_pattern(&mut self) {
     if self.sequence.focus_index + 1 < self.sequence.patterns.len() {
       self.sequence.focus_index += 1;
-      self.refocus_pattern_cursor();
     }
   }
 
@@ -181,7 +180,6 @@ impl AppState {
   pub fn sequence_to_previous_pattern(&mut self) {
     if self.sequence.focus_index > 0 {
       self.sequence.focus_index -= 1;
-      self.refocus_pattern_cursor();
     }
   }
 

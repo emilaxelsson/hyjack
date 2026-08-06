@@ -157,6 +157,7 @@ pub fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Result<
 
     if event::poll(Duration::from_millis(100))? {
       let event = event::read()?;
+      let mode_before = mode;
       let quit = handle_event(
         &mut mode,
         event,
@@ -166,8 +167,13 @@ pub fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Result<
         viewports,
         &mut dialog,
       )?;
+
       if quit {
         break;
+      }
+
+      if mode == UIMode::EditPattern && mode_before != UIMode::EditPattern {
+        state.refocus_pattern_cursor();
       }
     }
   }
