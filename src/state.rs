@@ -71,7 +71,6 @@ pub struct Sequence {
 }
 
 pub struct Focus {
-  pub pattern_index: usize,
   pub pattern_row_index: usize,
   pub pattern_track_index: usize,
   pub track_column: TrackColumn,
@@ -135,12 +134,26 @@ impl AppState {
     Ok(())
   }
 
-  pub fn get_current_pattern(&self) -> &Pattern {
-    &self.patterns[self.focus.pattern_index]
+  // Get the index of the currently focused pattern in the `patterns` list.
+  //
+  // This has linear time complexity. Maybe switch to hash map if this becomes a
+  // performance issue.
+  pub fn get_current_pattern_index(&self) -> usize {
+    let title = self
+      .sequence
+      .patterns
+      .get(self.sequence.focus_index)
+      .unwrap();
+
+    self
+      .patterns
+      .iter()
+      .position(|p| p.title == *title)
+      .unwrap()
   }
 
-  pub fn get_current_pattern_mut(&mut self) -> &mut Pattern {
-    &mut self.patterns[self.focus.pattern_index]
+  pub fn get_current_pattern(&self) -> &Pattern {
+    self.patterns.get(self.get_current_pattern_index()).unwrap()
   }
 
   /// Ensure that the pattern cursor (row and column) is within the bounds of the current
@@ -156,21 +169,10 @@ impl AppState {
     }
   }
 
-  /// Update the pattern index in the focus based on the current sequence index.
-  pub fn update_pattern_index(&mut self) {
-    let title = self.sequence.patterns[self.sequence.focus_index].clone();
-    self.focus.pattern_index = self
-      .patterns
-      .iter()
-      .position(|p| p.title == title)
-      .unwrap_or(0);
-  }
-
   /// Move to the next pattern in the sequence.
   pub fn sequence_to_next_pattern(&mut self) {
     if self.sequence.focus_index + 1 < self.sequence.patterns.len() {
       self.sequence.focus_index += 1;
-      self.update_pattern_index();
       self.refocus_pattern_cursor();
     }
   }
@@ -179,7 +181,6 @@ impl AppState {
   pub fn sequence_to_previous_pattern(&mut self) {
     if self.sequence.focus_index > 0 {
       self.sequence.focus_index -= 1;
-      self.update_pattern_index();
       self.refocus_pattern_cursor();
     }
   }
@@ -265,7 +266,7 @@ impl AppState {
   pub fn pattern_rename_current(&mut self, new_title: String) -> Result<()> {
     let normalized = normalize_and_validate_name("Pattern title", &new_title)?;
     let old_title = self.get_current_pattern().title.clone();
-    let current_index = self.focus.pattern_index;
+    let current_index = self.get_current_pattern_index();
 
     let pattern_title_exists = {
       self
@@ -279,7 +280,11 @@ impl AppState {
       anyhow::bail!("Pattern title already exists");
     }
 
-    self.get_current_pattern_mut().title = normalized.clone();
+    let pattern = self
+      .patterns
+      .get_mut(self.get_current_pattern_index())
+      .unwrap();
+    pattern.title = normalized.clone();
 
     self.sequence.patterns.iter_mut().for_each(|title| {
       if *title == old_title {
@@ -442,7 +447,6 @@ pub fn default_state() -> AppState {
       end_of_song: 0,
     },
     focus: Focus {
-      pattern_index: 1,
       pattern_row_index: 0,
       pattern_track_index: 0,
       track_column: TrackColumn::Note,
@@ -469,7 +473,6 @@ mod tests {
     let mut state = default_state();
     state.sequence.focus_index = sequence_index;
     state.sequence.end_of_song = end_of_song;
-    state.update_pattern_index();
     state
   }
 
@@ -589,7 +592,6 @@ mod tests {
     let mut state = default_state();
     let last_index = state.sequence.patterns.len() - 1;
     state.sequence.focus_index = last_index;
-    state.update_pattern_index();
     let patterns_before = state.sequence.patterns.clone();
     let end_of_song_before = state.sequence.end_of_song;
 
@@ -625,7 +627,6 @@ mod tests {
       let end_of_song = end_seed % len;
       state.sequence.focus_index = idx;
       state.sequence.end_of_song = end_of_song;
-      state.update_pattern_index();
 
       let original_patterns = state.sequence.patterns.clone();
       let original_end_of_song = state.sequence.end_of_song;
@@ -660,7 +661,6 @@ mod tests {
 
       state.sequence.focus_index = idx;
       state.sequence.end_of_song = end_of_song;
-      state.update_pattern_index();
 
       let before_len = state.sequence.patterns.len();
 
@@ -694,7 +694,6 @@ mod tests {
 
       state.sequence.focus_index = idx;
       state.sequence.end_of_song = end_of_song;
-      state.update_pattern_index();
 
       let song_len_before = state.sequence.end_of_song + 1;
       let pool_len_before = state.sequence.patterns.len() - song_len_before;
