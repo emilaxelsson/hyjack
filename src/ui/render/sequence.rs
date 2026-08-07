@@ -4,7 +4,7 @@ use ratatui::style::{Modifier, Style, Stylize};
 use ratatui::widgets::{Block, List, ListItem};
 use tui_scrollview::{ScrollView, ScrollViewState, ScrollbarVisibility};
 
-use crate::state::*;
+use crate::state::sequence::Sequence;
 use crate::ui::common::rect_from_origin;
 use crate::ui::render::style::{
   FOCUSED_ROW_BG, INACTIVE_FOCUSED_ROW_BG, PANEL_AREA_STYLE, SONG_END_STYLE, TITLE_STYLE,
