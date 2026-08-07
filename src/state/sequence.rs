@@ -11,6 +11,12 @@ pub struct Sequence {
 }
 
 impl Sequence {
+  /// Returns the number of patterns in the pool (i.e. the number of patterns after the
+  /// end of the song).
+  pub fn pool_size(&self) -> usize {
+    self.pattern_refs.len().saturating_sub(self.end_of_song + 1)
+  }
+
   /// Navigate to the next pattern.
   pub fn to_next_pattern(&mut self) {
     if self.focus_index + 1 < self.pattern_refs.len() {
@@ -61,9 +67,9 @@ mod tests {
 
   use super::*;
 
-  fn sequence_strategy() -> impl Strategy<Value = Sequence> {
+  fn sequence_strategy(max_size: usize) -> impl Strategy<Value = Sequence> {
     (
-      proptest::collection::vec(any::<u16>(), 1..32),
+      proptest::collection::vec(any::<u16>(), 1..max_size),
       any::<usize>(),
       any::<usize>(),
     )
@@ -94,7 +100,6 @@ mod tests {
     let end_of_song = sequence.end_of_song;
     let is_first_pattern = idx == 0;
     let is_last_pattern = idx + 1 == len;
-    let pool_is_empty = end_of_song + 1 == len;
 
     // The first pattern pattern cannot be moved past the end of the song, as that would
     // result in an empty song.
@@ -102,7 +107,7 @@ mod tests {
     ||
     // The last pattern can be moved down if the pool is empty. In that case, it moves
     // down to become part of the pool.
-    (is_last_pattern && !pool_is_empty)
+    (is_last_pattern && sequence.pool_size() != 0)
   }
 
   fn valid_move(original: &Sequence, sequence: &Sequence) -> bool {
@@ -118,7 +123,7 @@ mod tests {
   proptest! {
     #[test]
     fn move_pattern_up_blocked_from_first_position(
-      mut sequence in sequence_strategy()
+      mut sequence in sequence_strategy(20)
     ) {
       sequence.focus_index = 0;
       let original_sequence = sequence.clone();
@@ -130,7 +135,7 @@ mod tests {
 
     #[test]
     fn move_pattern_down_blocked_from_last_position(
-      mut sequence in sequence_strategy()
+      mut sequence in sequence_strategy(20)
     ) {
       sequence.focus_index = sequence.pattern_refs.len() - 1;
       let original_sequence = sequence.clone();
@@ -146,7 +151,7 @@ mod tests {
 
     #[test]
     fn move_pattern_down_first_item_blocked_when_song_ends_on_first(
-      mut sequence in sequence_strategy()
+      mut sequence in sequence_strategy(20)
     ) {
       sequence.focus_index = 0;
       sequence.end_of_song = 0;
@@ -159,7 +164,7 @@ mod tests {
 
     #[test]
     fn move_pattern_up_succeeds_when_not_blocked(
-      mut sequence in sequence_strategy()
+      mut sequence in sequence_strategy(20)
     ) {
       let original_sequence = sequence.clone();
 
@@ -172,7 +177,7 @@ mod tests {
 
     #[test]
     fn move_pattern_down_succeeds_when_not_blocked(
-      mut sequence in sequence_strategy()
+      mut sequence in sequence_strategy(20)
     ) {
       let original_sequence = sequence.clone();
 
@@ -184,8 +189,32 @@ mod tests {
     }
 
     #[test]
+    fn no_move_up_implies_blocked(
+      mut sequence in sequence_strategy(6)
+    ) {
+      let original_sequence = sequence.clone();
+
+      sequence.move_pattern_up();
+
+      prop_assume!(sequence == original_sequence);
+      prop_assert!(blocked_up(&sequence));
+    }
+
+    #[test]
+    fn no_move_down_implies_blocked(
+      mut sequence in sequence_strategy(6)
+    ) {
+      let original_sequence = sequence.clone();
+
+      sequence.move_pattern_down();
+
+      prop_assume!(sequence == original_sequence);
+      prop_assert!(blocked_down(&sequence));
+    }
+
+    #[test]
     fn move_up_and_down_cancel_each_other(
-      mut sequence in sequence_strategy()
+      mut sequence in sequence_strategy(20)
     ) {
       let len = sequence.pattern_refs.len();
       let idx = sequence.focus_index;
