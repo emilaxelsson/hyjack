@@ -82,9 +82,32 @@ mod tests {
       })
   }
 
+  // Condition for when the focused pattern cannot move up
+  fn blocked_up(sequence: &Sequence) -> bool {
+    sequence.focus_index == 0
+  }
+
+  // Condition for when the focused pattern cannot move down
+  fn blocked_down(sequence: &Sequence) -> bool {
+    let len = sequence.pattern_refs.len();
+    let idx = sequence.focus_index;
+    let end_of_song = sequence.end_of_song;
+    idx + 1 >= len || (idx == 0 && end_of_song == 0)
+  }
+
+  fn valid_move(original: &Sequence, sequence: &Sequence) -> bool {
+    let idx_diff = sequence.focus_index as isize - original.focus_index as isize;
+    let end_diff = sequence.end_of_song as isize - original.end_of_song as isize;
+    let idx_change = idx_diff.abs() == 1 && end_diff == 0;
+    let end_change = end_diff.abs() == 1 && idx_diff == 0;
+    let same_length = sequence.pattern_refs.len() == original.pattern_refs.len();
+
+    (idx_change || end_change) && same_length
+  }
+
   proptest! {
     #[test]
-    fn move_pattern_up_cannot_move_from_first_position(
+    fn move_pattern_up_blocked_from_first_position(
       mut sequence in sequence_strategy()
     ) {
       sequence.focus_index = 0;
@@ -96,7 +119,7 @@ mod tests {
     }
 
     #[test]
-    fn move_pattern_down_cannot_move_from_last_position(
+    fn move_pattern_down_blocked_from_last_position(
       mut sequence in sequence_strategy()
     ) {
       sequence.focus_index = sequence.pattern_refs.len() - 1;
@@ -121,6 +144,32 @@ mod tests {
     }
 
     #[test]
+    fn move_pattern_up_succeeds_when_not_blocked(
+      mut sequence in sequence_strategy()
+    ) {
+      let original_sequence = sequence.clone();
+
+      prop_assume!(!blocked_up(&sequence));
+
+      sequence.move_pattern_up();
+
+      prop_assert!(valid_move(&original_sequence, &sequence));
+    }
+
+    #[test]
+    fn move_pattern_down_succeeds_when_not_blocked(
+      mut sequence in sequence_strategy()
+    ) {
+      let original_sequence = sequence.clone();
+
+      prop_assume!(!blocked_down(&sequence));
+
+      sequence.move_pattern_down();
+
+      prop_assert!(valid_move(&original_sequence, &sequence));
+    }
+
+    #[test]
     fn move_up_and_down_cancel_each_other(
       mut sequence in sequence_strategy()
     ) {
@@ -135,70 +184,6 @@ mod tests {
       sequence.move_pattern_down();
 
       prop_assert_eq!(sequence, original_sequence);
-    }
-
-    #[test]
-    fn length_does_not_change_when_move_is_allowed(
-      mut sequence in sequence_strategy(),
-      move_down in any::<bool>(),
-    ) {
-      let len = sequence.pattern_refs.len();
-      let idx = sequence.focus_index;
-      let end_of_song = sequence.end_of_song;
-
-      let edge_case = if move_down {
-        idx + 1 >= len || (idx == 0 && end_of_song == 0)
-      } else {
-        idx == 0
-      };
-
-      prop_assume!(!edge_case);
-
-      let before_len = sequence.pattern_refs.len();
-
-      if move_down {
-        sequence.move_pattern_down();
-      } else {
-        sequence.move_pattern_up();
-      }
-
-      prop_assert_eq!(sequence.pattern_refs.len(), before_len);
-    }
-
-    #[test]
-    fn song_and_pool_sizes_change_by_at_most_one_when_move_is_allowed(
-      mut sequence in sequence_strategy(),
-      move_down in any::<bool>(),
-    ) {
-      let len = sequence.pattern_refs.len();
-      let idx = sequence.focus_index;
-      let end_of_song = sequence.end_of_song;
-
-      let edge_case = if move_down {
-        idx + 1 >= len || (idx == 0 && end_of_song == 0)
-      } else {
-        idx == 0
-      };
-
-      prop_assume!(!edge_case);
-
-      let song_len_before = sequence.end_of_song + 1;
-      let pool_len_before = sequence.pattern_refs.len() - song_len_before;
-
-      if move_down {
-        sequence.move_pattern_down();
-      } else {
-        sequence.move_pattern_up();
-      }
-
-      let song_len_after = sequence.end_of_song + 1;
-      let pool_len_after = sequence.pattern_refs.len() - song_len_after;
-
-      let song_diff = song_len_after.abs_diff(song_len_before);
-      let pool_diff = pool_len_after.abs_diff(pool_len_before);
-
-      prop_assert!(song_diff <= 1, "Song length changed by more than 1");
-      prop_assert!(pool_diff <= 1, "Pool length changed by more than 1");
     }
   }
 }
