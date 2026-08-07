@@ -10,4 +10,5 @@
 * `Tab` – Switch to pattern panel
 * `F2` – Rename pattern
 * `Up`/`Down` – Move to previous/next pattern
+* `Ctrl+D` – Duplicate current entry in the sequence list
 * `Ctrl+Up`/`Ctrl+Down` – Move currrent entry up/down in the sequence list

@@ -98,6 +98,14 @@ fn handle_event(
       KeyCode::F(2) => {
         *optional_dialog = Some(pattern_title_dialog(state));
       }
+      KeyCode::Char('d') if key.modifiers == KeyModifiers::CONTROL => {
+        state.sequence.duplicate_focused_pattern_ref();
+        scroll_focused_sequence_into_view(
+          &state.sequence,
+          sequence_scroll_state,
+          viewports.sequence_height,
+        );
+      }
       KeyCode::Tab => {
         *mode = UIMode::EditPattern;
       }

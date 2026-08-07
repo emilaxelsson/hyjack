@@ -59,6 +59,19 @@ impl Sequence {
       }
     }
   }
+
+  /// Duplicate the currently focused pattern reference just below the current position.
+  pub fn duplicate_focused_pattern_ref(&mut self) {
+    let idx = self.focus_index;
+    let focused_pattern_ref = self.pattern_refs[idx].clone();
+    self.pattern_refs.insert(idx + 1, focused_pattern_ref);
+    self.focus_index += 1;
+
+    // Keep the duplicated reference inside the song when duplicating a song entry.
+    if idx <= self.end_of_song {
+      self.end_of_song += 1;
+    }
+  }
 }
 
 #[cfg(test)]
@@ -227,6 +240,47 @@ mod tests {
       sequence.move_pattern_down();
 
       prop_assert_eq!(sequence, original_sequence);
+    }
+
+    #[test]
+    fn duplicate_increases_length_and_moves_focus_to_inserted_item(
+      mut sequence in sequence_strategy(20)
+    ) {
+      let original_sequence = sequence.clone();
+      let original_focus = original_sequence.focus_index;
+
+      sequence.duplicate_focused_pattern_ref();
+
+      prop_assert_eq!(
+        sequence.pattern_refs.len(),
+        original_sequence.pattern_refs.len() + 1
+      );
+      prop_assert_eq!(sequence.focus_index, original_focus + 1);
+      prop_assert_eq!(
+        sequence.pattern_refs[original_focus + 1].as_str(),
+        original_sequence.pattern_refs[original_focus].as_str()
+      );
+    }
+
+    #[test]
+    fn duplicate_keeps_song_membership_of_original_reference(
+      mut sequence in sequence_strategy(20)
+    ) {
+      let original_sequence = sequence.clone();
+      let original_focus = original_sequence.focus_index;
+      let original_end = original_sequence.end_of_song;
+      let focused_was_in_song = original_focus <= original_end;
+
+      sequence.duplicate_focused_pattern_ref();
+
+      prop_assert_eq!(
+        sequence.end_of_song,
+        original_end + usize::from(focused_was_in_song)
+      );
+
+      let duplicated_index = original_focus + 1;
+      let duplicated_is_in_song = duplicated_index <= sequence.end_of_song;
+      prop_assert_eq!(duplicated_is_in_song, focused_was_in_song);
     }
   }
 }
