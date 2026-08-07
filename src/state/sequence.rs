@@ -82,71 +82,46 @@ mod tests {
       })
   }
 
-  fn setup_sequence_state(focus_index: usize, end_of_song: usize) -> Sequence {
-    let patterns = vec![
-      "Intro A".to_string(),
-      "Intro B".to_string(),
-      "Verse 1 A".to_string(),
-      "Verse 1 B".to_string(),
-      "Verse 1 C".to_string(),
-      "Verse 1 D".to_string(),
-      "Intro B".to_string(),
-      "Bridge A".to_string(),
-    ];
-    let end_of_song = end_of_song.min(patterns.len() - 1);
-    let focus_index = focus_index.min(patterns.len() - 1);
-
-    Sequence {
-      pattern_refs: patterns,
-      focus_index,
-      end_of_song,
-    }
-  }
-
-  #[test]
-  fn test_sequence_move_pattern_up_cannot_move_from_first_position() {
-    let mut seq = setup_sequence_state(0, 3);
-    let patterns_before = seq.pattern_refs.clone();
-    let end_of_song_before = seq.end_of_song;
-
-    seq.move_pattern_up();
-
-    assert_eq!(seq.focus_index, 0);
-    assert_eq!(seq.pattern_refs, patterns_before);
-    assert_eq!(seq.end_of_song, end_of_song_before);
-  }
-
-  #[test]
-  fn test_sequence_move_pattern_down_cannot_move_from_last_position() {
-    let mut seq = setup_sequence_state(0, 3);
-    let last_index = seq.pattern_refs.len() - 1;
-    seq.focus_index = last_index;
-    let patterns_before = seq.pattern_refs.clone();
-    let end_of_song_before = seq.end_of_song;
-
-    seq.move_pattern_down();
-
-    assert_eq!(seq.focus_index, last_index);
-    assert_eq!(seq.pattern_refs, patterns_before);
-    assert_eq!(seq.end_of_song, end_of_song_before);
-  }
-
-  #[test]
-  fn test_sequence_move_pattern_down_first_item_blocked_when_song_ends_on_first() {
-    let mut seq = setup_sequence_state(0, 0);
-    let patterns_before = seq.pattern_refs.clone();
-    let end_of_song_before = seq.end_of_song;
-
-    seq.move_pattern_down();
-
-    assert_eq!(seq.focus_index, 0);
-    assert_eq!(seq.pattern_refs, patterns_before);
-    assert_eq!(seq.end_of_song, end_of_song_before);
-  }
-
   proptest! {
     #[test]
-    fn prop_sequence_move_up_and_down_cancel_each_other(
+    fn move_pattern_up_cannot_move_from_first_position(
+      mut sequence in sequence_strategy()
+    ) {
+      sequence.focus_index = 0;
+      let original_sequence = sequence.clone();
+
+      sequence.move_pattern_up();
+
+      assert_eq!(sequence, original_sequence);
+    }
+
+    #[test]
+    fn move_pattern_down_cannot_move_from_last_position(
+      mut sequence in sequence_strategy()
+    ) {
+      sequence.focus_index = sequence.pattern_refs.len() - 1;
+      let original_sequence = sequence.clone();
+
+      sequence.move_pattern_down();
+
+      assert_eq!(sequence, original_sequence);
+    }
+
+    #[test]
+    fn move_pattern_down_first_item_blocked_when_song_ends_on_first(
+      mut sequence in sequence_strategy()
+    ) {
+      sequence.focus_index = 0;
+      sequence.end_of_song = 0;
+      let original_sequence = sequence.clone();
+
+      sequence.move_pattern_down();
+
+      assert_eq!(sequence, original_sequence);
+    }
+
+    #[test]
+    fn move_up_and_down_cancel_each_other(
       mut sequence in sequence_strategy()
     ) {
       let len = sequence.pattern_refs.len();
@@ -163,7 +138,7 @@ mod tests {
     }
 
     #[test]
-    fn prop_sequence_length_does_not_change_when_move_is_allowed(
+    fn length_does_not_change_when_move_is_allowed(
       mut sequence in sequence_strategy(),
       move_down in any::<bool>(),
     ) {
@@ -191,7 +166,7 @@ mod tests {
     }
 
     #[test]
-    fn prop_song_and_pool_sizes_change_by_at_most_one_when_move_is_allowed(
+    fn song_and_pool_sizes_change_by_at_most_one_when_move_is_allowed(
       mut sequence in sequence_strategy(),
       move_down in any::<bool>(),
     ) {
