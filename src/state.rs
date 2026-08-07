@@ -136,7 +136,7 @@ impl AppState {
   pub fn get_current_pattern_index(&self) -> usize {
     let title = self
       .sequence
-      .patterns
+      .pattern_refs
       .get(self.sequence.focus_index)
       .unwrap();
 
@@ -236,7 +236,7 @@ impl AppState {
       .unwrap();
     pattern.title = normalized.clone();
 
-    self.sequence.patterns.iter_mut().for_each(|title| {
+    self.sequence.pattern_refs.iter_mut().for_each(|title| {
       if *title == old_title {
         *title = normalized.clone();
       }
@@ -383,7 +383,7 @@ pub fn default_state() -> AppState {
     ])
     .unwrap(),
     sequence: Sequence {
-      patterns: vec![
+      pattern_refs: vec![
         "Intro A".to_string(),
         "Intro B".to_string(),
         "Verse 1 A".to_string(),
