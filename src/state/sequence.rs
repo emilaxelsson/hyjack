@@ -115,7 +115,7 @@ mod tests {
 
       sequence.move_pattern_up();
 
-      assert_eq!(sequence, original_sequence);
+      prop_assert_eq!(sequence, original_sequence);
     }
 
     #[test]
@@ -127,7 +127,7 @@ mod tests {
 
       sequence.move_pattern_down();
 
-      assert_eq!(sequence, original_sequence);
+      prop_assert_eq!(sequence, original_sequence);
     }
 
     #[test]
@@ -140,7 +140,7 @@ mod tests {
 
       sequence.move_pattern_down();
 
-      assert_eq!(sequence, original_sequence);
+      prop_assert_eq!(sequence, original_sequence);
     }
 
     #[test]
