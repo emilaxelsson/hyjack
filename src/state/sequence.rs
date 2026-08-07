@@ -43,7 +43,7 @@ impl Sequence {
 
   /// Move the currently focused pattern down by one position.
   pub fn move_pattern_down(&mut self) {
-    if self.focus_index + 1 < self.pattern_refs.len() {
+    if self.focus_index + 1 < self.pattern_refs.len() || self.end_of_song == self.focus_index {
       if self.end_of_song == self.focus_index {
         self.end_of_song = self.end_of_song.saturating_sub(1);
       } else {
@@ -92,7 +92,17 @@ mod tests {
     let len = sequence.pattern_refs.len();
     let idx = sequence.focus_index;
     let end_of_song = sequence.end_of_song;
-    idx + 1 >= len || (idx == 0 && end_of_song == 0)
+    let is_first_pattern = idx == 0;
+    let is_last_pattern = idx + 1 == len;
+    let pool_is_empty = end_of_song + 1 == len;
+
+    // The first pattern pattern cannot be moved past the end of the song, as that would
+    // result in an empty song.
+    (is_first_pattern && end_of_song == 0)
+    ||
+    // The last pattern can be moved down if the pool is empty. In that case, it moves
+    // down to become part of the pool.
+    (is_last_pattern && !pool_is_empty)
   }
 
   fn valid_move(original: &Sequence, sequence: &Sequence) -> bool {
@@ -124,6 +134,10 @@ mod tests {
     ) {
       sequence.focus_index = sequence.pattern_refs.len() - 1;
       let original_sequence = sequence.clone();
+
+      // The setting of `sequence.focus_index` above isn't enough to guarantee blockage,
+      // but it prevents throwing away too many cases in the assumption below.
+      prop_assume!(blocked_down(&sequence));
 
       sequence.move_pattern_down();
 
