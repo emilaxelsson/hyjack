@@ -11,23 +11,17 @@ pub struct Sequence {
 }
 
 impl Sequence {
-  /// Move to the next pattern.
-  pub fn to_next_pattern(&mut self) -> bool {
+  /// Navigate to the next pattern.
+  pub fn to_next_pattern(&mut self) {
     if self.focus_index + 1 < self.pattern_refs.len() {
       self.focus_index += 1;
-      true
-    } else {
-      false
     }
   }
 
-  /// Move to the previous pattern.
-  pub fn to_previous_pattern(&mut self) -> bool {
+  /// Navigate to the previous pattern.
+  pub fn to_previous_pattern(&mut self) {
     if self.focus_index > 0 {
       self.focus_index -= 1;
-      true
-    } else {
-      false
     }
   }
 
