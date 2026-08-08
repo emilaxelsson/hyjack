@@ -3,7 +3,7 @@ use ratatui::layout::{Offset, Position, Rect, Size};
 use ratatui::widgets::{Block, Paragraph};
 use tui_scrollview::{ScrollView, ScrollViewState, ScrollbarVisibility};
 
-use crate::state::*;
+use crate::state::pattern::{Note, Pattern, Track, TrackColumn};
 use crate::ui::common::rect_from_origin;
 use crate::ui::render::style::{
   FOCUSED_ROW_STYLE, INACTIVE_FOCUSED_ROW_STYLE, PANEL_AREA_STYLE, SUB_TITLE_STYLE, default_block,

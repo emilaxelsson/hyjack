@@ -1,3 +1,5 @@
+pub mod name;
+pub mod pattern;
 pub mod sequence;
 
 use std::num::{NonZero, NonZeroU8};
@@ -5,26 +7,10 @@ use std::num::{NonZero, NonZeroU8};
 use anyhow::Result;
 use nonempty::NonEmpty;
 
+use crate::state::name::normalize_and_validate_name;
+use crate::state::pattern::{Focus, Note, Pattern, Track, TrackColumn};
 use crate::state::sequence::Sequence;
 use crate::utils::{nonzero_len, sub_one};
-
-pub struct Note {
-  pub pitch: u8,
-  pub instrument: u8,
-  pub velocity: u8,
-}
-
-pub struct Track {
-  pub name: String,
-  pub notes: NonEmpty<Option<Note>>,
-}
-
-pub struct Pattern {
-  pub title: String,
-  pub tracks: NonEmpty<Track>,
-  pub num_rows: NonZero<usize>,
-  pub rows_per_beat: NonZeroU8,
-}
 
 pub struct PlayerTime {
   pub hour: u8,
@@ -36,39 +22,6 @@ pub struct PlayerTime {
 pub struct PlayerState {
   pub time: PlayerTime,
   pub sequence_index: usize,
-}
-
-pub enum TrackColumn {
-  Note,
-  Instrument,
-  Velocity,
-  Effect,
-}
-
-impl TrackColumn {
-  fn next(&self) -> Self {
-    match self {
-      Self::Note => Self::Instrument,
-      Self::Instrument => Self::Velocity,
-      Self::Velocity => Self::Effect,
-      Self::Effect => Self::Note,
-    }
-  }
-
-  fn previous(&self) -> Self {
-    match self {
-      Self::Note => Self::Effect,
-      Self::Instrument => Self::Note,
-      Self::Velocity => Self::Instrument,
-      Self::Effect => Self::Velocity,
-    }
-  }
-}
-
-pub struct Focus {
-  pub pattern_row_index: usize,
-  pub pattern_track_index: usize,
-  pub track_column: TrackColumn,
 }
 
 pub struct AppState {
@@ -84,42 +37,6 @@ impl Default for AppState {
   fn default() -> Self {
     default_state()
   }
-}
-
-/// Trim and validate a user-facing song or pattern name.
-///
-/// # Examples
-///
-/// ```rust
-/// use dracker::state::normalize_and_validate_name;
-///
-/// assert_eq!(
-///   normalize_and_validate_name("Pattern title", "  Verse 1 A  ").unwrap(),
-///   "Verse 1 A"
-/// );
-///
-/// assert_eq!(
-///   normalize_and_validate_name("Pattern title", "Verse@1")
-///     .unwrap_err()
-///     .to_string(),
-///   "Pattern title contains invalid characters"
-/// );
-/// ```
-pub fn normalize_and_validate_name(what: &str, name: &str) -> Result<String> {
-  let trimmed_name = name.trim();
-  if trimmed_name.is_empty() {
-    anyhow::bail!("{} cannot be empty", what);
-  }
-  if trimmed_name.len() > 30 {
-    anyhow::bail!("{} cannot be longer than 30 characters", what);
-  }
-  if !trimmed_name
-    .chars()
-    .all(|ch| ch.is_ascii_alphanumeric() || ch == ' ' || ch == '_' || ch == '-')
-  {
-    anyhow::bail!("{} contains invalid characters", what);
-  }
-  Ok(trimmed_name.to_string())
 }
 
 impl AppState {
@@ -412,45 +329,6 @@ pub fn default_state() -> AppState {
 #[cfg(test)]
 mod tests {
   use super::*;
-
-  #[test]
-  fn test_validate_name() {
-    assert_eq!(
-      normalize_and_validate_name("Name", "Valid Name 123_-").unwrap(),
-      "Valid Name 123_-"
-    );
-    assert_eq!(
-      normalize_and_validate_name("Name", "  Valid Name 123_-  ").unwrap(),
-      "Valid Name 123_-"
-    );
-    assert_eq!(
-      normalize_and_validate_name("Name", "")
-        .unwrap_err()
-        .to_string(),
-      "Name cannot be empty"
-    );
-    assert_eq!(
-      normalize_and_validate_name("Name", "   ")
-        .unwrap_err()
-        .to_string(),
-      "Name cannot be empty"
-    );
-    assert_eq!(
-      normalize_and_validate_name("Name", "Invalid@Name")
-        .unwrap_err()
-        .to_string(),
-      "Name contains invalid characters"
-    );
-    assert_eq!(
-      normalize_and_validate_name(
-        "Name",
-        "ThisNameIsWayTooLongToBeValidBecauseItExceedsThirtyCharacters"
-      )
-      .unwrap_err()
-      .to_string(),
-      "Name cannot be longer than 30 characters"
-    );
-  }
 
   #[test]
   fn test_move_to_next_track_field_advances_track_after_effect() {

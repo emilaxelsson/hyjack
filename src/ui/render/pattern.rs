@@ -4,6 +4,7 @@ use ratatui::style::{Style, Stylize};
 use ratatui::widgets::{Block, Cell, Row, Table};
 use tui_scrollview::{ScrollView, ScrollViewState, ScrollbarVisibility};
 
+use crate::state::pattern::Pattern;
 use crate::state::*;
 use crate::ui::common::{get_absolute_position, rect_from_origin};
 use crate::ui::render::style::{
