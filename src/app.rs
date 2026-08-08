@@ -106,6 +106,14 @@ fn handle_event(
           viewports.sequence_height,
         );
       }
+      KeyCode::Delete => {
+        state.sequence.soft_delete_focused_pattern_ref();
+        scroll_focused_sequence_into_view(
+          &state.sequence,
+          sequence_scroll_state,
+          viewports.sequence_height,
+        );
+      }
       KeyCode::Tab => {
         *mode = UIMode::EditPattern;
       }

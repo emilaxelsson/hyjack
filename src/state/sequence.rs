@@ -31,7 +31,7 @@ impl Sequence {
     }
   }
 
-  /// Move the currently focused pattern up by one position.
+  /// Move the focused pattern up by one position.
   pub fn move_pattern_up(&mut self) {
     if self.focus_index > 0 {
       if self.end_of_song + 1 == self.focus_index {
@@ -47,7 +47,7 @@ impl Sequence {
     }
   }
 
-  /// Move the currently focused pattern down by one position.
+  /// Move the focused pattern down by one position.
   pub fn move_pattern_down(&mut self) {
     if self.focus_index + 1 < self.pattern_refs.len() || self.end_of_song == self.focus_index {
       if self.end_of_song == self.focus_index {
@@ -60,7 +60,7 @@ impl Sequence {
     }
   }
 
-  /// Duplicate the currently focused pattern reference just below the current position.
+  /// Duplicate the focused pattern reference just below the current position.
   pub fn duplicate_focused_pattern_ref(&mut self) {
     let idx = self.focus_index;
     let focused_pattern_ref = self.pattern_refs[idx].clone();
@@ -70,6 +70,62 @@ impl Sequence {
     // Keep the duplicated reference inside the song when duplicating a song entry.
     if idx <= self.end_of_song {
       self.end_of_song += 1;
+    }
+  }
+
+  /// Insert a new pattern reference at the specified index.
+  pub fn insert_pattern_ref_at(&mut self, index: usize, pattern_ref: String) {
+    let idx = index.min(self.pattern_refs.len());
+    self.pattern_refs.insert(idx, pattern_ref);
+
+    if idx <= self.focus_index {
+      self.focus_index += 1;
+    }
+
+    if idx <= self.end_of_song {
+      self.end_of_song += 1;
+    }
+  }
+
+  /// Insert a new pattern reference right after the current focus.
+  pub fn insert_pattern_ref_at_focus(&mut self, pattern_ref: String) {
+    self.insert_pattern_ref_at(self.focus_index + 1, pattern_ref);
+  }
+
+  /// Soft delete the focused pattern reference. If the focused entry is the only
+  /// reference to its pattern title, keep it by moving it to the end of the pool instead.
+  pub fn soft_delete_focused_pattern_ref(&mut self) {
+    let idx = self.focus_index;
+
+    if idx == 0 && self.end_of_song == 0 {
+      // Don't allow deleting the first pattern if it is the only song entry, as that
+      // would result in an empty song.
+      return;
+    }
+
+    let focused_pattern_ref = self.pattern_refs[idx].clone();
+    let ref_in_song = idx <= self.end_of_song;
+    let ref_count = self
+      .pattern_refs
+      .iter()
+      .filter(|pattern_ref| **pattern_ref == focused_pattern_ref)
+      .count();
+
+    if ref_count == 1 {
+      if ref_in_song {
+        // Move to end of pool
+        self.pattern_refs.remove(idx);
+        self.pattern_refs.push(focused_pattern_ref);
+      }
+    } else {
+      self.pattern_refs.remove(idx);
+      if self.focus_index >= self.pattern_refs.len() {
+        self.focus_index = self.pattern_refs.len().saturating_sub(1);
+      }
+    }
+
+    if ref_in_song {
+      self.end_of_song = self.end_of_song.saturating_sub(1);
     }
   }
 }
@@ -99,6 +155,20 @@ mod tests {
           end_of_song: end_seed % len,
         }
       })
+  }
+
+  fn any_sequence_index_strategy(sequence: Sequence) -> impl Strategy<Value = usize> {
+    let len = sequence.pattern_refs.len();
+    (0..len).prop_map(move |idx| idx)
+  }
+
+  fn sequence_with_index_strategy(max_size: usize) -> impl Strategy<Value = (Sequence, usize)> {
+    sequence_strategy(max_size).prop_flat_map(|sequence| {
+      (
+        Just(sequence.clone()),
+        any_sequence_index_strategy(sequence),
+      )
+    })
   }
 
   // Condition for when the focused pattern cannot move up
@@ -131,6 +201,14 @@ mod tests {
     let same_length = sequence.pattern_refs.len() == original.pattern_refs.len();
 
     (idx_change || end_change) && same_length
+  }
+
+  fn title_count(sequence: &Sequence, title: &str) -> usize {
+    sequence
+      .pattern_refs
+      .iter()
+      .filter(|pattern_ref| pattern_ref.as_str() == title)
+      .count()
   }
 
   proptest! {
@@ -281,6 +359,100 @@ mod tests {
       let duplicated_index = original_focus + 1;
       let duplicated_is_in_song = duplicated_index <= sequence.end_of_song;
       prop_assert_eq!(duplicated_is_in_song, focused_was_in_song);
+    }
+
+    #[test]
+    fn soft_delete_removes_focused_reference_when_pattern_has_multiple_references(
+      (mut sequence, dup_index) in sequence_with_index_strategy(100)
+    ) {
+      let title = sequence.pattern_refs[sequence.focus_index].clone();
+
+      // Ensure that the focused pattern has multiple references
+      sequence.insert_pattern_ref_at(dup_index, title.clone());
+
+      let length_before = sequence.pattern_refs.len();
+      let count_before = title_count(&sequence, &title);
+      prop_assert!(count_before > 1);
+      let focus_before = sequence.focus_index;
+      let was_last_entry = focus_before == sequence.pattern_refs.len() - 1;
+
+      prop_assume!(!(sequence.focus_index == 0 && sequence.end_of_song == 0));
+
+      sequence.soft_delete_focused_pattern_ref();
+
+      let length_after = sequence.pattern_refs.len();
+      let count_after = title_count(&sequence, &title);
+      let focus_after = sequence.focus_index;
+
+      prop_assert_eq!(length_after, length_before - 1);
+      prop_assert_eq!(count_after, count_before - 1);
+
+      if was_last_entry {
+        prop_assert_eq!(focus_after, length_after.saturating_sub(1));
+      } else {
+        prop_assert_eq!(focus_after, focus_before);
+      }
+    }
+
+    #[test]
+    fn soft_delete_does_not_move_from_song_when_song_has_only_one_entry(
+      mut sequence in sequence_strategy(20)
+    ) {
+      sequence.focus_index = 0;
+      sequence.end_of_song = 0;
+
+      let sequence_before = sequence.clone();
+
+      sequence.soft_delete_focused_pattern_ref();
+
+      prop_assert_eq!(sequence, sequence_before);
+    }
+
+    #[test]
+    fn soft_delete_moves_single_reference_from_song_to_end_of_pool(
+      mut sequence in sequence_strategy(20)
+    ) {
+      let title = sequence.pattern_refs[sequence.focus_index].clone();
+
+      // Ensure that the focused entry is in the song
+      prop_assume!(sequence.focus_index <= sequence.end_of_song);
+
+      // Ensure that it's not the only entry in the song
+      prop_assume!(!(sequence.focus_index == 0 && sequence.end_of_song == 0));
+
+      // Ensure that it's the only reference to this pattern
+      prop_assume!(title_count(&sequence, &title) == 1);
+
+      let length_before = sequence.pattern_refs.len();
+
+      sequence.soft_delete_focused_pattern_ref();
+
+      let length_after = sequence.pattern_refs.len();
+      let count_after = title_count(&sequence, &title);
+      let position_after = sequence.pattern_refs.iter().position(|t| t == &title).unwrap();
+
+      prop_assert_eq!(length_after, length_before);
+      prop_assert_eq!(count_after, 1);
+      prop_assert_eq!(position_after, length_after - 1);
+    }
+
+    #[test]
+    fn soft_delete_does_not_move_single_reference_when_already_in_pool(
+      mut sequence in sequence_strategy(20)
+    ) {
+      let title = sequence.pattern_refs[sequence.focus_index].clone();
+
+      // Ensure that the focused entry is in the pool
+      prop_assume!(sequence.focus_index > sequence.end_of_song);
+
+      // Ensure that it's the only reference to this pattern
+      prop_assume!(title_count(&sequence, &title) == 1);
+
+      let sequence_before = sequence.clone();
+
+      sequence.soft_delete_focused_pattern_ref();
+
+      prop_assert_eq!(sequence, sequence_before);
     }
   }
 }
