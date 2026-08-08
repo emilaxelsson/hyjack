@@ -454,5 +454,20 @@ mod tests {
 
       prop_assert_eq!(sequence, sequence_before);
     }
+
+    #[test]
+    fn duplicate_followed_by_soft_delete_does_nothing(
+      mut sequence in sequence_strategy(20)
+    ) {
+      let sequence_before = sequence.clone();
+
+      // Duplicate the focused pattern reference
+      sequence.duplicate_focused_pattern_ref();
+
+      // Soft delete the duplicated pattern reference
+      sequence.soft_delete_focused_pattern_ref();
+
+      prop_assert_eq!(sequence.pattern_refs, sequence_before.pattern_refs);
+    }
   }
 }
