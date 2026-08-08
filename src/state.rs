@@ -134,11 +134,7 @@ impl AppState {
   // This has linear time complexity. Maybe switch to hash map if this becomes a
   // performance issue.
   pub fn get_current_pattern_index(&self) -> usize {
-    let title = self
-      .sequence
-      .pattern_refs
-      .get(self.sequence.focus_index)
-      .unwrap();
+    let title = self.sequence.titles.get(self.sequence.focus_index).unwrap();
 
     self
       .patterns
@@ -236,7 +232,7 @@ impl AppState {
       .unwrap();
     pattern.title = normalized.clone();
 
-    self.sequence.pattern_refs.iter_mut().for_each(|title| {
+    self.sequence.titles.iter_mut().for_each(|title| {
       if *title == old_title {
         *title = normalized.clone();
       }
@@ -383,7 +379,7 @@ pub fn default_state() -> AppState {
     ])
     .unwrap(),
     sequence: Sequence {
-      pattern_refs: vec![
+      titles: vec![
         "Intro A".to_string(),
         "Intro B".to_string(),
         "Verse 1 A".to_string(),

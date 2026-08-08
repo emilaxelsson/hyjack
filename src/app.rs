@@ -99,7 +99,7 @@ fn handle_event(
         *optional_dialog = Some(pattern_title_dialog(state));
       }
       KeyCode::Char('d') if key.modifiers == KeyModifiers::CONTROL => {
-        state.sequence.duplicate_focused_pattern_ref();
+        state.sequence.duplicate_focused_title();
         scroll_focused_sequence_into_view(
           &state.sequence,
           sequence_scroll_state,
@@ -107,7 +107,7 @@ fn handle_event(
         );
       }
       KeyCode::Delete => {
-        state.sequence.soft_delete_focused_pattern_ref();
+        state.sequence.soft_delete_focused_title();
         scroll_focused_sequence_into_view(
           &state.sequence,
           sequence_scroll_state,
@@ -119,9 +119,9 @@ fn handle_event(
       }
       KeyCode::Up => {
         if key.modifiers == KeyModifiers::CONTROL {
-          state.sequence.move_pattern_up();
+          state.sequence.move_title_up();
         } else {
-          state.sequence.to_previous_pattern();
+          state.sequence.to_previous_title();
         }
         scroll_focused_sequence_into_view(
           &state.sequence,
@@ -131,9 +131,9 @@ fn handle_event(
       }
       KeyCode::Down => {
         if key.modifiers == KeyModifiers::CONTROL {
-          state.sequence.move_pattern_down();
+          state.sequence.move_title_down();
         } else {
-          state.sequence.to_next_pattern();
+          state.sequence.to_next_title();
         }
         scroll_focused_sequence_into_view(
           &state.sequence,

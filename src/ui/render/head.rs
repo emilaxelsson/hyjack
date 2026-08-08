@@ -17,7 +17,7 @@ pub fn draw_head(frame: &mut Frame, state: &AppState, area: Rect) -> Rect {
     state.song_title,
     state
       .sequence
-      .pattern_refs
+      .titles
       .get(state.player.sequence_index)
       .unwrap(),
   );

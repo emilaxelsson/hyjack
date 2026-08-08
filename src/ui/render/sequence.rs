@@ -104,13 +104,7 @@ pub fn draw_sequence_panel(
   is_active: bool,
   sequence_scroll_state: &mut ScrollViewState,
 ) -> (Rect, u16) {
-  let width = sequence
-    .pattern_refs
-    .iter()
-    .map(|s| s.len())
-    .max()
-    .unwrap_or(0) as u16
-    + 1;
+  let width = sequence.titles.iter().map(|s| s.len()).max().unwrap_or(0) as u16 + 1;
   let width = width.max(15) + 1;
 
   let [sequence_panel_area, _gap, remaining_area] = Layout::default()
@@ -126,7 +120,7 @@ pub fn draw_sequence_panel(
     frame,
     sequence_panel_area,
     "Sequence",
-    &sequence.pattern_refs,
+    &sequence.titles,
     sequence.focus_index,
     sequence.end_of_song,
     is_active,
