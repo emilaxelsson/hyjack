@@ -1,7 +1,8 @@
 //! This module contains the `Sequence` struct, which is used to represent a sequence of
 //! patterns in a song.
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, PartialEq)]
+#[cfg_attr(test, derive(Clone))]
 pub struct Sequence {
   pub titles: Vec<String>,
   pub focus_index: usize,
