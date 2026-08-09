@@ -2,6 +2,8 @@ use std::num::{NonZero, NonZeroU8};
 
 use nonempty::NonEmpty;
 
+use crate::utils::{nonzero_len, sub_one};
+
 pub struct Note {
   pub pitch: u8,
   pub instrument: u8,
@@ -18,6 +20,11 @@ pub struct Pattern {
   pub tracks: NonEmpty<Track>,
   pub num_rows: NonZero<usize>,
   pub rows_per_beat: NonZeroU8,
+}
+
+pub struct PatternBounds {
+  pub num_rows: NonZero<usize>,
+  pub num_tracks: NonZero<usize>,
 }
 
 pub enum TrackColumn {
@@ -51,4 +58,25 @@ pub struct Focus {
   pub pattern_row_index: usize,
   pub pattern_track_index: usize,
   pub track_column: TrackColumn,
+}
+
+impl Pattern {
+  pub fn bounds(&self) -> PatternBounds {
+    PatternBounds {
+      num_rows: self.num_rows,
+      num_tracks: nonzero_len(&self.tracks),
+    }
+  }
+}
+
+impl Focus {
+  /// Ensure that the focus is within the bounds of the given pattern.
+  pub fn refocus(&mut self, bounds: &PatternBounds) {
+    if self.pattern_row_index >= bounds.num_rows.get() {
+      self.pattern_row_index = sub_one(bounds.num_rows);
+    }
+    if self.pattern_track_index >= bounds.num_tracks.get() {
+      self.pattern_track_index = sub_one(bounds.num_tracks);
+    }
+  }
 }

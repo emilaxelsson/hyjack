@@ -189,7 +189,7 @@ pub fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Result<
       }
 
       if mode == UIMode::EditPattern && mode_before != UIMode::EditPattern {
-        state.refocus_pattern_cursor();
+        state.refocus_pattern();
       }
     }
   }

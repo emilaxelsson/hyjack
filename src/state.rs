@@ -10,7 +10,7 @@ use nonempty::NonEmpty;
 use crate::state::name::normalize_and_validate_name;
 use crate::state::pattern::{Focus, Note, Pattern, Track, TrackColumn};
 use crate::state::sequence::Sequence;
-use crate::utils::{nonzero_len, sub_one};
+use crate::utils::nonzero_len;
 
 pub struct PlayerTime {
   pub hour: u8,
@@ -64,19 +64,6 @@ impl AppState {
     self.patterns.get(self.get_current_pattern_index()).unwrap()
   }
 
-  /// Ensure that the pattern cursor (row and column) is within the bounds of the current
-  /// pattern.
-  pub fn refocus_pattern_cursor(&mut self) {
-    let current_pattern = self.get_current_pattern();
-    let number_of_tracks = nonzero_len(&current_pattern.tracks);
-    if self.focus.pattern_row_index >= current_pattern.num_rows.get() {
-      self.focus.pattern_row_index = sub_one(current_pattern.num_rows);
-    }
-    if self.focus.pattern_track_index >= number_of_tracks.get() {
-      self.focus.pattern_track_index = sub_one(number_of_tracks);
-    }
-  }
-
   /// Move to the previous row in the current pattern.
   pub fn pattern_to_previous_row(&mut self) {
     if self.focus.pattern_row_index > 0 {
@@ -106,6 +93,12 @@ impl AppState {
         self.focus.track_column = self.focus.track_column.previous();
       }
     }
+  }
+
+  /// Ensure that the pattern focus is within the bounds of the current pattern.
+  pub fn refocus_pattern(&mut self) {
+    let current_pattern = self.get_current_pattern();
+    self.focus.refocus(&current_pattern.bounds());
   }
 
   /// Move to the next editable field in the current pattern row.
