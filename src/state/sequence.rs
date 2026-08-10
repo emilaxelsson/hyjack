@@ -158,20 +158,6 @@ mod tests {
       })
   }
 
-  fn any_sequence_index_strategy(sequence: Sequence) -> impl Strategy<Value = usize> {
-    let len = sequence.titles.len();
-    (0..len).prop_map(move |idx| idx)
-  }
-
-  fn sequence_with_index_strategy(max_size: usize) -> impl Strategy<Value = (Sequence, usize)> {
-    sequence_strategy(max_size).prop_flat_map(|sequence| {
-      (
-        Just(sequence.clone()),
-        any_sequence_index_strategy(sequence),
-      )
-    })
-  }
-
   // Condition for when the focused title cannot move up
   fn blocked_up(sequence: &Sequence) -> bool {
     sequence.focus_index == 0
@@ -364,7 +350,10 @@ mod tests {
 
     #[test]
     fn soft_delete_removes_focused_title_when_it_has_multiple_occurrences(
-      (mut sequence, dup_index) in sequence_with_index_strategy(100)
+      (mut sequence, dup_index) in sequence_strategy(100).prop_flat_map(|sequence| {
+        let len = sequence.titles.len();
+        (Just(sequence), 0..len)
+      })
     ) {
       let title = sequence.titles[sequence.focus_index].clone();
 
