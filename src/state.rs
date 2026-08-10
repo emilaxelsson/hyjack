@@ -1,3 +1,4 @@
+pub mod instruments;
 pub mod name;
 pub mod pattern;
 pub mod sequence;
@@ -7,6 +8,7 @@ use std::num::{NonZero, NonZeroU8};
 use anyhow::Result;
 use nonempty::NonEmpty;
 
+use crate::state::instruments::Instruments;
 use crate::state::name::normalize_and_validate_name;
 use crate::state::pattern::{Focus, Note, Pattern, Track, TrackColumn};
 use crate::state::sequence::Sequence;
@@ -28,6 +30,7 @@ pub struct AppState {
   pub song_title: String,
   pub patterns: NonEmpty<Pattern>,
   pub sequence: Sequence,
+  pub instruments: Instruments,
   pub focus: Focus,
   pub player: PlayerState,
 }
@@ -252,6 +255,13 @@ pub fn default_state() -> AppState {
       focus_index: 1,
       end_of_song: 0,
     },
+    instruments: Instruments::DirectMapped(vec![
+      "Hihat".to_string(),
+      "Ride".to_string(),
+      "Kick".to_string(),
+      "Snare".to_string(),
+      "Crash".to_string(),
+    ]),
     focus: Focus {
       row_index: 0,
       track_index: 0,

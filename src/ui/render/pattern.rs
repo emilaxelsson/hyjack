@@ -4,7 +4,7 @@ use ratatui::style::{Style, Stylize};
 use ratatui::widgets::{Block, Cell, Row, Table};
 use tui_scrollview::{ScrollView, ScrollViewState, ScrollbarVisibility};
 
-use crate::state::pattern::Pattern;
+use crate::state::pattern::{Note, Pattern};
 use crate::state::*;
 use crate::ui::common::{get_absolute_position, rect_from_origin};
 use crate::ui::render::style::{
@@ -107,7 +107,17 @@ fn is_focus_visible(
     && focus_position.y < scroll_offset.y.saturating_add(viewport_height)
 }
 
-fn draw_pattern_details(frame: &mut Frame<'_>, current_pattern: &Pattern, area: Rect) {
+fn draw_pattern_details(
+  frame: &mut Frame<'_>,
+  pattern: &Pattern,
+  note: Option<Note>,
+  instr_name: &str,
+  area: Rect,
+) {
+  let instr_ix = note
+    .as_ref()
+    .map(|n| n.instrument.to_string())
+    .unwrap_or("-".to_string());
   let widths = vec![
     Constraint::Length(7),
     Constraint::Length(7),
@@ -116,12 +126,12 @@ fn draw_pattern_details(frame: &mut Frame<'_>, current_pattern: &Pattern, area: 
   let rows = vec![
     Row::new(vec![
       Cell::from("Note").style(Style::default().bold()),
-      Cell::from("2/Hihat"),
+      Cell::from(format!("{}/{}", instr_ix, instr_name)),
     ]),
     Row::new(vec![
       Cell::from("Pattern").style(Style::default().bold()),
-      Cell::from(format!("{} rows", current_pattern.num_rows.get())),
-      Cell::from(format!("RPB {:2}", current_pattern.rows_per_beat)),
+      Cell::from(format!("{} rows", pattern.num_rows.get())),
+      Cell::from(format!("RPB {:2}", pattern.rows_per_beat)),
     ]),
   ];
   let table = Table::new(rows, widths).column_spacing(2);
@@ -215,8 +225,19 @@ pub fn draw_pattern_panel(
     let cursor_pos = get_absolute_position(notes_area, scroll_offset, focus_position);
     frame.set_cursor_position(cursor_pos);
   }
+  let current_note = current_pattern.get_note(state.focus.row_index, state.focus.track_index);
+  let current_instrument = current_note
+    .clone()
+    .and_then(|note| state.instruments.get_name(note.instrument))
+    .unwrap_or("-".to_string());
 
-  draw_pattern_details(frame, current_pattern, details_area);
+  draw_pattern_details(
+    frame,
+    current_pattern,
+    current_note,
+    &current_instrument,
+    details_area,
+  );
 
   viewport_size
 }

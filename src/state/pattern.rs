@@ -2,11 +2,13 @@ use std::num::{NonZero, NonZeroU8};
 
 use nonempty::NonEmpty;
 
+use crate::state::instruments::InstrumentIndex;
 use crate::utils::{nonzero_len, sub_one};
 
+#[derive(Clone)]
 pub struct Note {
   pub pitch: u8,
-  pub instrument: u8,
+  pub instrument: InstrumentIndex,
   pub velocity: u8,
 }
 
@@ -69,6 +71,14 @@ impl Pattern {
       num_rows: self.num_rows,
       num_tracks: nonzero_len(&self.tracks),
     }
+  }
+
+  pub fn get_note(&self, row_index: usize, track_index: usize) -> Option<Note> {
+    if row_index >= self.num_rows.get() || track_index >= self.tracks.len() {
+      return None;
+    }
+    let track = &self.tracks[track_index];
+    track.notes[row_index].clone()
   }
 }
 
