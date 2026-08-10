@@ -69,7 +69,7 @@ impl AppState {
     self.focus.refocus(&current_pattern.bounds());
   }
 
-  pub fn pattern_rename_current(&mut self, new_title: String) -> Result<()> {
+  pub fn rename_focused_pattern(&mut self, new_title: String) -> Result<()> {
     let normalized = normalize_and_validate_name("Pattern title", &new_title)?;
     let old_title = self.get_current_pattern().title.clone();
     let current_index = self.get_current_pattern_index();

@@ -28,7 +28,7 @@ fn pattern_title_dialog(state: &AppState) -> InputDialog<AppState> {
     cursor_index: current_title.chars().count(),
     input: current_title,
     error: None,
-    on_submit: AppState::pattern_rename_current,
+    on_submit: AppState::rename_focused_pattern,
   }
 }
 
