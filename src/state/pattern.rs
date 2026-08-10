@@ -55,8 +55,8 @@ impl TrackColumn {
 }
 
 pub struct Focus {
-  pub pattern_row_index: usize,
-  pub pattern_track_index: usize,
+  pub row_index: usize,
+  pub track_index: usize,
   pub track_column: TrackColumn,
 }
 
@@ -72,11 +72,11 @@ impl Pattern {
 impl Focus {
   /// Ensure that the focus is within the bounds of the given pattern.
   pub fn refocus(&mut self, bounds: &PatternBounds) {
-    if self.pattern_row_index >= bounds.num_rows.get() {
-      self.pattern_row_index = sub_one(bounds.num_rows);
+    if self.row_index >= bounds.num_rows.get() {
+      self.row_index = sub_one(bounds.num_rows);
     }
-    if self.pattern_track_index >= bounds.num_tracks.get() {
-      self.pattern_track_index = sub_one(bounds.num_tracks);
+    if self.track_index >= bounds.num_tracks.get() {
+      self.track_index = sub_one(bounds.num_tracks);
     }
   }
 }

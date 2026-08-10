@@ -17,11 +17,11 @@ use crate::ui::widgets::title_block::TitleBlock;
 
 /// Compute the logical position of the current focus in the pattern area.
 fn pattern_focus_position(state: &AppState) -> Position {
-  let cursor_x_offset = track_start_offset(state.focus.pattern_track_index)
-    + track_column_offset(&state.focus.track_column);
+  let cursor_x_offset =
+    track_start_offset(state.focus.track_index) + track_column_offset(&state.focus.track_column);
   Position {
     x: cursor_x_offset as u16,
-    y: state.focus.pattern_row_index as u16,
+    y: state.focus.row_index as u16,
   }
 }
 
@@ -34,7 +34,7 @@ pub fn scroll_cursor_into_view(
   let mut scroll_offset = pattern_scroll_state.offset();
   let viewport_width = viewport_size.width.max(1);
   let viewport_height = viewport_size.height.max(1);
-  let current_track_start = track_start_offset(state.focus.pattern_track_index) as u16;
+  let current_track_start = track_start_offset(state.focus.track_index) as u16;
   let current_track_end = current_track_start + TRACK_COLUMN_WIDTH.saturating_sub(1);
   let last_visible_row = scroll_offset
     .y
@@ -180,7 +180,7 @@ pub fn draw_pattern_panel(
 
   let focused_row_area = Rect {
     x: 0,
-    y: state.focus.pattern_row_index as u16,
+    y: state.focus.row_index as u16,
     width: content_width,
     height: 1,
   };
