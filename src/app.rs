@@ -57,43 +57,46 @@ fn handle_event(
   }
 
   match mode {
-    UIMode::EditPattern => match key.code {
-      KeyCode::F(2) => {
-        *optional_dialog = Some(pattern_title_dialog(state));
+    UIMode::EditPattern => {
+      let bounds = state.get_current_pattern().bounds();
+      match key.code {
+        KeyCode::F(2) => {
+          *optional_dialog = Some(pattern_title_dialog(state));
+        }
+        KeyCode::Tab => {
+          *mode = UIMode::EditSequence;
+        }
+        KeyCode::Up if key.modifiers == KeyModifiers::CONTROL => {
+          pattern_scroll_state.scroll_up();
+        }
+        KeyCode::Up => {
+          state.focus.to_previous_row();
+          scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
+        }
+        KeyCode::Down if key.modifiers == KeyModifiers::CONTROL => {
+          pattern_scroll_state.scroll_down();
+        }
+        KeyCode::Down => {
+          state.focus.to_next_row(bounds);
+          scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
+        }
+        KeyCode::Left if key.modifiers == KeyModifiers::CONTROL => {
+          pattern_scroll_state.scroll_left();
+        }
+        KeyCode::Left => {
+          state.focus.to_previous_track_field();
+          scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
+        }
+        KeyCode::Right if key.modifiers == KeyModifiers::CONTROL => {
+          pattern_scroll_state.scroll_right();
+        }
+        KeyCode::Right => {
+          state.focus.to_next_track_field(bounds);
+          scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
+        }
+        _ => {}
       }
-      KeyCode::Tab => {
-        *mode = UIMode::EditSequence;
-      }
-      KeyCode::Up if key.modifiers == KeyModifiers::CONTROL => {
-        pattern_scroll_state.scroll_up();
-      }
-      KeyCode::Up => {
-        state.pattern_to_previous_row();
-        scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
-      }
-      KeyCode::Down if key.modifiers == KeyModifiers::CONTROL => {
-        pattern_scroll_state.scroll_down();
-      }
-      KeyCode::Down => {
-        state.pattern_to_next_row();
-        scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
-      }
-      KeyCode::Left if key.modifiers == KeyModifiers::CONTROL => {
-        pattern_scroll_state.scroll_left();
-      }
-      KeyCode::Left => {
-        state.pattern_to_previous_track_field();
-        scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
-      }
-      KeyCode::Right if key.modifiers == KeyModifiers::CONTROL => {
-        pattern_scroll_state.scroll_right();
-      }
-      KeyCode::Right => {
-        state.pattern_to_next_track_field();
-        scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
-      }
-      _ => {}
-    },
+    }
     UIMode::EditSequence => match key.code {
       KeyCode::F(2) => {
         *optional_dialog = Some(pattern_title_dialog(state));
