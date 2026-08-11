@@ -1,6 +1,7 @@
 use std::any::Any;
-use std::io;
 use std::panic::{self, AssertUnwindSafe};
+use std::path::PathBuf;
+use std::{env, io};
 
 use anyhow::Result;
 use crossterm::cursor::Show;
@@ -69,6 +70,22 @@ fn panic_payload_to_string(payload: &(dyn Any + Send)) -> String {
 }
 
 fn main() -> Result<()> {
+  let mut args = env::args_os();
+  let program_name = args
+    .next()
+    .and_then(|name| name.into_string().ok())
+    .unwrap_or_else(|| "dracker".to_string());
+  let song_file_path = match args.next() {
+    Some(path) => PathBuf::from(path),
+    None => {
+      anyhow::bail!("usage: {program_name} <song-file-path>");
+    }
+  };
+
+  if args.next().is_some() {
+    anyhow::bail!("usage: {program_name} <song-file-path>");
+  }
+
   install_panic_hook();
   enable_raw_mode()?;
   let mut stdout = io::stdout();
@@ -77,13 +94,14 @@ fn main() -> Result<()> {
   let backend = CrosstermBackend::new(stdout);
   let mut terminal = Terminal::new(backend)?;
 
-  let result = match panic::catch_unwind(AssertUnwindSafe(|| run_app(&mut terminal))) {
-    Ok(result) => result,
-    Err(payload) => Err(anyhow::anyhow!(
-      "application panicked: {}",
-      panic_payload_to_string(payload.as_ref())
-    )),
-  };
+  let result =
+    match panic::catch_unwind(AssertUnwindSafe(|| run_app(&mut terminal, &song_file_path))) {
+      Ok(result) => result,
+      Err(payload) => Err(anyhow::anyhow!(
+        "application panicked: {}",
+        panic_payload_to_string(payload.as_ref())
+      )),
+    };
 
   // `restore` has better error handling than `restore_fallback` which is called in `Drop`
   cleanup.restore(&mut terminal)?;

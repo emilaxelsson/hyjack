@@ -1,25 +1,25 @@
 use std::num::{NonZero, NonZeroU8};
 
 use nonempty::NonEmpty;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::state::instruments::InstrumentIndex;
 use crate::utils::{nonzero_len, sub_one};
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Note {
   pub pitch: u8,
   pub instrument: InstrumentIndex,
   pub velocity: u8,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct Track {
   pub name: String,
   pub notes: NonEmpty<Option<Note>>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct Pattern {
   pub title: String,
   pub tracks: NonEmpty<Track>,
@@ -33,7 +33,7 @@ pub struct PatternBounds {
   pub num_tracks: NonZero<usize>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub enum TrackColumn {
   Note,
   Instrument,
@@ -61,7 +61,7 @@ impl TrackColumn {
   }
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Focus {
   pub row_index: usize,
   pub track_index: usize,

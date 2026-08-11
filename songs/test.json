@@ -1,0 +1,282 @@
+{
+  "dracker_version": "0.2",
+  "song_title": "My song",
+  "patterns": [
+    {
+      "title": "Intro A",
+      "tracks": [
+        {
+          "name": "Track 1",
+          "notes": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        }
+      ],
+      "num_rows": 8,
+      "rows_per_beat": 4
+    },
+    {
+      "title": "Intro B",
+      "tracks": [
+        {
+          "name": "Hat/ride",
+          "notes": [
+            {
+              "pitch": 36,
+              "instrument": 2,
+              "velocity": 20
+            },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "name": "Kick",
+          "notes": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "name": "Snare",
+          "notes": [
+            null,
+            null,
+            null,
+            null,
+            {
+              "pitch": 36,
+              "instrument": 2,
+              "velocity": 20
+            },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "name": "Cymbals",
+          "notes": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        }
+      ],
+      "num_rows": 16,
+      "rows_per_beat": 4
+    },
+    {
+      "title": "Verse 1 A",
+      "tracks": [
+        {
+          "name": "Track 1",
+          "notes": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        }
+      ],
+      "num_rows": 8,
+      "rows_per_beat": 4
+    },
+    {
+      "title": "Verse 1 B",
+      "tracks": [
+        {
+          "name": "Track 1",
+          "notes": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        }
+      ],
+      "num_rows": 8,
+      "rows_per_beat": 4
+    },
+    {
+      "title": "Verse 1 C",
+      "tracks": [
+        {
+          "name": "Track 1",
+          "notes": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        }
+      ],
+      "num_rows": 8,
+      "rows_per_beat": 4
+    },
+    {
+      "title": "Verse 1 D",
+      "tracks": [
+        {
+          "name": "Track 1",
+          "notes": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        }
+      ],
+      "num_rows": 8,
+      "rows_per_beat": 4
+    },
+    {
+      "title": "Bridge A",
+      "tracks": [
+        {
+          "name": "Track 1",
+          "notes": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        }
+      ],
+      "num_rows": 8,
+      "rows_per_beat": 4
+    },
+    {
+      "title": "Bridge B",
+      "tracks": [
+        {
+          "name": "Track 1",
+          "notes": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        }
+      ],
+      "num_rows": 8,
+      "rows_per_beat": 4
+    }
+  ],
+  "sequence": {
+    "titles": [
+      "Intro A",
+      "Intro B",
+      "Verse 1 A",
+      "Verse 1 B",
+      "Verse 1 C",
+      "Verse 1 D",
+      "Intro B",
+      "Bridge A"
+    ],
+    "focus_index": 1,
+    "end_of_song": 1
+  },
+  "instruments": {
+    "DirectMapped": [
+      "Hihat",
+      "Ride",
+      "Kick",
+      "Snare",
+      "Crash"
+    ]
+  },
+  "focus": {
+    "row_index": 4,
+    "track_index": 2,
+    "track_column": "Note"
+  },
+  "player": {
+    "time": {
+      "hour": 0,
+      "minute": 2,
+      "second": 32,
+      "millis": 0
+    },
+    "sequence_index": 0
+  }
+}

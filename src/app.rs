@@ -1,5 +1,5 @@
 use std::io;
-use std::path::PathBuf;
+use std::path::Path;
 use std::time::Duration;
 
 use anyhow::Result;
@@ -152,9 +152,11 @@ fn handle_event(
   Ok(false)
 }
 
-pub fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Result<()> {
-  let song_file_path = PathBuf::from("song.json");
-  let mut state = AppState::default();
+pub fn run_app(
+  terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+  song_file_path: &Path,
+) -> Result<()> {
+  let mut state = AppState::load_from_file(song_file_path)?;
   let mut mode = UIMode::EditPattern;
   let mut dialog: Option<InputDialog<AppState>> = None;
   let mut sequence_scroll_state = ScrollViewState::default();
@@ -183,7 +185,7 @@ pub fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Result<
         && key.code == KeyCode::Char('s')
         && key.modifiers == KeyModifiers::CONTROL
       {
-        state.save_to_file(&song_file_path)?;
+        state.save_to_file(song_file_path)?;
         continue;
       }
 
