@@ -1,6 +1,6 @@
 use std::io;
 use std::path::Path;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use anyhow::Result;
 use crossterm::event::{self, Event, KeyCode, KeyModifiers};
@@ -15,10 +15,30 @@ use crate::ui::component::input_dialog::InputDialog;
 use crate::ui::render::pattern::scroll_cursor_into_view;
 use crate::ui::render::{draw_ui, scroll_focused_sequence_into_view};
 
+const SAVE_BANNER_TIMEOUT: Duration = Duration::from_millis(1400);
+
 #[derive(Clone, Copy)]
 struct Viewports {
   sequence_height: u16,
   pattern_size: Size,
+}
+
+struct Banner {
+  text: String,
+  expires_at: Instant,
+}
+
+impl Banner {
+  fn with_timeout(text: String, timeout: Duration) -> Self {
+    Self {
+      text,
+      expires_at: Instant::now() + timeout,
+    }
+  }
+
+  fn is_expired(&self) -> bool {
+    Instant::now() >= self.expires_at
+  }
 }
 
 fn pattern_title_dialog(state: &AppState) -> InputDialog<AppState> {
@@ -159,6 +179,7 @@ pub fn run_app(
   let mut state = AppState::load_from_file(song_file_path)?;
   let mut mode = UIMode::EditPattern;
   let mut dialog: Option<InputDialog<AppState>> = None;
+  let mut banner: Option<Banner> = None;
   let mut sequence_scroll_state = ScrollViewState::default();
   let mut pattern_scroll_state = ScrollViewState::default();
   let mut viewports = Viewports {
@@ -167,6 +188,10 @@ pub fn run_app(
   };
 
   loop {
+    if banner.as_ref().is_some_and(Banner::is_expired) {
+      banner = None;
+    }
+
     terminal.draw(|frame| {
       (viewports.sequence_height, viewports.pattern_size) = draw_ui(
         frame,
@@ -174,6 +199,7 @@ pub fn run_app(
         mode,
         &mut sequence_scroll_state,
         &mut pattern_scroll_state,
+        banner.as_ref().map(|banner| banner.text.as_str()),
         dialog.as_ref(),
       );
     })?;
@@ -186,6 +212,10 @@ pub fn run_app(
         && key.modifiers == KeyModifiers::CONTROL
       {
         state.save_to_file(song_file_path)?;
+        banner = Some(Banner::with_timeout(
+          format!("Saved {}", song_file_path.display()),
+          SAVE_BANNER_TIMEOUT,
+        ));
         continue;
       }
 

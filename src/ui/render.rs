@@ -15,7 +15,8 @@ use crate::ui::component::input_dialog::InputDialog;
 use crate::ui::render::head::draw_head;
 use crate::ui::render::pattern::draw_pattern_panel;
 use crate::ui::render::sequence::draw_sequence_panel;
-use crate::ui::render::style::default_block;
+use crate::ui::render::style::{BANNER_STYLE, default_block};
+use crate::ui::widgets::banner::Banner;
 
 pub fn draw_ui(
   frame: &mut Frame,
@@ -23,6 +24,7 @@ pub fn draw_ui(
   mode: UIMode,
   sequence_scroll_state: &mut ScrollViewState,
   pattern_scroll_state: &mut ScrollViewState,
+  optional_banner: Option<&str>,
   optional_dialog: Option<&InputDialog<AppState>>,
 ) -> (u16, Size) {
   // Set default colors for the entire frame
@@ -49,6 +51,10 @@ pub fn draw_ui(
 
   if let Some(dialog) = optional_dialog {
     dialog.draw(frame);
+  }
+
+  if let Some(text) = optional_banner {
+    frame.render_widget(Banner::new(text).style(BANNER_STYLE), frame.area());
   }
 
   (sequence_viewport_height, pattern_viewport_size)
