@@ -154,12 +154,12 @@ pub fn draw_pattern_panel(
     .sequence
     .titles
     .get(state.sequence.focus_index)
-    .unwrap();
+    .expect("Sequence focus index is out of bounds");
   let current_pattern = state
     .patterns
     .iter()
     .find(|p| p.title == *current_pattern_title)
-    .unwrap();
+    .unwrap_or_else(|| panic!("Pattern not found: {}", current_pattern_title));
 
   let panel_block = TitleBlock::new()
     .title(current_pattern_title.clone())

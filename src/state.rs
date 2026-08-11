@@ -63,13 +63,17 @@ impl AppState {
   // This has linear time complexity. Maybe switch to hash map if this becomes a
   // performance issue.
   pub fn get_current_pattern_index(&self) -> usize {
-    let title = self.sequence.titles.get(self.sequence.focus_index).unwrap();
+    let title = self
+      .sequence
+      .titles
+      .get(self.sequence.focus_index)
+      .expect("Sequence focus index is out of bounds");
 
     self
       .patterns
       .iter()
       .position(|p| p.title == *title)
-      .unwrap()
+      .unwrap_or_else(|| panic!("Pattern not found: {}", title))
   }
 
   pub fn get_current_pattern(&self) -> &Pattern {
