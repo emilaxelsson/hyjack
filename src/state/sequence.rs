@@ -1,8 +1,11 @@
 //! This module contains the `Sequence` struct, which is used to represent a sequence of
 //! patterns in a song.
 
+use serde::Serialize;
+
 #[derive(Debug, PartialEq)]
 #[cfg_attr(test, derive(Clone))]
+#[derive(Serialize)]
 pub struct Sequence {
   pub titles: Vec<String>,
   pub focus_index: usize,

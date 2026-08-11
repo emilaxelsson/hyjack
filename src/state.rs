@@ -4,15 +4,18 @@ pub mod pattern;
 pub mod sequence;
 
 use std::num::{NonZero, NonZeroU8};
+use std::path::Path;
 
 use anyhow::Result;
 use nonempty::NonEmpty;
+use serde::Serialize;
 
 use crate::state::instruments::Instruments;
 use crate::state::name::normalize_and_validate_name;
 use crate::state::pattern::{Focus, Note, Pattern, Track, TrackColumn};
 use crate::state::sequence::Sequence;
 
+#[derive(Serialize)]
 pub struct PlayerTime {
   pub hour: u8,
   pub minute: u8,
@@ -20,11 +23,13 @@ pub struct PlayerTime {
   pub millis: u16,
 }
 
+#[derive(Serialize)]
 pub struct PlayerState {
   pub time: PlayerTime,
   pub sequence_index: usize,
 }
 
+#[derive(Serialize)]
 pub struct AppState {
   pub dracker_version: String,
   pub song_title: String,
@@ -42,6 +47,12 @@ impl Default for AppState {
 }
 
 impl AppState {
+  pub fn save_to_file(&self, path: &Path) -> Result<()> {
+    let json = serde_json::to_string_pretty(self)?;
+    std::fs::write(path, json)?;
+    Ok(())
+  }
+
   pub fn rename_song(&mut self, new_title: String) -> Result<()> {
     let normalized = normalize_and_validate_name("Song title", &new_title)?;
     self.song_title = normalized;

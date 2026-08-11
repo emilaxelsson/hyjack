@@ -1,4 +1,5 @@
 use std::io;
+use std::path::PathBuf;
 use std::time::Duration;
 
 use anyhow::Result;
@@ -152,6 +153,7 @@ fn handle_event(
 }
 
 pub fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Result<()> {
+  let song_file_path = PathBuf::from("song.json");
   let mut state = AppState::default();
   let mut mode = UIMode::EditPattern;
   let mut dialog: Option<InputDialog<AppState>> = None;
@@ -176,6 +178,15 @@ pub fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Result<
 
     if event::poll(Duration::from_millis(100))? {
       let event = event::read()?;
+
+      if let Event::Key(key) = &event
+        && key.code == KeyCode::Char('s')
+        && key.modifiers == KeyModifiers::CONTROL
+      {
+        state.save_to_file(&song_file_path)?;
+        continue;
+      }
+
       let mode_before = mode;
       let quit = handle_event(
         &mut mode,

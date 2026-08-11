@@ -1,6 +1,9 @@
+use serde::Serialize;
+
 pub type InstrumentIndex = u8;
 pub type InstrumentName = String;
 
+#[derive(Serialize)]
 pub enum Instruments {
   DirectMapped(Vec<InstrumentName>),
 }
