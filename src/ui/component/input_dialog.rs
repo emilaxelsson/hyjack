@@ -4,11 +4,16 @@ use crossterm::event::{Event, KeyCode};
 use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Style};
-use ratatui::widgets::{Block, Borders, Clear, Paragraph, Widget};
+use ratatui::text::{Line, Text};
+use ratatui::widgets::Paragraph;
+use tui_popup::{Popup, PopupState, SizedWrapper};
 
 use crate::ui::common::{Component, ComponentAction};
 use crate::ui::render::style::DEFAULT_FG;
-use crate::ui::widgets::centered::Centered;
+
+const POPUP_BODY_WIDTH: u16 = 56;
+const POPUP_BODY_HEIGHT: u16 = 4;
+const POPUP_BORDER_WIDTH: u16 = 2;
 
 pub struct InputDialog<S> {
   pub title: String,
@@ -28,11 +33,8 @@ struct InputViewport {
 }
 
 impl<S> InputDialog<S> {
-  fn block(&self) -> Block<'_> {
-    Block::default()
-      .title(self.title.as_str())
-      .borders(Borders::ALL)
-      .style(Style::default().bg(Color::Rgb(20, 20, 20)).fg(DEFAULT_FG))
+  fn popup_inner_width_from_area(area: Rect) -> u16 {
+    area.width.saturating_sub(POPUP_BORDER_WIDTH)
   }
 
   /// Builds the horizontally scrolled view of the input line that fits inside the dialog,
@@ -67,45 +69,34 @@ impl<S> InputDialog<S> {
     }
   }
 
-  fn cursor_position(&self, area: Rect) -> (u16, u16) {
-    let inner = self.block().inner(area);
-    let viewport = self.input_viewport(inner.width);
+  fn cursor_position(&self, popup_area: Rect) -> (u16, u16) {
+    let viewport = self.input_viewport(Self::popup_inner_width_from_area(popup_area));
     let input_prefix_width = "> ".chars().count() as u16;
-    let cursor_x = inner
+    let cursor_x = popup_area
       .x
+      .saturating_add(1)
       .saturating_add(input_prefix_width)
       .saturating_add(viewport.cursor_index.saturating_sub(viewport.window_start) as u16);
-    let cursor_y = inner.y.saturating_add(1);
+    let cursor_y = popup_area.y.saturating_add(2);
     (cursor_x, cursor_y)
   }
-}
 
-impl<S> Widget for &InputDialog<S> {
-  fn render(self, area: Rect, buf: &mut ratatui::buffer::Buffer) {
-    Clear.render(area, buf);
+  fn popup_body<'a>(&'a self, viewport: &InputViewport) -> SizedWrapper<Paragraph<'a>> {
+    let mut lines = vec![
+      Line::from(self.label.as_str()),
+      Line::from(format!("> {}", viewport.display_input)),
+      Line::from("Enter to confirm, Esc to cancel"),
+    ];
+    let error_line = self.error.as_deref().unwrap_or_default();
+    lines.push(Line::styled(
+      error_line,
+      Style::default().fg(Color::Rgb(255, 120, 120)),
+    ));
 
-    let block = self.block();
-    let inner = block.inner(area);
-    let viewport = self.input_viewport(inner.width);
-
-    block.render(area, buf);
-    Paragraph::new(self.label.as_str()).render(Rect::new(inner.x, inner.y, inner.width, 1), buf);
-    Paragraph::new(format!("> {}", viewport.display_input)).render(
-      Rect::new(inner.x, inner.y.saturating_add(1), inner.width, 1),
-      buf,
-    );
-    Paragraph::new("Enter to confirm, Esc to cancel").render(
-      Rect::new(inner.x, inner.y.saturating_add(2), inner.width, 1),
-      buf,
-    );
-
-    if let Some(error) = self.error.as_deref() {
-      Paragraph::new(error)
-        .style(Style::default().fg(Color::Rgb(255, 120, 120)))
-        .render(
-          Rect::new(inner.x, inner.y.saturating_add(3), inner.width, 1),
-          buf,
-        );
+    SizedWrapper {
+      inner: Paragraph::new(Text::from(lines)),
+      width: POPUP_BODY_WIDTH as usize,
+      height: POPUP_BODY_HEIGHT as usize,
     }
   }
 }
@@ -114,12 +105,20 @@ impl<S> Component for InputDialog<S> {
   type State = S;
 
   fn draw(&self, frame: &mut Frame) {
-    let centered = Centered::new(60, 20, self);
-    let area = centered.inner_area(frame.area());
-    let cursor = self.cursor_position(area);
+    let popup_width = frame
+      .area()
+      .width
+      .min(POPUP_BODY_WIDTH.saturating_add(POPUP_BORDER_WIDTH));
+    let viewport = self.input_viewport(popup_width.saturating_sub(POPUP_BORDER_WIDTH));
+    let popup = Popup::new(self.popup_body(&viewport))
+      .title(self.title.as_str())
+      .style(Style::default().bg(Color::Rgb(20, 20, 20)).fg(DEFAULT_FG));
+    let mut popup_state = PopupState::default();
 
-    frame.render_widget(centered, frame.area());
-    frame.set_cursor_position(cursor);
+    frame.render_stateful_widget_ref(popup, frame.area(), &mut popup_state);
+    if let Some(area) = *popup_state.area() {
+      frame.set_cursor_position(self.cursor_position(area));
+    }
   }
 
   fn handle_event(&mut self, event: Event, state: &mut S) -> io::Result<ComponentAction> {
