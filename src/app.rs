@@ -7,12 +7,14 @@ use crossterm::event::{self, Event, KeyCode, KeyModifiers};
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::Size;
+use ratatui::style::Style;
 use tui_scrollview::ScrollViewState;
 
 use crate::state::AppState;
 use crate::ui::common::{Component, ComponentAction, UIMode};
 use crate::ui::component::input_dialog::InputDialog;
 use crate::ui::render::pattern::scroll_cursor_into_view;
+use crate::ui::render::style::{ERROR_BANNER_STYLE, INFO_BANNER_STYLE};
 use crate::ui::render::{draw_ui, scroll_focused_sequence_into_view};
 
 const SAVE_BANNER_TIMEOUT: Duration = Duration::from_millis(1400);
@@ -25,13 +27,15 @@ struct Viewports {
 
 struct Banner {
   text: String,
+  style: Style,
   expires_at: Instant,
 }
 
 impl Banner {
-  fn with_timeout(text: String, timeout: Duration) -> Self {
+  fn with_timeout(text: String, style: Style, timeout: Duration) -> Self {
     Self {
       text,
+      style,
       expires_at: Instant::now() + timeout,
     }
   }
@@ -199,7 +203,9 @@ pub fn run_app(
         mode,
         &mut sequence_scroll_state,
         &mut pattern_scroll_state,
-        banner.as_ref().map(|banner| banner.text.as_str()),
+        banner
+          .as_ref()
+          .map(|banner| (banner.text.as_str(), banner.style)),
         dialog.as_ref(),
       );
     })?;
@@ -211,11 +217,18 @@ pub fn run_app(
         && key.code == KeyCode::Char('s')
         && key.modifiers == KeyModifiers::CONTROL
       {
-        state.save_to_file(song_file_path)?;
-        banner = Some(Banner::with_timeout(
-          format!("Saved {}", song_file_path.display()),
-          SAVE_BANNER_TIMEOUT,
-        ));
+        banner = Some(match state.save_to_file(song_file_path) {
+          Ok(()) => Banner::with_timeout(
+            format!("Saved {}", song_file_path.display()),
+            INFO_BANNER_STYLE,
+            SAVE_BANNER_TIMEOUT,
+          ),
+          Err(err) => Banner::with_timeout(
+            format!("Failure saving {}: {}", song_file_path.display(), err),
+            ERROR_BANNER_STYLE,
+            SAVE_BANNER_TIMEOUT,
+          ),
+        });
         continue;
       }
 

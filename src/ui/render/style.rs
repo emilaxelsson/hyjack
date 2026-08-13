@@ -10,9 +10,14 @@ pub const TITLE_STYLE: Style = Style::new()
   .add_modifier(Modifier::BOLD);
 pub const SUB_TITLE_BG: Color = Color::Rgb(60, 60, 60);
 pub const SUB_TITLE_STYLE: Style = Style::new().bg(SUB_TITLE_BG).fg(DEFAULT_FG);
-pub const BANNER_BG: Color = Color::Rgb(100, 100, 25);
-pub const BANNER_STYLE: Style = Style::new()
-  .bg(BANNER_BG)
+pub const INFO_BANNER_BG: Color = Color::Rgb(100, 100, 25);
+pub const INFO_BANNER_STYLE: Style = Style::new()
+  .bg(INFO_BANNER_BG)
+  .fg(DEFAULT_FG)
+  .add_modifier(Modifier::ITALIC);
+pub const ERROR_BANNER_BG: Color = Color::Rgb(120, 25, 25);
+pub const ERROR_BANNER_STYLE: Style = Style::new()
+  .bg(ERROR_BANNER_BG)
   .fg(DEFAULT_FG)
   .add_modifier(Modifier::ITALIC);
 pub const PANEL_AREA_STYLE: Style = Style::new().bg(Color::Rgb(35, 35, 35)).fg(DEFAULT_FG);
