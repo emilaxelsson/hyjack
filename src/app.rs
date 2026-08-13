@@ -31,6 +31,11 @@ struct Banner {
   expires_at: Instant,
 }
 
+struct HandleEventResult {
+  quit: bool,
+  banner: Option<Banner>,
+}
+
 impl Banner {
   fn with_timeout(text: String, style: Style, timeout: Duration) -> Self {
     Self {
@@ -65,21 +70,32 @@ fn handle_event(
   pattern_scroll_state: &mut ScrollViewState,
   viewports: Viewports,
   optional_dialog: &mut Option<InputDialog<AppState>>,
-) -> Result<bool> {
+) -> Result<HandleEventResult> {
   if let Some(dialog) = optional_dialog.as_mut() {
     if let ComponentAction::Close = dialog.handle_event(event, state)? {
       *optional_dialog = None;
     }
-    return Ok(false);
+    return Ok(HandleEventResult {
+      quit: false,
+      banner: None,
+    });
   }
 
   let Event::Key(key) = event else {
-    return Ok(false);
+    return Ok(HandleEventResult {
+      quit: false,
+      banner: None,
+    });
   };
 
   if matches!(key.code, KeyCode::Char('q')) {
-    return Ok(true);
+    return Ok(HandleEventResult {
+      quit: true,
+      banner: None,
+    });
   }
+
+  let mut banner = None;
 
   match mode {
     UIMode::EditPattern => {
@@ -135,12 +151,20 @@ fn handle_event(
         );
       }
       KeyCode::Delete => {
-        state.sequence.soft_delete_focused_title();
+        let delete_error = state.sequence.soft_delete_focused_title();
         scroll_focused_sequence_into_view(
           &state.sequence,
           sequence_scroll_state,
           viewports.sequence_height,
         );
+
+        if let Some(reason) = delete_error {
+          banner = Some(Banner::with_timeout(
+            reason,
+            ERROR_BANNER_STYLE,
+            SAVE_BANNER_TIMEOUT,
+          ));
+        }
       }
       KeyCode::Tab => {
         *mode = UIMode::EditPattern;
@@ -173,7 +197,10 @@ fn handle_event(
     },
   }
 
-  Ok(false)
+  Ok(HandleEventResult {
+    quit: false,
+    banner,
+  })
 }
 
 pub fn run_app(
@@ -233,7 +260,7 @@ pub fn run_app(
       }
 
       let mode_before = mode;
-      let quit = handle_event(
+      let result = handle_event(
         &mut mode,
         event,
         &mut state,
@@ -243,7 +270,11 @@ pub fn run_app(
         &mut dialog,
       )?;
 
-      if quit {
+      if let Some(new_banner) = result.banner {
+        banner = Some(new_banner);
+      }
+
+      if result.quit {
         break;
       }
 

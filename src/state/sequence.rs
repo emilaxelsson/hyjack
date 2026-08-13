@@ -98,13 +98,13 @@ impl Sequence {
 
   /// Soft delete the focused title. If it is the only occurrence, keep it by moving it to
   /// the end of the pool instead.
-  pub fn soft_delete_focused_title(&mut self) {
+  pub fn soft_delete_focused_title(&mut self) -> Option<String> {
     let idx = self.focus_index;
 
     if idx == 0 && self.end_of_song == 0 {
       // Don't allow deleting the first title if it is the only song title, as that would
       // result in an empty song.
-      return;
+      return Some("Deleting would make song empty.".to_string());
     }
 
     let focused_title = self.titles[idx].clone();
@@ -120,6 +120,9 @@ impl Sequence {
         // Move to end of pool
         self.titles.remove(idx);
         self.titles.push(focused_title);
+      } else {
+        // Don't allow deleting the last remaining title in the pool.
+        return Some("Cannot delete the last occurrence of title.".to_string());
       }
     } else {
       self.titles.remove(idx);
@@ -131,6 +134,8 @@ impl Sequence {
     if title_in_song {
       self.end_of_song = self.end_of_song.saturating_sub(1);
     }
+
+    None
   }
 }
 
@@ -371,7 +376,7 @@ mod tests {
 
       prop_assume!(!(sequence.focus_index == 0 && sequence.end_of_song == 0));
 
-      sequence.soft_delete_focused_title();
+      let _ = sequence.soft_delete_focused_title();
 
       let length_after = sequence.titles.len();
       let count_after = title_count(&sequence, &title);
@@ -396,7 +401,7 @@ mod tests {
 
       let before = sequence.clone();
 
-      sequence.soft_delete_focused_title();
+      let _ = sequence.soft_delete_focused_title();
 
       prop_assert_eq!(sequence, before);
     }
@@ -418,7 +423,7 @@ mod tests {
 
       let length_before = sequence.titles.len();
 
-      sequence.soft_delete_focused_title();
+      let _ = sequence.soft_delete_focused_title();
 
       let length_after = sequence.titles.len();
       let count_after = title_count(&sequence, &title);
@@ -443,7 +448,7 @@ mod tests {
 
       let before = sequence.clone();
 
-      sequence.soft_delete_focused_title();
+      let _ = sequence.soft_delete_focused_title();
 
       prop_assert_eq!(sequence, before);
     }
@@ -455,7 +460,7 @@ mod tests {
       let before = sequence.clone();
 
       sequence.duplicate_focused_title();
-      sequence.soft_delete_focused_title();
+      let _ = sequence.soft_delete_focused_title();
 
       prop_assert_eq!(sequence.titles, before.titles);
     }
