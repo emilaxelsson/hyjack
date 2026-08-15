@@ -33,6 +33,7 @@ struct Banner {
 
 struct HandleEventResult {
   quit: bool,
+  change_mode: Option<UIMode>,
   banner: Option<Banner>,
 }
 
@@ -62,8 +63,138 @@ fn pattern_title_dialog(state: &AppState) -> InputDialog<AppState> {
   }
 }
 
+fn handle_edit_sequence_event(
+  state: &mut AppState,
+  sequence_scroll_state: &mut ScrollViewState,
+  viewports: Viewports,
+  optional_dialog: &mut Option<InputDialog<AppState>>,
+  key: event::KeyEvent,
+) -> HandleEventResult {
+  let mut new_mode: Option<UIMode> = None;
+  let mut banner: Option<Banner> = None;
+
+  match key.code {
+    KeyCode::F(2) => {
+      *optional_dialog = Some(pattern_title_dialog(state));
+    }
+    KeyCode::Char('d') if key.modifiers == KeyModifiers::CONTROL => {
+      state.sequence.duplicate_focused_title();
+      scroll_focused_sequence_into_view(
+        &state.sequence,
+        sequence_scroll_state,
+        viewports.sequence_height,
+      );
+    }
+    KeyCode::Delete => {
+      let delete_error = state.sequence.soft_delete_focused_title();
+      scroll_focused_sequence_into_view(
+        &state.sequence,
+        sequence_scroll_state,
+        viewports.sequence_height,
+      );
+
+      if let Some(reason) = delete_error {
+        banner = Some(Banner::with_timeout(
+          reason,
+          ERROR_BANNER_STYLE,
+          SAVE_BANNER_TIMEOUT,
+        ));
+      }
+    }
+    KeyCode::Tab => {
+      new_mode = Some(UIMode::EditPattern);
+    }
+    KeyCode::Up => {
+      if key.modifiers == KeyModifiers::CONTROL {
+        state.sequence.move_title_up();
+      } else {
+        state.sequence.to_previous_title();
+      }
+      scroll_focused_sequence_into_view(
+        &state.sequence,
+        sequence_scroll_state,
+        viewports.sequence_height,
+      );
+    }
+    KeyCode::Down => {
+      if key.modifiers == KeyModifiers::CONTROL {
+        state.sequence.move_title_down();
+      } else {
+        state.sequence.to_next_title();
+      }
+      scroll_focused_sequence_into_view(
+        &state.sequence,
+        sequence_scroll_state,
+        viewports.sequence_height,
+      );
+    }
+    _ => {}
+  }
+
+  HandleEventResult {
+    quit: false,
+    change_mode: new_mode,
+    banner,
+  }
+}
+
+fn handle_edit_pattern_event(
+  state: &mut AppState,
+  pattern_scroll_state: &mut ScrollViewState,
+  viewports: Viewports,
+  optional_dialog: &mut Option<InputDialog<AppState>>,
+  key: event::KeyEvent,
+) -> HandleEventResult {
+  let bounds = state.get_current_pattern().bounds();
+  let mut new_mode: Option<UIMode> = None;
+
+  match key.code {
+    KeyCode::F(2) => {
+      *optional_dialog = Some(pattern_title_dialog(state));
+    }
+    KeyCode::Tab => {
+      new_mode = Some(UIMode::EditSequence);
+    }
+    KeyCode::Up if key.modifiers == KeyModifiers::CONTROL => {
+      pattern_scroll_state.scroll_up();
+    }
+    KeyCode::Up => {
+      state.focus.to_previous_row();
+      scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
+    }
+    KeyCode::Down if key.modifiers == KeyModifiers::CONTROL => {
+      pattern_scroll_state.scroll_down();
+    }
+    KeyCode::Down => {
+      state.focus.to_next_row(bounds);
+      scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
+    }
+    KeyCode::Left if key.modifiers == KeyModifiers::CONTROL => {
+      pattern_scroll_state.scroll_left();
+    }
+    KeyCode::Left => {
+      state.focus.to_previous_track_field();
+      scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
+    }
+    KeyCode::Right if key.modifiers == KeyModifiers::CONTROL => {
+      pattern_scroll_state.scroll_right();
+    }
+    KeyCode::Right => {
+      state.focus.to_next_track_field(bounds);
+      scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
+    }
+    _ => {}
+  }
+
+  HandleEventResult {
+    quit: false,
+    change_mode: new_mode,
+    banner: None,
+  }
+}
+
 fn handle_event(
-  mode: &mut UIMode,
+  mode: &UIMode,
   event: Event,
   state: &mut AppState,
   sequence_scroll_state: &mut ScrollViewState,
@@ -77,6 +208,7 @@ fn handle_event(
     }
     return Ok(HandleEventResult {
       quit: false,
+      change_mode: None,
       banner: None,
     });
   }
@@ -84,6 +216,7 @@ fn handle_event(
   let Event::Key(key) = event else {
     return Ok(HandleEventResult {
       quit: false,
+      change_mode: None,
       banner: None,
     });
   };
@@ -91,116 +224,28 @@ fn handle_event(
   if matches!(key.code, KeyCode::Char('q')) {
     return Ok(HandleEventResult {
       quit: true,
+      change_mode: None,
       banner: None,
     });
   }
 
-  let mut banner = None;
-
   match mode {
     UIMode::EditPattern => {
-      let bounds = state.get_current_pattern().bounds();
-      match key.code {
-        KeyCode::F(2) => {
-          *optional_dialog = Some(pattern_title_dialog(state));
-        }
-        KeyCode::Tab => {
-          *mode = UIMode::EditSequence;
-        }
-        KeyCode::Up if key.modifiers == KeyModifiers::CONTROL => {
-          pattern_scroll_state.scroll_up();
-        }
-        KeyCode::Up => {
-          state.focus.to_previous_row();
-          scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
-        }
-        KeyCode::Down if key.modifiers == KeyModifiers::CONTROL => {
-          pattern_scroll_state.scroll_down();
-        }
-        KeyCode::Down => {
-          state.focus.to_next_row(bounds);
-          scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
-        }
-        KeyCode::Left if key.modifiers == KeyModifiers::CONTROL => {
-          pattern_scroll_state.scroll_left();
-        }
-        KeyCode::Left => {
-          state.focus.to_previous_track_field();
-          scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
-        }
-        KeyCode::Right if key.modifiers == KeyModifiers::CONTROL => {
-          pattern_scroll_state.scroll_right();
-        }
-        KeyCode::Right => {
-          state.focus.to_next_track_field(bounds);
-          scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
-        }
-        _ => {}
-      }
+      let result =
+        handle_edit_pattern_event(state, pattern_scroll_state, viewports, optional_dialog, key);
+      Ok(result)
     }
-    UIMode::EditSequence => match key.code {
-      KeyCode::F(2) => {
-        *optional_dialog = Some(pattern_title_dialog(state));
-      }
-      KeyCode::Char('d') if key.modifiers == KeyModifiers::CONTROL => {
-        state.sequence.duplicate_focused_title();
-        scroll_focused_sequence_into_view(
-          &state.sequence,
-          sequence_scroll_state,
-          viewports.sequence_height,
-        );
-      }
-      KeyCode::Delete => {
-        let delete_error = state.sequence.soft_delete_focused_title();
-        scroll_focused_sequence_into_view(
-          &state.sequence,
-          sequence_scroll_state,
-          viewports.sequence_height,
-        );
-
-        if let Some(reason) = delete_error {
-          banner = Some(Banner::with_timeout(
-            reason,
-            ERROR_BANNER_STYLE,
-            SAVE_BANNER_TIMEOUT,
-          ));
-        }
-      }
-      KeyCode::Tab => {
-        *mode = UIMode::EditPattern;
-      }
-      KeyCode::Up => {
-        if key.modifiers == KeyModifiers::CONTROL {
-          state.sequence.move_title_up();
-        } else {
-          state.sequence.to_previous_title();
-        }
-        scroll_focused_sequence_into_view(
-          &state.sequence,
-          sequence_scroll_state,
-          viewports.sequence_height,
-        );
-      }
-      KeyCode::Down => {
-        if key.modifiers == KeyModifiers::CONTROL {
-          state.sequence.move_title_down();
-        } else {
-          state.sequence.to_next_title();
-        }
-        scroll_focused_sequence_into_view(
-          &state.sequence,
-          sequence_scroll_state,
-          viewports.sequence_height,
-        );
-      }
-      _ => {}
-    },
+    UIMode::EditSequence => {
+      let result = handle_edit_sequence_event(
+        state,
+        sequence_scroll_state,
+        viewports,
+        optional_dialog,
+        key,
+      );
+      Ok(result)
+    }
   }
-
-  Ok(HandleEventResult {
-    quit: false,
-    banner,
-  })
 }
 
 pub fn run_app(
@@ -259,9 +304,8 @@ pub fn run_app(
         continue;
       }
 
-      let mode_before = mode;
       let result = handle_event(
-        &mut mode,
+        &mode,
         event,
         &mut state,
         &mut sequence_scroll_state,
@@ -270,15 +314,19 @@ pub fn run_app(
         &mut dialog,
       )?;
 
-      if let Some(new_banner) = result.banner {
-        banner = Some(new_banner);
-      }
-
       if result.quit {
         break;
       }
 
-      if mode == UIMode::EditPattern && mode_before != UIMode::EditPattern {
+      if let Some(new_mode) = result.change_mode {
+        mode = new_mode;
+      }
+
+      if let Some(new_banner) = result.banner {
+        banner = Some(new_banner);
+      }
+
+      if mode == UIMode::EditPattern && result.change_mode.is_some() {
         state.refocus_pattern();
       }
     }
