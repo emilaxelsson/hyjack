@@ -16,6 +16,11 @@ use crate::ui::render::track::{
 };
 use crate::ui::widgets::title_block::TitleBlock;
 
+struct NoteInfo {
+  note: Option<Note>,
+  instrument_name: String,
+}
+
 /// Compute the logical position of the current focus in the pattern area.
 fn pattern_focus_position(state: &AppState) -> Position {
   let cursor_x_offset =
@@ -108,18 +113,12 @@ fn is_focus_visible(
     && focus_position.y < scroll_offset.y.saturating_add(viewport_height)
 }
 
-fn draw_pattern_details(
-  frame: &mut Frame<'_>,
-  pattern: &Pattern,
-  note: Option<Note>,
-  instr_name: &str,
-  area: Rect,
-) {
+fn draw_pattern_details(frame: &mut Frame<'_>, note: NoteInfo, pattern: &Pattern, area: Rect) {
   let instr_ix = note
+    .note
     .as_ref()
     .map(|n| n.instrument.to_string())
     .unwrap_or("-".to_string());
-
   let editing_instr = "2/Kick";
 
   let widths = vec![
@@ -132,7 +131,7 @@ fn draw_pattern_details(
   let rows = vec![
     Row::new(vec![
       Cell::from("Note").style(Style::default().bold()),
-      Cell::from(format!("{}/{}", instr_ix, instr_name)).column_span(4),
+      Cell::from(format!("{}/{}", instr_ix, note.instrument_name)).column_span(4),
     ]),
     Row::new(vec![
       Cell::from("Pattern").style(Style::default().bold()),
@@ -243,12 +242,15 @@ pub fn draw_pattern_panel(
     .clone()
     .and_then(|note| state.instruments.get_name(note.instrument))
     .unwrap_or("-".to_string());
+  let note_info = NoteInfo {
+    note: current_note,
+    instrument_name: current_instrument,
+  };
 
   draw_pattern_details(
     frame,
+    note_info,
     current_pattern,
-    current_note,
-    &current_instrument,
     details_area,
   );
 
