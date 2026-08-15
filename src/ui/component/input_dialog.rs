@@ -6,7 +6,7 @@ use ratatui::layout::Rect;
 use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Text};
 use ratatui::widgets::Paragraph;
-use tui_popup::{Popup, PopupState, SizedWrapper};
+use tui_popup::{KnownSizeWrapper, Popup, PopupState};
 
 use crate::ui::common::{Component, ComponentAction};
 use crate::ui::render::style::DEFAULT_FG;
@@ -81,7 +81,7 @@ impl<S> InputDialog<S> {
     (cursor_x, cursor_y)
   }
 
-  fn popup_body<'a>(&'a self, viewport: &InputViewport) -> SizedWrapper<Paragraph<'a>> {
+  fn popup_body<'a>(&'a self, viewport: &InputViewport) -> KnownSizeWrapper<Paragraph<'a>> {
     let mut lines = vec![
       Line::from(self.label.as_str()),
       Line::from(format!("> {}", viewport.display_input)),
@@ -93,7 +93,7 @@ impl<S> InputDialog<S> {
       Style::default().fg(Color::Rgb(255, 120, 120)),
     ));
 
-    SizedWrapper {
+    KnownSizeWrapper {
       inner: Paragraph::new(Text::from(lines)),
       width: POPUP_BODY_WIDTH as usize,
       height: POPUP_BODY_HEIGHT as usize,
@@ -115,7 +115,7 @@ impl<S> Component for InputDialog<S> {
       .style(Style::default().bg(Color::Rgb(20, 20, 20)).fg(DEFAULT_FG));
     let mut popup_state = PopupState::default();
 
-    frame.render_stateful_widget_ref(popup, frame.area(), &mut popup_state);
+    frame.render_stateful_widget(popup, frame.area(), &mut popup_state);
     if let Some(area) = *popup_state.area() {
       frame.set_cursor_position(self.cursor_position(area));
     }
