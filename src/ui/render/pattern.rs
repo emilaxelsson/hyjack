@@ -1,6 +1,6 @@
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Position, Rect, Size};
-use ratatui::style::Style;
+use ratatui::style::{Style, Stylize};
 use ratatui::widgets::{Block, Cell, Row, Table};
 use tui_scrollview::{ScrollView, ScrollViewState, ScrollbarVisibility};
 
@@ -8,7 +8,8 @@ use crate::state::pattern::{Note, Pattern};
 use crate::state::*;
 use crate::ui::common::{get_absolute_position, rect_from_origin};
 use crate::ui::render::style::{
-  BEHIND_FOCUSED_ROW_STYLE, BEHIND_INACTIVE_FOCUSED_ROW_STYLE, TITLE_STYLE, default_block,
+  BEHIND_FOCUSED_ROW_STYLE, BEHIND_INACTIVE_FOCUSED_ROW_STYLE, SUB_TITLE_BG, TITLE_STYLE,
+  default_block,
 };
 use crate::ui::render::track::{
   TRACK_COLUMN_WIDTH, draw_track_names, draw_tracks, track_column_offset, track_start_offset,
@@ -118,23 +119,35 @@ fn draw_pattern_details(
     .as_ref()
     .map(|n| n.instrument.to_string())
     .unwrap_or("-".to_string());
+
+  let editing_instr = "2/Kick";
+
   let widths = vec![
     Constraint::Length(7),
-    Constraint::Length(7),
-    Constraint::Min(0),
+    Constraint::Length(11),
+    Constraint::Length(13),
+    Constraint::Length(9),
+    Constraint::Length(13 + editing_instr.len() as u16),
   ];
   let rows = vec![
     Row::new(vec![
       Cell::from("Note").style(Style::default().bold()),
-      Cell::from(format!("{}/{}", instr_ix, instr_name)),
+      Cell::from(format!("{}/{}", instr_ix, instr_name)).column_span(4),
     ]),
     Row::new(vec![
       Cell::from("Pattern").style(Style::default().bold()),
-      Cell::from(format!("{} rows", pattern.num_rows.get())),
-      Cell::from(format!("RPB {:2}", pattern.rows_per_beat)),
+      Cell::from(format!("(rows   {:2})", pattern.num_rows.get())).bg(SUB_TITLE_BG),
+      Cell::from(format!("(rpb      {:2})", pattern.rows_per_beat)).bg(SUB_TITLE_BG),
+    ]),
+    Row::new(vec![
+      Cell::from("Editing").style(Style::default().bold()),
+      Cell::from(format!("(octave {:2})", 3)).bg(SUB_TITLE_BG),
+      Cell::from(format!("(velocity {})", 50)).bg(SUB_TITLE_BG),
+      Cell::from(format!("(step {:2})", 4)).bg(SUB_TITLE_BG),
+      Cell::from(format!("(instrument {})", editing_instr)).bg(SUB_TITLE_BG),
     ]),
   ];
-  let table = Table::new(rows, widths).column_spacing(2);
+  let table = Table::new(rows, widths).column_spacing(1);
   frame.render_widget(table, area);
 }
 
@@ -147,7 +160,7 @@ pub fn draw_pattern_panel(
 ) -> Size {
   let [pattern_area, details_area] = Layout::default()
     .direction(Direction::Vertical)
-    .constraints([Constraint::Min(0), Constraint::Length(2)])
+    .constraints([Constraint::Min(0), Constraint::Length(3)])
     .areas(area);
 
   let current_pattern_title = state
