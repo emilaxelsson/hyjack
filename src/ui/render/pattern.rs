@@ -4,12 +4,13 @@ use ratatui::style::{Style, Stylize};
 use ratatui::widgets::{Block, Cell, Row, Table};
 use tui_scrollview::{ScrollView, ScrollViewState, ScrollbarVisibility};
 
+use crate::state::instruments::InstrumentIndex;
 use crate::state::pattern::{Note, Pattern};
 use crate::state::*;
-use crate::ui::common::{get_absolute_position, rect_from_origin};
+use crate::ui::common::{EditableField, UIMode, get_absolute_position, rect_from_origin};
 use crate::ui::render::style::{
-  BEHIND_FOCUSED_ROW_STYLE, BEHIND_INACTIVE_FOCUSED_ROW_STYLE, SUB_TITLE_BG, TITLE_STYLE,
-  default_block,
+  BEHIND_FOCUSED_ROW_STYLE, BEHIND_INACTIVE_FOCUSED_ROW_STYLE, FOCUSED_ROW_BG, SUB_TITLE_BG,
+  TITLE_STYLE, default_block,
 };
 use crate::ui::render::track::{
   TRACK_COLUMN_WIDTH, draw_track_names, draw_tracks, track_column_offset, track_start_offset,
@@ -18,6 +19,14 @@ use crate::ui::widgets::title_block::TitleBlock;
 
 struct NoteInfo {
   note: Option<Note>,
+  instrument_name: String,
+}
+
+struct EditingFields {
+  octave: u8,
+  velocity: u8,
+  step: u8,
+  instrument: InstrumentIndex,
   instrument_name: String,
 }
 
@@ -113,20 +122,48 @@ fn is_focus_visible(
     && focus_position.y < scroll_offset.y.saturating_add(viewport_height)
 }
 
-fn draw_pattern_details(frame: &mut Frame<'_>, note: NoteInfo, pattern: &Pattern, area: Rect) {
+fn draw_pattern_details(
+  frame: &mut Frame<'_>,
+  note: NoteInfo,
+  pattern: &Pattern,
+  editing_fields: EditingFields,
+  focused_field: Option<EditableField>,
+  area: Rect,
+) {
   let instr_ix = note
     .note
     .as_ref()
     .map(|n| n.instrument.to_string())
     .unwrap_or("-".to_string());
-  let editing_instr = "2/Kick";
+  let editing_instr = format!(
+    "{}/{}",
+    editing_fields.instrument, editing_fields.instrument_name
+  );
+
+  let mut rows_bg = SUB_TITLE_BG;
+  let mut rpb_bg = SUB_TITLE_BG;
+  let mut octave_bg = SUB_TITLE_BG;
+  let mut velocity_bg = SUB_TITLE_BG;
+  let mut step_bg = SUB_TITLE_BG;
+  let mut instr_bg = SUB_TITLE_BG;
+
+  if let Some(field) = focused_field {
+    match field {
+      EditableField::NumRows => rows_bg = FOCUSED_ROW_BG,
+      EditableField::RowsPerBeat => rpb_bg = FOCUSED_ROW_BG,
+      EditableField::Octave => octave_bg = FOCUSED_ROW_BG,
+      EditableField::Velocity => velocity_bg = FOCUSED_ROW_BG,
+      EditableField::Step => step_bg = FOCUSED_ROW_BG,
+      EditableField::Instrument => instr_bg = FOCUSED_ROW_BG,
+    }
+  }
 
   let widths = vec![
     Constraint::Length(7),
     Constraint::Length(11),
     Constraint::Length(13),
     Constraint::Length(9),
-    Constraint::Length(13 + editing_instr.len() as u16),
+    Constraint::Length(8 + editing_instr.len() as u16),
   ];
   let rows = vec![
     Row::new(vec![
@@ -135,15 +172,15 @@ fn draw_pattern_details(frame: &mut Frame<'_>, note: NoteInfo, pattern: &Pattern
     ]),
     Row::new(vec![
       Cell::from("Pattern").style(Style::default().bold()),
-      Cell::from(format!("(rows   {:2})", pattern.num_rows.get())).bg(SUB_TITLE_BG),
-      Cell::from(format!("(rpb      {:2})", pattern.rows_per_beat)).bg(SUB_TITLE_BG),
+      Cell::from(format!("(rows   {:2})", pattern.num_rows.get())).bg(rows_bg),
+      Cell::from(format!("(rpb      {:2})", pattern.rows_per_beat)).bg(rpb_bg),
     ]),
     Row::new(vec![
       Cell::from("Editing").style(Style::default().bold()),
-      Cell::from(format!("(octave {:2})", 3)).bg(SUB_TITLE_BG),
-      Cell::from(format!("(velocity {})", 50)).bg(SUB_TITLE_BG),
-      Cell::from(format!("(step {:2})", 4)).bg(SUB_TITLE_BG),
-      Cell::from(format!("(instrument {})", editing_instr)).bg(SUB_TITLE_BG),
+      Cell::from(format!("(octave {:2})", editing_fields.octave)).bg(octave_bg),
+      Cell::from(format!("(velocity {})", editing_fields.velocity)).bg(velocity_bg),
+      Cell::from(format!("(step {:2})", editing_fields.step)).bg(step_bg),
+      Cell::from(format!("(instr {})", editing_instr)).bg(instr_bg),
     ]),
   ];
   let table = Table::new(rows, widths).column_spacing(1);
@@ -152,6 +189,7 @@ fn draw_pattern_details(frame: &mut Frame<'_>, note: NoteInfo, pattern: &Pattern
 
 pub fn draw_pattern_panel(
   frame: &mut Frame,
+  mode: UIMode,
   state: &AppState,
   is_active: bool,
   pattern_scroll_state: &mut ScrollViewState,
@@ -246,11 +284,24 @@ pub fn draw_pattern_panel(
     note: current_note,
     instrument_name: current_instrument,
   };
+  let editing_fields = EditingFields {
+    octave: 3,
+    velocity: 50,
+    step: 4,
+    instrument: 2,
+    instrument_name: "Kick".to_string(),
+  };
+  let focused_field = match mode {
+    UIMode::EditField(field) => Some(field),
+    _ => None,
+  };
 
   draw_pattern_details(
     frame,
     note_info,
     current_pattern,
+    editing_fields,
+    focused_field,
     details_area,
   );
 

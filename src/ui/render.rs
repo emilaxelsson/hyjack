@@ -44,6 +44,7 @@ pub fn draw_ui(
   );
   let pattern_viewport_size = draw_pattern_panel(
     frame,
+    mode,
     state,
     pattern_is_active,
     pattern_scroll_state,

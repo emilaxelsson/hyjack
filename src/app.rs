@@ -3,7 +3,7 @@ use std::path::Path;
 use std::time::{Duration, Instant};
 
 use anyhow::Result;
-use crossterm::event::{self, Event, KeyCode, KeyModifiers};
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::Size;
@@ -11,7 +11,7 @@ use ratatui::style::Style;
 use tui_scrollview::ScrollViewState;
 
 use crate::state::AppState;
-use crate::ui::common::{Component, ComponentAction, UIMode};
+use crate::ui::common::{Component, ComponentAction, EditableField, UIMode};
 use crate::ui::component::input_dialog::InputDialog;
 use crate::ui::render::pattern::scroll_cursor_into_view;
 use crate::ui::render::style::{ERROR_BANNER_STYLE, INFO_BANNER_STYLE};
@@ -33,7 +33,7 @@ struct Banner {
 
 struct HandleEventResult {
   quit: bool,
-  change_mode: Option<UIMode>,
+  new_mode: Option<UIMode>,
   banner: Option<Banner>,
 }
 
@@ -48,6 +48,52 @@ impl Banner {
 
   fn is_expired(&self) -> bool {
     Instant::now() >= self.expires_at
+  }
+}
+
+impl EditableField {
+  pub fn navigate_up(self) -> Self {
+    match self {
+      Self::NumRows => Self::NumRows,
+      Self::RowsPerBeat => Self::RowsPerBeat,
+      Self::Octave => Self::NumRows,
+      Self::Velocity => Self::RowsPerBeat,
+      Self::Step => Self::RowsPerBeat,
+      Self::Instrument => Self::RowsPerBeat,
+    }
+  }
+
+  pub fn navigate_down(self) -> Self {
+    match self {
+      Self::NumRows => Self::Octave,
+      Self::RowsPerBeat => Self::Velocity,
+      Self::Octave => Self::Octave,
+      Self::Velocity => Self::Velocity,
+      Self::Step => Self::Step,
+      Self::Instrument => Self::Instrument,
+    }
+  }
+
+  pub fn navigate_left(self) -> Self {
+    match self {
+      Self::NumRows => Self::NumRows,
+      Self::RowsPerBeat => Self::NumRows,
+      Self::Octave => Self::Octave,
+      Self::Velocity => Self::Octave,
+      Self::Step => Self::Velocity,
+      Self::Instrument => Self::Step,
+    }
+  }
+
+  pub fn navigate_right(self) -> Self {
+    match self {
+      Self::NumRows => Self::RowsPerBeat,
+      Self::RowsPerBeat => Self::Step,
+      Self::Octave => Self::Velocity,
+      Self::Velocity => Self::Step,
+      Self::Step => Self::Instrument,
+      Self::Instrument => Self::Instrument,
+    }
   }
 }
 
@@ -77,6 +123,12 @@ fn handle_edit_sequence_event(
     KeyCode::F(2) => {
       *optional_dialog = Some(pattern_title_dialog(state));
     }
+    KeyCode::F(4) => {
+      new_mode = Some(UIMode::EditPattern);
+    }
+    KeyCode::F(5) => {
+      new_mode = Some(UIMode::EditField(EditableField::NumRows));
+    }
     KeyCode::Char('d') if key.modifiers == KeyModifiers::CONTROL => {
       state.sequence.duplicate_focused_title();
       scroll_focused_sequence_into_view(
@@ -100,9 +152,6 @@ fn handle_edit_sequence_event(
           SAVE_BANNER_TIMEOUT,
         ));
       }
-    }
-    KeyCode::Tab => {
-      new_mode = Some(UIMode::EditPattern);
     }
     KeyCode::Up => {
       if key.modifiers == KeyModifiers::CONTROL {
@@ -133,7 +182,7 @@ fn handle_edit_sequence_event(
 
   HandleEventResult {
     quit: false,
-    change_mode: new_mode,
+    new_mode,
     banner,
   }
 }
@@ -152,8 +201,11 @@ fn handle_edit_pattern_event(
     KeyCode::F(2) => {
       *optional_dialog = Some(pattern_title_dialog(state));
     }
-    KeyCode::Tab => {
+    KeyCode::F(3) => {
       new_mode = Some(UIMode::EditSequence);
+    }
+    KeyCode::F(5) => {
+      new_mode = Some(UIMode::EditField(EditableField::NumRows));
     }
     KeyCode::Up if key.modifiers == KeyModifiers::CONTROL => {
       pattern_scroll_state.scroll_up();
@@ -188,7 +240,27 @@ fn handle_edit_pattern_event(
 
   HandleEventResult {
     quit: false,
-    change_mode: new_mode,
+    new_mode,
+    banner: None,
+  }
+}
+
+fn handle_edit_fields_event(key: KeyEvent, current_field: EditableField) -> HandleEventResult {
+  let mut new_mode: Option<UIMode> = None;
+
+  match key.code {
+    KeyCode::F(3) => new_mode = Some(UIMode::EditSequence),
+    KeyCode::F(4) => new_mode = Some(UIMode::EditPattern),
+    KeyCode::Up => new_mode = Some(UIMode::EditField(current_field.navigate_up())),
+    KeyCode::Down => new_mode = Some(UIMode::EditField(current_field.navigate_down())),
+    KeyCode::Left => new_mode = Some(UIMode::EditField(current_field.navigate_left())),
+    KeyCode::Right => new_mode = Some(UIMode::EditField(current_field.navigate_right())),
+    _ => {}
+  }
+
+  HandleEventResult {
+    quit: false,
+    new_mode,
     banner: None,
   }
 }
@@ -208,7 +280,7 @@ fn handle_event(
     }
     return Ok(HandleEventResult {
       quit: false,
-      change_mode: None,
+      new_mode: None,
       banner: None,
     });
   }
@@ -216,7 +288,7 @@ fn handle_event(
   let Event::Key(key) = event else {
     return Ok(HandleEventResult {
       quit: false,
-      change_mode: None,
+      new_mode: None,
       banner: None,
     });
   };
@@ -224,7 +296,7 @@ fn handle_event(
   if matches!(key.code, KeyCode::Char('q')) {
     return Ok(HandleEventResult {
       quit: true,
-      change_mode: None,
+      new_mode: None,
       banner: None,
     });
   }
@@ -243,6 +315,10 @@ fn handle_event(
         optional_dialog,
         key,
       );
+      Ok(result)
+    }
+    UIMode::EditField(field) => {
+      let result = handle_edit_fields_event(key, *field);
       Ok(result)
     }
   }
@@ -318,7 +394,7 @@ pub fn run_app(
         break;
       }
 
-      if let Some(new_mode) = result.change_mode {
+      if let Some(new_mode) = result.new_mode {
         mode = new_mode;
       }
 
@@ -326,7 +402,7 @@ pub fn run_app(
         banner = Some(new_banner);
       }
 
-      if mode == UIMode::EditPattern && result.change_mode.is_some() {
+      if mode == UIMode::EditPattern && result.new_mode.is_some() {
         state.refocus_pattern();
       }
     }

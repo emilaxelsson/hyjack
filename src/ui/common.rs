@@ -10,9 +10,20 @@ pub enum ComponentAction {
 }
 
 #[derive(Clone, Copy, PartialEq)]
+pub enum EditableField {
+  NumRows,
+  RowsPerBeat,
+  Octave,
+  Velocity,
+  Step,
+  Instrument,
+}
+
+#[derive(Clone, Copy, PartialEq)]
 pub enum UIMode {
   EditPattern,
   EditSequence,
+  EditField(EditableField),
 }
 
 pub trait Component {
