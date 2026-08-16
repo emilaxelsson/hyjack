@@ -136,7 +136,7 @@ fn draw_pattern_details(
     .map(|n| n.instrument.to_string())
     .unwrap_or("-".to_string());
   let editing_instr = format!(
-    "{}/{}",
+    "{:2}/{}",
     editing_fields.instrument, editing_fields.instrument_name
   );
 
@@ -168,7 +168,7 @@ fn draw_pattern_details(
   let rows = vec![
     Row::new(vec![
       Cell::from("Note").style(Style::default().bold()),
-      Cell::from(format!("{}/{}", instr_ix, note.instrument_name)).column_span(4),
+      Cell::from(format!("{:2}/{}", instr_ix, note.instrument_name)).column_span(4),
     ]),
     Row::new(vec![
       Cell::from("Pattern").style(Style::default().bold()),
@@ -185,6 +185,39 @@ fn draw_pattern_details(
   ];
   let table = Table::new(rows, widths).column_spacing(1);
   frame.render_widget(table, area);
+
+  let cursor_pos = match focused_field {
+    Some(EditableField::NumRows) => Position {
+      x: 17,
+      y: 1,
+    },
+    Some(EditableField::RowsPerBeat) => Position {
+      x: 31,
+      y: 1,
+    },
+    Some(EditableField::Octave) => Position {
+      x: 17,
+      y: 2,
+    },
+    Some(EditableField::Velocity) => Position {
+      x: 31,
+      y: 2,
+    },
+    Some(EditableField::Step) => Position {
+      x: 41,
+      y: 2,
+    },
+    Some(EditableField::Instrument) => Position {
+      x: 52,
+      y: 2,
+    },
+    None => return,
+  };
+  let cursor_pos = Position {
+    x: area.x.saturating_add(cursor_pos.x),
+    y: area.y.saturating_add(cursor_pos.y),
+  };
+  frame.set_cursor_position(cursor_pos);
 }
 
 pub fn draw_pattern_panel(
