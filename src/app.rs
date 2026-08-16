@@ -293,7 +293,7 @@ fn handle_event(
     });
   };
 
-  if matches!(key.code, KeyCode::Char('q')) {
+  if matches!(key.code, KeyCode::Char('q')) && key.modifiers == KeyModifiers::CONTROL {
     return Ok(HandleEventResult {
       quit: true,
       new_mode: None,
