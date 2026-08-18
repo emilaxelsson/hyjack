@@ -1,7 +1,7 @@
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::Style;
-use ratatui::widgets::Widget;
+use ratatui::widgets::{Clear, Widget};
 
 /// A full-width banner.
 #[derive(Debug, Clone)]
@@ -36,13 +36,8 @@ impl Widget for Banner<'_> {
       return;
     }
 
+    Clear.render(area, buf);
     buf.set_style(area, self.style);
-
-    // Clear the entire row to avoid leftover characters from previous renders.
-    for x in area.left()..area.right() {
-      buf[(x, area.y)].set_char(' ');
-    }
-
     buf.set_stringn(area.x, area.y, self.text, area.width as usize, self.style);
   }
 }
