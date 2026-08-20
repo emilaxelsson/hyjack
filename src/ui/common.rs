@@ -11,8 +11,6 @@ pub enum ComponentAction {
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum EditableField {
-  NumRows,
-  RowsPerBeat,
   Octave,
   Velocity,
   Step,

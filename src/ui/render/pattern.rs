@@ -5,7 +5,7 @@ use ratatui::widgets::{Block, Cell, Row, Table};
 use tui_scrollview::{ScrollView, ScrollViewState, ScrollbarVisibility};
 
 use crate::state::instruments::InstrumentIndex;
-use crate::state::pattern::{Note, Pattern};
+use crate::state::pattern::Note;
 use crate::state::*;
 use crate::ui::common::{EditableField, UIMode, get_absolute_position, rect_from_origin};
 use crate::ui::render::style::{
@@ -125,7 +125,6 @@ fn is_focus_visible(
 fn draw_pattern_details(
   frame: &mut Frame<'_>,
   note: NoteInfo,
-  pattern: &Pattern,
   editing_fields: EditingFields,
   focused_field: Option<EditableField>,
   area: Rect,
@@ -133,15 +132,13 @@ fn draw_pattern_details(
   let instr_ix = note
     .note
     .as_ref()
-    .map(|n| n.instrument.to_string())
-    .unwrap_or("-".to_string());
+    .map(|n| format!("{:2}", n.instrument))
+    .unwrap_or(" -".to_string());
   let editing_instr = format!(
     "{:2}/{}",
     editing_fields.instrument, editing_fields.instrument_name
   );
 
-  let mut rows_bg = SUB_TITLE_BG;
-  let mut rpb_bg = SUB_TITLE_BG;
   let mut octave_bg = SUB_TITLE_BG;
   let mut velocity_bg = SUB_TITLE_BG;
   let mut step_bg = SUB_TITLE_BG;
@@ -149,8 +146,6 @@ fn draw_pattern_details(
 
   if let Some(field) = focused_field {
     match field {
-      EditableField::NumRows => rows_bg = FOCUSED_ROW_BG,
-      EditableField::RowsPerBeat => rpb_bg = FOCUSED_ROW_BG,
       EditableField::Octave => octave_bg = FOCUSED_ROW_BG,
       EditableField::Velocity => velocity_bg = FOCUSED_ROW_BG,
       EditableField::Step => step_bg = FOCUSED_ROW_BG,
@@ -159,7 +154,7 @@ fn draw_pattern_details(
   }
 
   let widths = vec![
-    Constraint::Length(7),
+    Constraint::Length(5),
     Constraint::Length(11),
     Constraint::Length(13),
     Constraint::Length(9),
@@ -171,12 +166,7 @@ fn draw_pattern_details(
       Cell::from(format!("{:2}/{}", instr_ix, note.instrument_name)).column_span(4),
     ]),
     Row::new(vec![
-      Cell::from("Pattern").style(Style::default().bold()),
-      Cell::from(format!("(rows   {:2})", pattern.num_rows.get())).bg(rows_bg),
-      Cell::from(format!("(rpb      {:2})", pattern.rows_per_beat)).bg(rpb_bg),
-    ]),
-    Row::new(vec![
-      Cell::from("Editing").style(Style::default().bold()),
+      Cell::from("Edit").style(Style::default().bold()),
       Cell::from(format!("(octave {:2})", editing_fields.octave)).bg(octave_bg),
       Cell::from(format!("(velocity {})", editing_fields.velocity)).bg(velocity_bg),
       Cell::from(format!("(step {:2})", editing_fields.step)).bg(step_bg),
@@ -187,30 +177,10 @@ fn draw_pattern_details(
   frame.render_widget(table, area);
 
   let cursor_pos = match focused_field {
-    Some(EditableField::NumRows) => Position {
-      x: 17,
-      y: 1,
-    },
-    Some(EditableField::RowsPerBeat) => Position {
-      x: 31,
-      y: 1,
-    },
-    Some(EditableField::Octave) => Position {
-      x: 17,
-      y: 2,
-    },
-    Some(EditableField::Velocity) => Position {
-      x: 31,
-      y: 2,
-    },
-    Some(EditableField::Step) => Position {
-      x: 41,
-      y: 2,
-    },
-    Some(EditableField::Instrument) => Position {
-      x: 52,
-      y: 2,
-    },
+    Some(EditableField::Octave) => Position { x: 15, y: 1 },
+    Some(EditableField::Velocity) => Position { x: 29, y: 1 },
+    Some(EditableField::Step) => Position { x: 39, y: 1 },
+    Some(EditableField::Instrument) => Position { x: 50, y: 1 },
     None => return,
   };
   let cursor_pos = Position {
@@ -230,7 +200,7 @@ pub fn draw_pattern_panel(
 ) -> Size {
   let [pattern_area, details_area] = Layout::default()
     .direction(Direction::Vertical)
-    .constraints([Constraint::Min(0), Constraint::Length(3)])
+    .constraints([Constraint::Min(0), Constraint::Length(2)])
     .areas(area);
 
   let current_pattern_title = state
@@ -332,7 +302,6 @@ pub fn draw_pattern_panel(
   draw_pattern_details(
     frame,
     note_info,
-    current_pattern,
     editing_fields,
     focused_field,
     details_area,

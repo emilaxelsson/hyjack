@@ -52,32 +52,8 @@ impl Banner {
 }
 
 impl EditableField {
-  pub fn navigate_up(self) -> Self {
-    match self {
-      Self::NumRows => Self::NumRows,
-      Self::RowsPerBeat => Self::RowsPerBeat,
-      Self::Octave => Self::NumRows,
-      Self::Velocity => Self::RowsPerBeat,
-      Self::Step => Self::RowsPerBeat,
-      Self::Instrument => Self::RowsPerBeat,
-    }
-  }
-
-  pub fn navigate_down(self) -> Self {
-    match self {
-      Self::NumRows => Self::Octave,
-      Self::RowsPerBeat => Self::Velocity,
-      Self::Octave => Self::Octave,
-      Self::Velocity => Self::Velocity,
-      Self::Step => Self::Step,
-      Self::Instrument => Self::Instrument,
-    }
-  }
-
   pub fn navigate_left(self) -> Self {
     match self {
-      Self::NumRows => Self::NumRows,
-      Self::RowsPerBeat => Self::NumRows,
       Self::Octave => Self::Octave,
       Self::Velocity => Self::Octave,
       Self::Step => Self::Velocity,
@@ -87,8 +63,6 @@ impl EditableField {
 
   pub fn navigate_right(self) -> Self {
     match self {
-      Self::NumRows => Self::RowsPerBeat,
-      Self::RowsPerBeat => Self::Step,
       Self::Octave => Self::Velocity,
       Self::Velocity => Self::Step,
       Self::Step => Self::Instrument,
@@ -127,7 +101,7 @@ fn handle_edit_sequence_event(
       new_mode = Some(UIMode::EditPattern);
     }
     KeyCode::F(5) => {
-      new_mode = Some(UIMode::EditField(EditableField::NumRows));
+      new_mode = Some(UIMode::EditField(EditableField::Octave));
     }
     KeyCode::Char('d') if key.modifiers == KeyModifiers::CONTROL => {
       state.sequence.duplicate_focused_title();
@@ -205,7 +179,7 @@ fn handle_edit_pattern_event(
       new_mode = Some(UIMode::EditSequence);
     }
     KeyCode::F(5) => {
-      new_mode = Some(UIMode::EditField(EditableField::NumRows));
+      new_mode = Some(UIMode::EditField(EditableField::Octave));
     }
     KeyCode::Up if key.modifiers == KeyModifiers::CONTROL => {
       pattern_scroll_state.scroll_up();
@@ -251,8 +225,6 @@ fn handle_edit_fields_event(key: KeyEvent, current_field: EditableField) -> Hand
   match key.code {
     KeyCode::F(3) => new_mode = Some(UIMode::EditSequence),
     KeyCode::F(4) => new_mode = Some(UIMode::EditPattern),
-    KeyCode::Up => new_mode = Some(UIMode::EditField(current_field.navigate_up())),
-    KeyCode::Down => new_mode = Some(UIMode::EditField(current_field.navigate_down())),
     KeyCode::Left => new_mode = Some(UIMode::EditField(current_field.navigate_left())),
     KeyCode::Right => new_mode = Some(UIMode::EditField(current_field.navigate_right())),
     _ => {}
