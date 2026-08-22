@@ -10,7 +10,7 @@ pub enum ComponentAction {
 }
 
 #[derive(Clone, Copy, PartialEq)]
-pub enum EditableField {
+pub enum EditorSettingFocus {
   Octave,
   Velocity,
   Step,
@@ -21,7 +21,7 @@ pub enum EditableField {
 pub enum UIMode {
   EditPattern,
   EditSequence,
-  EditField(EditableField),
+  EditSetting(EditorSettingFocus),
 }
 
 pub trait Component {

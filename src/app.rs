@@ -10,14 +10,18 @@ use ratatui::layout::Size;
 use ratatui::style::Style;
 use tui_scrollview::ScrollViewState;
 
-use crate::state::AppState;
-use crate::ui::common::{Component, ComponentAction, EditableField, UIMode};
+use crate::state::{AppState, EditorSettings};
+use crate::ui::common::{Component, ComponentAction, EditorSettingFocus, UIMode};
 use crate::ui::component::input_dialog::InputDialog;
 use crate::ui::render::pattern::scroll_cursor_into_view;
 use crate::ui::render::style::{ERROR_BANNER_STYLE, INFO_BANNER_STYLE};
 use crate::ui::render::{draw_ui, scroll_focused_sequence_into_view};
 
 const SAVE_BANNER_TIMEOUT: Duration = Duration::from_millis(1400);
+const LARGE_OCTAVE_STEP: u8 = 2;
+const LARGE_VELOCITY_STEP: u8 = 10;
+const LARGE_STEP_STEP: u8 = 4;
+const LARGE_INSTRUMENT_STEP: u8 = 8;
 
 #[derive(Clone, Copy)]
 struct Viewports {
@@ -51,7 +55,7 @@ impl Banner {
   }
 }
 
-impl EditableField {
+impl EditorSettingFocus {
   pub fn navigate_left(self) -> Self {
     match self {
       Self::Octave => Self::Octave,
@@ -67,6 +71,64 @@ impl EditableField {
       Self::Velocity => Self::Step,
       Self::Step => Self::Instrument,
       Self::Instrument => Self::Instrument,
+    }
+  }
+}
+
+impl EditorSettings {
+  fn increase(&mut self, setting: EditorSettingFocus, small_step: bool, max_instrument: u8) {
+    let step = if small_step {
+      1
+    } else {
+      match setting {
+        EditorSettingFocus::Octave => LARGE_OCTAVE_STEP,
+        EditorSettingFocus::Velocity => LARGE_VELOCITY_STEP,
+        EditorSettingFocus::Step => LARGE_STEP_STEP,
+        EditorSettingFocus::Instrument => LARGE_INSTRUMENT_STEP,
+      }
+    };
+
+    match setting {
+      EditorSettingFocus::Octave => {
+        self.octave = self.octave.saturating_add(step);
+      }
+      EditorSettingFocus::Velocity => {
+        self.velocity = self.velocity.saturating_add(step);
+      }
+      EditorSettingFocus::Step => {
+        self.step = self.step.saturating_add(step);
+      }
+      EditorSettingFocus::Instrument => {
+        self.instrument = self.instrument.saturating_add(step).min(max_instrument);
+      }
+    }
+  }
+
+  fn decrease(&mut self, setting: EditorSettingFocus, small_step: bool) {
+    let step = if small_step {
+      1
+    } else {
+      match setting {
+        EditorSettingFocus::Octave => LARGE_OCTAVE_STEP,
+        EditorSettingFocus::Velocity => LARGE_VELOCITY_STEP,
+        EditorSettingFocus::Step => LARGE_STEP_STEP,
+        EditorSettingFocus::Instrument => LARGE_INSTRUMENT_STEP,
+      }
+    };
+
+    match setting {
+      EditorSettingFocus::Octave => {
+        self.octave = self.octave.saturating_sub(step);
+      }
+      EditorSettingFocus::Velocity => {
+        self.velocity = self.velocity.saturating_sub(step);
+      }
+      EditorSettingFocus::Step => {
+        self.step = self.step.saturating_sub(step);
+      }
+      EditorSettingFocus::Instrument => {
+        self.instrument = self.instrument.saturating_sub(step);
+      }
     }
   }
 }
@@ -94,14 +156,29 @@ fn handle_edit_sequence_event(
   let mut banner: Option<Banner> = None;
 
   match key.code {
-    KeyCode::F(2) => {
-      *optional_dialog = Some(pattern_title_dialog(state));
+    KeyCode::Up => {
+      if key.modifiers == KeyModifiers::CONTROL {
+        state.sequence.move_title_up();
+      } else {
+        state.sequence.to_previous_title();
+      }
+      scroll_focused_sequence_into_view(
+        &state.sequence,
+        sequence_scroll_state,
+        viewports.sequence_height,
+      );
     }
-    KeyCode::F(4) => {
-      new_mode = Some(UIMode::EditPattern);
-    }
-    KeyCode::F(5) => {
-      new_mode = Some(UIMode::EditField(EditableField::Octave));
+    KeyCode::Down => {
+      if key.modifiers == KeyModifiers::CONTROL {
+        state.sequence.move_title_down();
+      } else {
+        state.sequence.to_next_title();
+      }
+      scroll_focused_sequence_into_view(
+        &state.sequence,
+        sequence_scroll_state,
+        viewports.sequence_height,
+      );
     }
     KeyCode::Char('d') if key.modifiers == KeyModifiers::CONTROL => {
       state.sequence.duplicate_focused_title();
@@ -127,29 +204,11 @@ fn handle_edit_sequence_event(
         ));
       }
     }
-    KeyCode::Up => {
-      if key.modifiers == KeyModifiers::CONTROL {
-        state.sequence.move_title_up();
-      } else {
-        state.sequence.to_previous_title();
-      }
-      scroll_focused_sequence_into_view(
-        &state.sequence,
-        sequence_scroll_state,
-        viewports.sequence_height,
-      );
+    KeyCode::F(2) => {
+      *optional_dialog = Some(pattern_title_dialog(state));
     }
-    KeyCode::Down => {
-      if key.modifiers == KeyModifiers::CONTROL {
-        state.sequence.move_title_down();
-      } else {
-        state.sequence.to_next_title();
-      }
-      scroll_focused_sequence_into_view(
-        &state.sequence,
-        sequence_scroll_state,
-        viewports.sequence_height,
-      );
+    KeyCode::F(4) | KeyCode::Enter => {
+      new_mode = Some(UIMode::EditPattern);
     }
     _ => {}
   }
@@ -172,42 +231,55 @@ fn handle_edit_pattern_event(
   let mut new_mode: Option<UIMode> = None;
 
   match key.code {
+    KeyCode::Up => {
+      if key.modifiers == KeyModifiers::CONTROL {
+        pattern_scroll_state.scroll_up();
+      } else {
+        state.focus.to_previous_row();
+        scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
+      }
+    }
+    KeyCode::Down => {
+      if key.modifiers == KeyModifiers::CONTROL {
+        pattern_scroll_state.scroll_down();
+      } else {
+        state.focus.to_next_row(bounds);
+        scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
+      }
+    }
+    KeyCode::Left => {
+      if key.modifiers == KeyModifiers::CONTROL {
+        pattern_scroll_state.scroll_left();
+      } else {
+        state.focus.to_previous_track_field();
+        scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
+      }
+    }
+    KeyCode::Right => {
+      if key.modifiers == KeyModifiers::CONTROL {
+        pattern_scroll_state.scroll_right();
+      } else {
+        state.focus.to_next_track_field(bounds);
+        scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
+      }
+    }
     KeyCode::F(2) => {
       *optional_dialog = Some(pattern_title_dialog(state));
     }
     KeyCode::F(3) => {
       new_mode = Some(UIMode::EditSequence);
     }
-    KeyCode::F(5) => {
-      new_mode = Some(UIMode::EditField(EditableField::Octave));
+    KeyCode::Char('z') => {
+      new_mode = Some(UIMode::EditSetting(EditorSettingFocus::Octave));
     }
-    KeyCode::Up if key.modifiers == KeyModifiers::CONTROL => {
-      pattern_scroll_state.scroll_up();
+    KeyCode::Char('x') => {
+      new_mode = Some(UIMode::EditSetting(EditorSettingFocus::Velocity));
     }
-    KeyCode::Up => {
-      state.focus.to_previous_row();
-      scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
+    KeyCode::Char('c') => {
+      new_mode = Some(UIMode::EditSetting(EditorSettingFocus::Step));
     }
-    KeyCode::Down if key.modifiers == KeyModifiers::CONTROL => {
-      pattern_scroll_state.scroll_down();
-    }
-    KeyCode::Down => {
-      state.focus.to_next_row(bounds);
-      scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
-    }
-    KeyCode::Left if key.modifiers == KeyModifiers::CONTROL => {
-      pattern_scroll_state.scroll_left();
-    }
-    KeyCode::Left => {
-      state.focus.to_previous_track_field();
-      scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
-    }
-    KeyCode::Right if key.modifiers == KeyModifiers::CONTROL => {
-      pattern_scroll_state.scroll_right();
-    }
-    KeyCode::Right => {
-      state.focus.to_next_track_field(bounds);
-      scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
+    KeyCode::Char('v') => {
+      new_mode = Some(UIMode::EditSetting(EditorSettingFocus::Instrument));
     }
     _ => {}
   }
@@ -219,14 +291,41 @@ fn handle_edit_pattern_event(
   }
 }
 
-fn handle_edit_fields_event(key: KeyEvent, current_field: EditableField) -> HandleEventResult {
+fn handle_edit_settings_event(
+  state: &mut AppState,
+  key: KeyEvent,
+  current_setting: EditorSettingFocus,
+) -> HandleEventResult {
   let mut new_mode: Option<UIMode> = None;
 
   match key.code {
-    KeyCode::F(3) => new_mode = Some(UIMode::EditSequence),
-    KeyCode::F(4) => new_mode = Some(UIMode::EditPattern),
-    KeyCode::Left => new_mode = Some(UIMode::EditField(current_field.navigate_left())),
-    KeyCode::Right => new_mode = Some(UIMode::EditField(current_field.navigate_right())),
+    KeyCode::Up => {
+      let max_instrument = state.instruments.max_index().unwrap_or(0);
+      state
+        .editor_settings
+        .increase(current_setting, true, max_instrument);
+    }
+    KeyCode::Down => {
+      state.editor_settings.decrease(current_setting, true);
+    }
+    KeyCode::PageUp => {
+      let max_instrument = state.instruments.max_index().unwrap_or(0);
+      state
+        .editor_settings
+        .increase(current_setting, false, max_instrument);
+    }
+    KeyCode::PageDown => {
+      state.editor_settings.decrease(current_setting, false);
+    }
+    KeyCode::Char('z') => new_mode = Some(UIMode::EditSetting(EditorSettingFocus::Octave)),
+    KeyCode::Char('x') => new_mode = Some(UIMode::EditSetting(EditorSettingFocus::Velocity)),
+    KeyCode::Char('c') => new_mode = Some(UIMode::EditSetting(EditorSettingFocus::Step)),
+    KeyCode::Char('v') => new_mode = Some(UIMode::EditSetting(EditorSettingFocus::Instrument)),
+    KeyCode::Left => new_mode = Some(UIMode::EditSetting(current_setting.navigate_left())),
+    KeyCode::Right => new_mode = Some(UIMode::EditSetting(current_setting.navigate_right())),
+    KeyCode::Enter | KeyCode::Esc => {
+      new_mode = Some(UIMode::EditPattern);
+    }
     _ => {}
   }
 
@@ -289,8 +388,8 @@ fn handle_event(
       );
       Ok(result)
     }
-    UIMode::EditField(field) => {
-      let result = handle_edit_fields_event(key, *field);
+    UIMode::EditSetting(setting) => {
+      let result = handle_edit_settings_event(state, key, *setting);
       Ok(result)
     }
   }

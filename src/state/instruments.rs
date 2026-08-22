@@ -14,4 +14,16 @@ impl Instruments {
       Instruments::DirectMapped(names) => names.get(index as usize).cloned(),
     }
   }
+
+  pub fn max_index(&self) -> Option<InstrumentIndex> {
+    match self {
+      Instruments::DirectMapped(names) => {
+        if names.is_empty() {
+          None
+        } else {
+          Some((names.len() - 1).min(InstrumentIndex::MAX as usize) as InstrumentIndex)
+        }
+      }
+    }
+  }
 }

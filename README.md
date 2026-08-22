@@ -2,24 +2,26 @@
 
 ### Pattern panel
 
+* `Up`/`Down`/`Left`/`Right` – Navigate to previous/next row/column in the pattern grid
+* `Ctrl+Up`/`Ctrl+Down`/`Ctrl+Left`/`Ctrl+Right` – Scroll pattern up/down/left/right
 * `F2` – Rename pattern
 * `F3` – Switch to sequence panel
-* `F5` – Switch to editor fields
+* `z`/`x`/`c`/`v` – Switch focus to editor's octave/velocity/step/instrument setting
 
 ### Sequence panel
 
+* `Up`/`Down` – Navigate to previous/next pattern title
+* `Ctrl+Up`/`Ctrl+Down` – Move current title up/down in the sequence list
+* `Ctrl+D` – Duplicate current title in the sequence list
+* `Delete` – Delete current title (moves to pool if it is the only reference)
 * `F2` – Rename pattern
-* `F4` – Switch to pattern panel
-* `F5` – Switch to editor fields
-* `Up`/`Down` – Move to previous/next pattern
-* `Ctrl+D` – Duplicate current entry in the sequence list
-* `Delete` – Delete current entry (moves to pool if it is the only reference)
-* `Ctrl+Up`/`Ctrl+Down` – Move current entry up/down in the sequence list
+* `F4`/`Enter` – Switch to pattern panel
 
-### Editor fields
+### Editor settings
 
-* `F3` – Switch to sequence panel
-* `F4` – Switch to pattern panel
-* `Left`/`Right` – Move focus to previous/next field
+* `Up`/`Down` – Increase/decrease value of focused setting
+* `PgUp`/`PgDown` – Increase/decrease value by larger amount
+* `z`/`x`/`c`/`v` – Switch focus to octave/velocity/step/instrument setting
+* `Enter`/`Esc` – Exit editor settings
 
 ### Player

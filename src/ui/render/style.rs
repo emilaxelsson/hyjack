@@ -20,8 +20,8 @@ pub const ERROR_BANNER_STYLE: Style = Style::new()
   .bg(ERROR_BANNER_BG)
   .fg(DEFAULT_FG)
   .add_modifier(Modifier::ITALIC);
-pub const EDITABLE_FIELD_BG: Color = Color::Rgb(35, 35, 35);
-pub const PANEL_AREA_STYLE: Style = Style::new().bg(EDITABLE_FIELD_BG).fg(DEFAULT_FG);
+pub const PANEL_AREA_BG: Color = Color::Rgb(35, 35, 35);
+pub const PANEL_AREA_STYLE: Style = Style::new().bg(PANEL_AREA_BG).fg(DEFAULT_FG);
 pub const FOCUSED_ROW_BG: Color = Color::Rgb(60, 60, 160);
 pub const FOCUSED_ROW_STYLE: Style = Style::new().bg(FOCUSED_ROW_BG);
 pub const INACTIVE_FOCUSED_ROW_BG: Color = Color::Rgb(80, 80, 120);

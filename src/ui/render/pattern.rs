@@ -4,10 +4,9 @@ use ratatui::style::{Style, Stylize};
 use ratatui::widgets::{Block, Cell, Row, Table};
 use tui_scrollview::{ScrollView, ScrollViewState, ScrollbarVisibility};
 
-use crate::state::instruments::InstrumentIndex;
 use crate::state::pattern::Note;
 use crate::state::*;
-use crate::ui::common::{EditableField, UIMode, get_absolute_position, rect_from_origin};
+use crate::ui::common::{EditorSettingFocus, UIMode, get_absolute_position, rect_from_origin};
 use crate::ui::render::style::{
   BEHIND_FOCUSED_ROW_STYLE, BEHIND_INACTIVE_FOCUSED_ROW_STYLE, FOCUSED_ROW_BG, SUB_TITLE_BG,
   TITLE_STYLE, default_block,
@@ -19,14 +18,6 @@ use crate::ui::widgets::title_block::TitleBlock;
 
 struct NoteInfo {
   note: Option<Note>,
-  instrument_name: String,
-}
-
-struct EditingFields {
-  octave: u8,
-  velocity: u8,
-  step: u8,
-  instrument: InstrumentIndex,
   instrument_name: String,
 }
 
@@ -125,8 +116,9 @@ fn is_focus_visible(
 fn draw_pattern_details(
   frame: &mut Frame<'_>,
   note: NoteInfo,
-  editing_fields: EditingFields,
-  focused_field: Option<EditableField>,
+  editor_settings: EditorSettings,
+  editor_instrument_name: &str,
+  focused_setting: Option<EditorSettingFocus>,
   area: Rect,
 ) {
   let instr_ix = note
@@ -136,7 +128,7 @@ fn draw_pattern_details(
     .unwrap_or(" -".to_string());
   let editing_instr = format!(
     "{:2}/{}",
-    editing_fields.instrument, editing_fields.instrument_name
+    editor_settings.instrument, editor_instrument_name
   );
 
   let mut octave_bg = SUB_TITLE_BG;
@@ -144,12 +136,12 @@ fn draw_pattern_details(
   let mut step_bg = SUB_TITLE_BG;
   let mut instr_bg = SUB_TITLE_BG;
 
-  if let Some(field) = focused_field {
-    match field {
-      EditableField::Octave => octave_bg = FOCUSED_ROW_BG,
-      EditableField::Velocity => velocity_bg = FOCUSED_ROW_BG,
-      EditableField::Step => step_bg = FOCUSED_ROW_BG,
-      EditableField::Instrument => instr_bg = FOCUSED_ROW_BG,
+  if let Some(setting) = focused_setting {
+    match setting {
+      EditorSettingFocus::Octave => octave_bg = FOCUSED_ROW_BG,
+      EditorSettingFocus::Velocity => velocity_bg = FOCUSED_ROW_BG,
+      EditorSettingFocus::Step => step_bg = FOCUSED_ROW_BG,
+      EditorSettingFocus::Instrument => instr_bg = FOCUSED_ROW_BG,
     }
   }
 
@@ -167,20 +159,20 @@ fn draw_pattern_details(
     ]),
     Row::new(vec![
       Cell::from("Edit").style(Style::default().bold()),
-      Cell::from(format!("(octave {:2})", editing_fields.octave)).bg(octave_bg),
-      Cell::from(format!("(velocity {:2})", editing_fields.velocity)).bg(velocity_bg),
-      Cell::from(format!("(step {:2})", editing_fields.step)).bg(step_bg),
+      Cell::from(format!("(octave {:2})", editor_settings.octave)).bg(octave_bg),
+      Cell::from(format!("(velocity {:2})", editor_settings.velocity)).bg(velocity_bg),
+      Cell::from(format!("(step {:2})", editor_settings.step)).bg(step_bg),
       Cell::from(format!("(instr {})", editing_instr)).bg(instr_bg),
     ]),
   ];
   let table = Table::new(rows, widths).column_spacing(1);
   frame.render_widget(table, area);
 
-  let cursor_pos = match focused_field {
-    Some(EditableField::Octave) => Position { x: 15, y: 1 },
-    Some(EditableField::Velocity) => Position { x: 29, y: 1 },
-    Some(EditableField::Step) => Position { x: 39, y: 1 },
-    Some(EditableField::Instrument) => Position { x: 50, y: 1 },
+  let cursor_pos = match focused_setting {
+    Some(EditorSettingFocus::Octave) => Position { x: 15, y: 1 },
+    Some(EditorSettingFocus::Velocity) => Position { x: 29, y: 1 },
+    Some(EditorSettingFocus::Step) => Position { x: 39, y: 1 },
+    Some(EditorSettingFocus::Instrument) => Position { x: 50, y: 1 },
     None => return,
   };
   let cursor_pos = Position {
@@ -287,23 +279,21 @@ pub fn draw_pattern_panel(
     note: current_note,
     instrument_name: current_instrument,
   };
-  let editing_fields = EditingFields {
-    octave: 3,
-    velocity: 50,
-    step: 4,
-    instrument: 2,
-    instrument_name: "Kick".to_string(),
-  };
-  let focused_field = match mode {
-    UIMode::EditField(field) => Some(field),
+  let editor_instrument_name = state
+    .instruments
+    .get_name(state.editor_settings.instrument)
+    .unwrap_or("-".to_string());
+  let focused_setting = match mode {
+    UIMode::EditSetting(setting) => Some(setting),
     _ => None,
   };
 
   draw_pattern_details(
     frame,
     note_info,
-    editing_fields,
-    focused_field,
+    state.editor_settings,
+    &editor_instrument_name,
+    focused_setting,
     details_area,
   );
 
