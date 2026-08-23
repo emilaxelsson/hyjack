@@ -240,8 +240,8 @@ fn handle_edit_settings_event(
     KeyCode::Char('x') => new_mode = Some(UIMode::EditSetting(EditorSettingFocus::Velocity)),
     KeyCode::Char('c') => new_mode = Some(UIMode::EditSetting(EditorSettingFocus::Step)),
     KeyCode::Char('v') => new_mode = Some(UIMode::EditSetting(EditorSettingFocus::Instrument)),
-    KeyCode::Left => new_mode = Some(UIMode::EditSetting(current_setting.navigate_left())),
-    KeyCode::Right => new_mode = Some(UIMode::EditSetting(current_setting.navigate_right())),
+    KeyCode::Left => new_mode = Some(UIMode::EditSetting(current_setting.previous())),
+    KeyCode::Right => new_mode = Some(UIMode::EditSetting(current_setting.next())),
     KeyCode::Enter | KeyCode::Esc => {
       new_mode = Some(UIMode::EditPattern);
     }
