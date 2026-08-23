@@ -4,9 +4,10 @@ use ratatui::style::{Style, Stylize};
 use ratatui::widgets::{Block, Cell, Row, Table};
 use tui_scrollview::{ScrollView, ScrollViewState, ScrollbarVisibility};
 
+use crate::state::editor_settings::{EditorSettingFocus, EditorSettings};
 use crate::state::pattern::Note;
 use crate::state::*;
-use crate::ui::common::{EditorSettingFocus, UIMode, get_absolute_position, rect_from_origin};
+use crate::ui::common::{UIMode, get_absolute_position, rect_from_origin};
 use crate::ui::render::style::{
   BEHIND_FOCUSED_ROW_STYLE, BEHIND_INACTIVE_FOCUSED_ROW_STYLE, FOCUSED_ROW_BG, SUB_TITLE_BG,
   TITLE_STYLE, default_block,

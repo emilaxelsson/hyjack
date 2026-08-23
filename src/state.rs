@@ -1,3 +1,4 @@
+pub mod editor_settings;
 pub mod instruments;
 pub mod name;
 pub mod pattern;
@@ -9,7 +10,8 @@ use anyhow::Result;
 use nonempty::NonEmpty;
 use serde::{Deserialize, Serialize};
 
-use crate::state::instruments::{InstrumentIndex, Instruments};
+use crate::state::editor_settings::EditorSettings;
+use crate::state::instruments::Instruments;
 use crate::state::name::normalize_and_validate_name;
 use crate::state::pattern::{Focus, Pattern};
 use crate::state::sequence::Sequence;
@@ -26,25 +28,6 @@ pub struct PlayerTime {
 pub struct PlayerState {
   pub time: PlayerTime,
   pub sequence_index: usize,
-}
-
-#[derive(Clone, Copy)]
-pub struct EditorSettings {
-  pub octave: u8,
-  pub velocity: u8,
-  pub step: u8,
-  pub instrument: InstrumentIndex,
-}
-
-impl Default for EditorSettings {
-  fn default() -> Self {
-    Self {
-      octave: 3,
-      velocity: 50,
-      step: 4,
-      instrument: 0,
-    }
-  }
 }
 
 #[derive(Serialize, Deserialize)]

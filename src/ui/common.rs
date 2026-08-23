@@ -4,17 +4,11 @@ use crossterm::event::Event;
 use ratatui::Frame;
 use ratatui::layout::{Position, Rect, Size};
 
+use crate::state::editor_settings::EditorSettingFocus;
+
 pub enum ComponentAction {
   None,
   Close,
-}
-
-#[derive(Clone, Copy, PartialEq)]
-pub enum EditorSettingFocus {
-  Octave,
-  Velocity,
-  Step,
-  Instrument,
 }
 
 #[derive(Clone, Copy, PartialEq)]
