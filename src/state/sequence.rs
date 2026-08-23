@@ -51,8 +51,13 @@ impl Sequence {
     }
   }
 
-  /// Move the focused title down by one position.
-  pub fn move_title_down(&mut self) {
+  /// Move the focused title down by one position. Returns an error message if the move is
+  /// is blocked.
+  pub fn move_title_down(&mut self) -> Option<String> {
+    if self.focus_index == 0 && self.end_of_song == 0 {
+      return Some("Cannot move the only song title down.".to_string());
+    }
+
     if self.focus_index + 1 < self.titles.len() || self.end_of_song == self.focus_index {
       if self.end_of_song == self.focus_index {
         self.end_of_song = self.end_of_song.saturating_sub(1);
@@ -62,6 +67,8 @@ impl Sequence {
         self.focus_index += 1;
       }
     }
+
+    None
   }
 
   /// Duplicate the focused title just below the current position.
@@ -230,7 +237,7 @@ mod tests {
       // but it prevents throwing away too many cases in the assumption below.
       prop_assume!(blocked_down(&sequence));
 
-      sequence.move_title_down();
+      let _ = sequence.move_title_down();
 
       prop_assert_eq!(sequence, original_sequence);
     }
@@ -243,9 +250,13 @@ mod tests {
       sequence.end_of_song = 0;
       let original_sequence = sequence.clone();
 
-      sequence.move_title_down();
+      let error = sequence.move_title_down();
 
       prop_assert_eq!(sequence, original_sequence);
+      prop_assert_eq!(
+        error,
+        Some("Cannot move the only song title down.".to_string())
+      );
     }
 
     #[test]
@@ -269,7 +280,7 @@ mod tests {
 
       prop_assume!(!blocked_down(&sequence));
 
-      sequence.move_title_down();
+      let _ = sequence.move_title_down();
 
       prop_assert!(valid_move(&original_sequence, &sequence));
     }
@@ -292,7 +303,7 @@ mod tests {
     ) {
       let original_sequence = sequence.clone();
 
-      sequence.move_title_down();
+      let _ = sequence.move_title_down();
 
       prop_assume!(sequence == original_sequence);
       prop_assert!(blocked_down(&sequence));
@@ -310,7 +321,7 @@ mod tests {
       let original_sequence = sequence.clone();
 
       sequence.move_title_up();
-      sequence.move_title_down();
+      let _ = sequence.move_title_down();
 
       prop_assert_eq!(sequence, original_sequence);
     }

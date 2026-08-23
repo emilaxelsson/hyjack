@@ -90,7 +90,13 @@ fn handle_edit_sequence_event(
     }
     KeyCode::Down => {
       if key.modifiers == KeyModifiers::CONTROL {
-        state.sequence.move_title_down();
+        if let Some(reason) = state.sequence.move_title_down() {
+          banner = Some(Banner::with_timeout(
+            reason,
+            ERROR_BANNER_STYLE,
+            SAVE_BANNER_TIMEOUT,
+          ));
+        }
       } else {
         state.sequence.to_next_title();
       }
