@@ -96,15 +96,15 @@ impl Sequence {
     self.insert_title_at(self.focus_index + 1, title);
   }
 
-  /// Soft delete the focused title. If it is the only occurrence, keep it by moving it to
+  /// Soft remove the focused title. If it is the only occurrence, keep it by moving it to
   /// the end of the pool instead.
-  pub fn soft_delete_focused_title(&mut self) -> Option<String> {
+  pub fn soft_remove_focused_title(&mut self) -> Option<String> {
     let idx = self.focus_index;
 
     if idx == 0 && self.end_of_song == 0 {
       // Don't allow deleting the first title if it is the only song title, as that would
       // result in an empty song.
-      return Some("Deleting would make song empty.".to_string());
+      return Some("Removing would make song empty.".to_string());
     }
 
     let focused_title = self.titles[idx].clone();
@@ -122,7 +122,7 @@ impl Sequence {
         self.titles.push(focused_title);
       } else {
         // Don't allow deleting the last remaining title in the pool.
-        return Some("Cannot delete the last occurrence of title.".to_string());
+        return Some("Cannot remove the last occurrence of title.".to_string());
       }
     } else {
       self.titles.remove(idx);
@@ -357,7 +357,7 @@ mod tests {
     }
 
     #[test]
-    fn soft_delete_removes_focused_title_when_it_has_multiple_occurrences(
+    fn soft_remove_removes_focused_title_when_it_has_multiple_occurrences(
       (mut sequence, dup_index) in sequence_strategy(100).prop_flat_map(|sequence| {
         let len = sequence.titles.len();
         (Just(sequence), 0..len)
@@ -376,7 +376,7 @@ mod tests {
 
       prop_assume!(!(sequence.focus_index == 0 && sequence.end_of_song == 0));
 
-      let _ = sequence.soft_delete_focused_title();
+      let _ = sequence.soft_remove_focused_title();
 
       let length_after = sequence.titles.len();
       let count_after = title_count(&sequence, &title);
@@ -393,7 +393,7 @@ mod tests {
     }
 
     #[test]
-    fn soft_delete_does_not_move_from_song_when_song_has_only_one_entry(
+    fn soft_remove_does_not_move_from_song_when_song_has_only_one_entry(
       mut sequence in sequence_strategy(20)
     ) {
       sequence.focus_index = 0;
@@ -401,13 +401,13 @@ mod tests {
 
       let before = sequence.clone();
 
-      let _ = sequence.soft_delete_focused_title();
+      let _ = sequence.soft_remove_focused_title();
 
       prop_assert_eq!(sequence, before);
     }
 
     #[test]
-    fn soft_delete_moves_single_title_from_song_to_end_of_pool(
+    fn soft_remove_moves_single_title_from_song_to_end_of_pool(
       mut sequence in sequence_strategy(20)
     ) {
       let title = sequence.titles[sequence.focus_index].clone();
@@ -423,7 +423,7 @@ mod tests {
 
       let length_before = sequence.titles.len();
 
-      let _ = sequence.soft_delete_focused_title();
+      let _ = sequence.soft_remove_focused_title();
 
       let length_after = sequence.titles.len();
       let count_after = title_count(&sequence, &title);
@@ -435,7 +435,7 @@ mod tests {
     }
 
     #[test]
-    fn soft_delete_does_not_move_single_title_when_already_in_pool(
+    fn soft_remove_does_not_move_single_title_when_already_in_pool(
       mut sequence in sequence_strategy(20)
     ) {
       let title = sequence.titles[sequence.focus_index].clone();
@@ -448,19 +448,19 @@ mod tests {
 
       let before = sequence.clone();
 
-      let _ = sequence.soft_delete_focused_title();
+      let _ = sequence.soft_remove_focused_title();
 
       prop_assert_eq!(sequence, before);
     }
 
     #[test]
-    fn duplicate_followed_by_soft_delete_does_nothing(
+    fn duplicate_followed_by_soft_remove_does_nothing(
       mut sequence in sequence_strategy(20)
     ) {
       let before = sequence.clone();
 
       sequence.duplicate_focused_title();
-      let _ = sequence.soft_delete_focused_title();
+      let _ = sequence.soft_remove_focused_title();
 
       prop_assert_eq!(sequence.titles, before.titles);
     }

@@ -109,14 +109,14 @@ fn handle_edit_sequence_event(
       );
     }
     KeyCode::Delete => {
-      let delete_error = state.sequence.soft_delete_focused_title();
+      let remove_error = state.sequence.soft_remove_focused_title();
       scroll_focused_sequence_into_view(
         &state.sequence,
         sequence_scroll_state,
         viewports.sequence_height,
       );
 
-      if let Some(reason) = delete_error {
+      if let Some(reason) = remove_error {
         banner = Some(Banner::with_timeout(
           reason,
           ERROR_BANNER_STYLE,

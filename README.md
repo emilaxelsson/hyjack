@@ -13,7 +13,7 @@
 * `Up`/`Down` – Navigate to previous/next pattern title
 * `Ctrl+Up`/`Ctrl+Down` – Move current title up/down in the sequence list
 * `Ctrl+D` – Duplicate current title in the sequence list
-* `Delete` – Delete current title (moves to pool if it is the only reference)
+* `Delete` – Remove current title (moves to pool if it is the only reference)
 * `F2` – Rename pattern
 * `F4`/`Enter` – Switch to pattern panel
 
