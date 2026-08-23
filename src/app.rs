@@ -36,6 +36,7 @@ struct HandleEventResult {
   quit: bool,
   new_mode: Option<UIMode>,
   banner: Option<Banner>,
+  dialog: Option<InputDialog<AppState>>,
 }
 
 impl Banner {
@@ -68,11 +69,11 @@ fn handle_edit_sequence_event(
   state: &mut AppState,
   sequence_scroll_state: &mut ScrollViewState,
   viewports: Viewports,
-  optional_dialog: &mut Option<InputDialog<AppState>>,
   key: event::KeyEvent,
 ) -> HandleEventResult {
   let mut new_mode: Option<UIMode> = None;
   let mut banner: Option<Banner> = None;
+  let mut dialog: Option<InputDialog<AppState>> = None;
 
   match key.code {
     KeyCode::Up => {
@@ -124,7 +125,7 @@ fn handle_edit_sequence_event(
       }
     }
     KeyCode::F(2) => {
-      *optional_dialog = Some(pattern_title_dialog(state));
+      dialog = Some(pattern_title_dialog(state));
     }
     KeyCode::F(4) | KeyCode::Enter => {
       new_mode = Some(UIMode::EditPattern);
@@ -136,6 +137,7 @@ fn handle_edit_sequence_event(
     quit: false,
     new_mode,
     banner,
+    dialog,
   }
 }
 
@@ -143,11 +145,11 @@ fn handle_edit_pattern_event(
   state: &mut AppState,
   pattern_scroll_state: &mut ScrollViewState,
   viewports: Viewports,
-  optional_dialog: &mut Option<InputDialog<AppState>>,
   key: event::KeyEvent,
 ) -> HandleEventResult {
   let bounds = state.get_current_pattern().bounds();
   let mut new_mode: Option<UIMode> = None;
+  let mut dialog: Option<InputDialog<AppState>> = None;
 
   match key.code {
     KeyCode::Up => {
@@ -183,7 +185,7 @@ fn handle_edit_pattern_event(
       }
     }
     KeyCode::F(2) => {
-      *optional_dialog = Some(pattern_title_dialog(state));
+      dialog = Some(pattern_title_dialog(state));
     }
     KeyCode::F(3) => {
       new_mode = Some(UIMode::EditSequence);
@@ -207,6 +209,7 @@ fn handle_edit_pattern_event(
     quit: false,
     new_mode,
     banner: None,
+    dialog,
   }
 }
 
@@ -252,6 +255,7 @@ fn handle_edit_settings_event(
     quit: false,
     new_mode,
     banner: None,
+    dialog: None,
   }
 }
 
@@ -272,6 +276,7 @@ fn handle_event(
       quit: false,
       new_mode: None,
       banner: None,
+      dialog: None,
     });
   }
 
@@ -280,6 +285,7 @@ fn handle_event(
       quit: false,
       new_mode: None,
       banner: None,
+      dialog: None,
     });
   };
 
@@ -288,23 +294,17 @@ fn handle_event(
       quit: true,
       new_mode: None,
       banner: None,
+      dialog: None,
     });
   }
 
   match mode {
     UIMode::EditPattern => {
-      let result =
-        handle_edit_pattern_event(state, pattern_scroll_state, viewports, optional_dialog, key);
+      let result = handle_edit_pattern_event(state, pattern_scroll_state, viewports, key);
       Ok(result)
     }
     UIMode::EditSequence => {
-      let result = handle_edit_sequence_event(
-        state,
-        sequence_scroll_state,
-        viewports,
-        optional_dialog,
-        key,
-      );
+      let result = handle_edit_sequence_event(state, sequence_scroll_state, viewports, key);
       Ok(result)
     }
     UIMode::EditSetting(setting) => {
@@ -390,6 +390,10 @@ pub fn run_app(
 
       if let Some(new_banner) = result.banner {
         banner = Some(new_banner);
+      }
+
+      if let Some(new_dialog) = result.dialog {
+        dialog = Some(new_dialog);
       }
 
       if mode == UIMode::EditPattern && result.new_mode.is_some() {
