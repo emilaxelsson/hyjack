@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::state::instruments::InstrumentIndex;
 use crate::utils::{nonzero_len, sub_one};
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Note {
   pub pitch: u8,
   pub instrument: InstrumentIndex,
@@ -197,6 +197,41 @@ mod focus_tests {
     )
   }
 
+  fn note_strategy() -> impl Strategy<Value = Note> {
+    (any::<u8>(), any::<InstrumentIndex>(), any::<u8>()).prop_map(
+      |(pitch, instrument, velocity)| Note {
+        pitch,
+        instrument,
+        velocity,
+      },
+    )
+  }
+
+  fn empty_pattern(num_rows: usize, num_tracks: usize) -> Pattern {
+    let mut notes = NonEmpty::new(None);
+    for _ in 1..num_rows {
+      notes.push(None);
+    }
+
+    let mut tracks = NonEmpty::new(Track {
+      name: "Track 1".to_owned(),
+      notes: notes.clone(),
+    });
+    for track_index in 1..num_tracks {
+      tracks.push(Track {
+        name: format!("Track {}", track_index + 1),
+        notes: notes.clone(),
+      });
+    }
+
+    Pattern {
+      title: "Pattern".to_owned(),
+      tracks,
+      num_rows: NonZero::new(num_rows).unwrap(),
+      rows_per_beat: NonZeroU8::new(4).unwrap(),
+    }
+  }
+
   proptest! {
     #[test]
     fn refocus_keeps_focus_within_bounds(
@@ -223,6 +258,33 @@ mod focus_tests {
       focus.refocus(&bounds);
 
       prop_assert_eq!(focus, before);
+    }
+
+    #[test]
+    fn set_note_then_get_note_returns_written_note(
+      (num_rows, num_tracks) in (1usize..=64, 1usize..=16),
+      note in note_strategy(),
+      row_seed in any::<usize>(),
+      track_seed in any::<usize>(),
+    ) {
+      let row_index = row_seed % num_rows;
+      let track_index = track_seed % num_tracks;
+
+      let mut pattern = empty_pattern(num_rows, num_tracks);
+      let expected_pitch = note.pitch;
+      let expected_instrument = note.instrument;
+      let expected_velocity = note.velocity;
+
+      pattern.set_note(row_index, track_index, note);
+
+      match pattern.get_note(row_index, track_index) {
+        Some(saved_note) => {
+          prop_assert_eq!(saved_note.pitch, expected_pitch);
+          prop_assert_eq!(saved_note.instrument, expected_instrument);
+          prop_assert_eq!(saved_note.velocity, expected_velocity);
+        }
+        None => prop_assert!(false, "expected Some(note) after set_note"),
+      }
     }
   }
 
