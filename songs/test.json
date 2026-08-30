@@ -29,7 +29,8 @@
           "name": "Hat/ride",
           "notes": [
             {
-              "pitch": 36,
+              "octave": 2,
+              "semitone": 0,
               "instrument": 2,
               "velocity": 20
             },
@@ -79,7 +80,8 @@
             null,
             null,
             {
-              "pitch": 36,
+              "octave": 2,
+              "semitone": 0,
               "instrument": 2,
               "velocity": 20
             },

@@ -11,12 +11,11 @@ use crate::ui::render::style::{
 
 pub const TRACK_COLUMN_WIDTH: u16 = 15;
 
-fn midi_pitch_to_tracker(pitch: u8) -> String {
+fn tracker_note_text(octave: u8, semitone: u8) -> String {
   const NAMES: [&str; 12] = [
     "C-", "C#", "D-", "D#", "E-", "F-", "F#", "G-", "G#", "A-", "A#", "B-",
   ];
-  let name = NAMES[(pitch as usize) % 12];
-  let octave = (pitch / 12).saturating_sub(1);
+  let name = NAMES[(semitone as usize) % 12];
   format!("{}{}", name, octave)
 }
 
@@ -24,7 +23,7 @@ fn note_cell_text(note: &Option<Note>) -> String {
   if let Some(note) = note {
     format!(
       "{} {:02} v{:02}  ...",
-      midi_pitch_to_tracker(note.pitch),
+      tracker_note_text(note.octave, note.semitone),
       note.instrument,
       note.velocity,
     )

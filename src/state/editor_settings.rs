@@ -1,5 +1,5 @@
 use crate::state::instruments::InstrumentIndex;
-use crate::state::pattern::{Note, midi_pitch_from_octave};
+use crate::state::pattern::Note;
 
 const LARGE_OCTAVE_STEP: u8 = 2;
 const LARGE_VELOCITY_STEP: u8 = 10;
@@ -120,9 +120,9 @@ impl EditorSettings {
 
   /// Create a `Note` based on the current editor settings and the given semitone.
   pub fn make_note(&self, semitone: u8) -> Note {
-    let pitch = midi_pitch_from_octave(self.octave, semitone);
     Note {
-      pitch,
+      octave: self.octave,
+      semitone,
       instrument: self.instrument,
       velocity: self.velocity,
     }

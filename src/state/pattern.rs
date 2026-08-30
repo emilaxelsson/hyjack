@@ -8,7 +8,8 @@ use crate::utils::{nonzero_len, sub_one};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Note {
-  pub pitch: u8,
+  pub octave: u8,
+  pub semitone: u8,
   pub instrument: InstrumentIndex,
   pub velocity: u8,
 }
@@ -198,13 +199,18 @@ mod focus_tests {
   }
 
   fn note_strategy() -> impl Strategy<Value = Note> {
-    (any::<u8>(), any::<InstrumentIndex>(), any::<u8>()).prop_map(
-      |(pitch, instrument, velocity)| Note {
-        pitch,
+    (
+      any::<u8>(),
+      0u8..12u8,
+      any::<InstrumentIndex>(),
+      any::<u8>(),
+    )
+      .prop_map(|(octave, semitone, instrument, velocity)| Note {
+        octave,
+        semitone,
         instrument,
         velocity,
-      },
-    )
+      })
   }
 
   fn empty_pattern(num_rows: usize, num_tracks: usize) -> Pattern {
@@ -271,7 +277,8 @@ mod focus_tests {
       let track_index = track_seed % num_tracks;
 
       let mut pattern = empty_pattern(num_rows, num_tracks);
-      let expected_pitch = note.pitch;
+      let expected_octave = note.octave;
+      let expected_semitone = note.semitone;
       let expected_instrument = note.instrument;
       let expected_velocity = note.velocity;
 
@@ -279,7 +286,8 @@ mod focus_tests {
 
       match pattern.get_note(row_index, track_index) {
         Some(saved_note) => {
-          prop_assert_eq!(saved_note.pitch, expected_pitch);
+          prop_assert_eq!(saved_note.octave, expected_octave);
+          prop_assert_eq!(saved_note.semitone, expected_semitone);
           prop_assert_eq!(saved_note.instrument, expected_instrument);
           prop_assert_eq!(saved_note.velocity, expected_velocity);
         }
