@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use crate::state::editor_settings::EditorSettings;
 use crate::state::instruments::Instruments;
 use crate::state::name::normalize_and_validate_name;
-use crate::state::pattern::{Focus, Pattern};
+use crate::state::pattern::{Focus, Note, Pattern};
 use crate::state::sequence::Sequence;
 
 #[derive(Serialize, Deserialize)]
@@ -120,5 +120,14 @@ impl AppState {
     });
 
     Ok(())
+  }
+
+  /// Set the note at the current pattern focus.
+  pub fn set_focused_note(&mut self, note: Note) {
+    let pattern_index = self.get_current_pattern_index();
+    let Some(pattern) = self.patterns.get_mut(pattern_index) else {
+      return;
+    };
+    pattern.set_note(self.focus.row_index, self.focus.track_index, note);
   }
 }

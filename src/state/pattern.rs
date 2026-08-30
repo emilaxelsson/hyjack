@@ -83,6 +83,14 @@ impl Pattern {
     let track = &self.tracks[track_index];
     track.notes[row_index].clone()
   }
+
+  pub fn set_note(&mut self, row_index: usize, track_index: usize, note: Note) {
+    if row_index >= self.num_rows.get() || track_index >= self.tracks.len() {
+      return;
+    }
+    let track = &mut self.tracks[track_index];
+    track.notes[row_index] = Some(note);
+  }
 }
 
 impl Focus {
@@ -145,6 +153,10 @@ impl Focus {
       }
     }
   }
+}
+
+pub fn midi_pitch_from_octave(octave: u8, semitone: u8) -> u8 {
+  octave.saturating_add(1).saturating_mul(12) + semitone
 }
 
 #[cfg(test)]
@@ -348,5 +360,12 @@ mod focus_tests {
 
     assert_eq!(focus.track_index, 2);
     assert_eq!(focus.track_column, TrackColumn::Effect);
+  }
+
+  #[test]
+  fn midi_pitch_from_octave_matches_tracker_conversion() {
+    assert_eq!(midi_pitch_from_octave(3, 0), 48);
+    assert_eq!(midi_pitch_from_octave(3, 11), 59);
+    assert_eq!(midi_pitch_from_octave(8, 11), 119);
   }
 }

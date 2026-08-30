@@ -12,6 +12,7 @@ use tui_scrollview::ScrollViewState;
 
 use crate::state::AppState;
 use crate::state::editor_settings::EditorSettingFocus;
+use crate::state::pattern::TrackColumn;
 use crate::ui::common::{Component, ComponentAction, UIMode};
 use crate::ui::component::input_dialog::InputDialog;
 use crate::ui::render::pattern::scroll_cursor_into_view;
@@ -63,6 +64,30 @@ fn pattern_title_dialog(state: &AppState) -> InputDialog<AppState> {
     error: None,
     on_submit: AppState::rename_focused_pattern,
   }
+}
+
+fn note_key_to_semitone(ch: char) -> Option<u8> {
+  match ch.to_ascii_lowercase() {
+    'a' => Some(0),
+    'w' => Some(1),
+    's' => Some(2),
+    'e' => Some(3),
+    'd' => Some(4),
+    'f' => Some(5),
+    't' => Some(6),
+    'g' => Some(7),
+    'y' => Some(8),
+    'h' => Some(9),
+    'u' => Some(10),
+    'j' => Some(11),
+    _ => None,
+  }
+}
+
+fn can_type_note(modifiers: KeyModifiers) -> bool {
+  !modifiers.contains(KeyModifiers::CONTROL)
+    && !modifiers.contains(KeyModifiers::ALT)
+    && !modifiers.contains(KeyModifiers::SUPER)
 }
 
 fn handle_edit_sequence_event(
@@ -208,6 +233,14 @@ fn handle_edit_pattern_event(
     KeyCode::Char('v') => {
       new_mode = Some(UIMode::EditSetting(EditorSettingFocus::Instrument));
     }
+    KeyCode::Char(ch)
+      if state.focus.track_column == TrackColumn::Note && can_type_note(key.modifiers) =>
+    {
+      if let Some(semitone) = note_key_to_semitone(ch) {
+        let note = state.editor_settings.make_note(semitone);
+        state.set_focused_note(note);
+      }
+    }
     _ => {}
   }
 
@@ -216,6 +249,27 @@ fn handle_edit_pattern_event(
     new_mode,
     banner: None,
     dialog,
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn note_key_to_semitone_maps_requested_layout() {
+    assert_eq!(note_key_to_semitone('a'), Some(0));
+    assert_eq!(note_key_to_semitone('w'), Some(1));
+    assert_eq!(note_key_to_semitone('s'), Some(2));
+    assert_eq!(note_key_to_semitone('e'), Some(3));
+    assert_eq!(note_key_to_semitone('d'), Some(4));
+    assert_eq!(note_key_to_semitone('f'), Some(5));
+    assert_eq!(note_key_to_semitone('t'), Some(6));
+    assert_eq!(note_key_to_semitone('g'), Some(7));
+    assert_eq!(note_key_to_semitone('y'), Some(8));
+    assert_eq!(note_key_to_semitone('h'), Some(9));
+    assert_eq!(note_key_to_semitone('u'), Some(10));
+    assert_eq!(note_key_to_semitone('j'), Some(11));
   }
 }
 
