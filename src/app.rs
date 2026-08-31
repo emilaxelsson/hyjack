@@ -239,6 +239,7 @@ fn handle_edit_pattern_event(
       if let Some(semitone) = note_key_to_semitone(ch) {
         let note = state.editor_settings.make_note(semitone);
         state.set_focused_note(note);
+        state.step_rows();
       }
     }
     _ => {}

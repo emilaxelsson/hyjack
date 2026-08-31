@@ -130,4 +130,10 @@ impl AppState {
     };
     pattern.set_note(self.focus.row_index, self.focus.track_index, note);
   }
+
+  pub fn step_rows(&mut self) {
+    let current_pattern = self.get_current_pattern();
+    let step = self.editor_settings.step;
+    self.focus.jump_rows(step, current_pattern.bounds());
+  }
 }

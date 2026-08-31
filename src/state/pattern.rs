@@ -117,12 +117,17 @@ impl Focus {
     }
   }
 
-  /// Navigate to the next row.
-  pub fn to_next_row(&mut self, bounds: PatternBounds) {
-    let next_row = self.row_index + 1;
+  /// Jump a number of rows.
+  pub fn jump_rows(&mut self, step: u8, bounds: PatternBounds) {
+    let next_row = self.row_index + step as usize;
     if next_row < bounds.num_rows.get() {
       self.row_index = next_row;
     }
+  }
+
+  /// Navigate to the next row.
+  pub fn to_next_row(&mut self, bounds: PatternBounds) {
+    self.jump_rows(1, bounds);
   }
 
   /// Navigate to the previous editable field in the current pattern row.
