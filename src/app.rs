@@ -234,6 +234,13 @@ fn handle_edit_pattern_event(
       new_mode = Some(UIMode::EditSetting(EditorSettingFocus::Instrument));
     }
     KeyCode::Char(ch)
+      if state.focus.track_column == TrackColumn::Instrument && can_type_note(key.modifiers) =>
+    {
+      if let Some(digit) = ch.to_digit(10) {
+        state.set_focused_note_instrument_digit(digit as u8, Instant::now());
+      }
+    }
+    KeyCode::Char(ch)
       if state.focus.track_column == TrackColumn::Note && can_type_note(key.modifiers) =>
     {
       if let Some(semitone) = note_key_to_semitone(ch) {
