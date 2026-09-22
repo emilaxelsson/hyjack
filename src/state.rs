@@ -44,10 +44,18 @@ pub struct AppState {
   pub editor_settings: EditorSettings,
   #[serde(skip, default)]
   instrument_digit_entry: Option<InstrumentDigitEntry>,
+  #[serde(skip, default)]
+  velocity_digit_entry: Option<VelocityDigitEntry>,
 }
 
 #[derive(Clone, Copy)]
 struct InstrumentDigitEntry {
+  digit: u8,
+  entered_at: Instant,
+}
+
+#[derive(Clone, Copy)]
+struct VelocityDigitEntry {
   digit: u8,
   entered_at: Instant,
 }
@@ -173,6 +181,39 @@ impl AppState {
     pattern.set_note(self.focus.row_index, self.focus.track_index, note);
   }
 
+  /// Set the velocity of the focused note from a digit typed in the pattern editor.
+  pub fn set_focused_note_velocity_digit(&mut self, digit: u8, now: Instant) {
+    const DIGIT_PAIR_TIMEOUT: Duration = Duration::from_secs(1);
+
+    let velocity = match self.velocity_digit_entry {
+      Some(previous) if now.duration_since(previous.entered_at) <= DIGIT_PAIR_TIMEOUT => {
+        self.velocity_digit_entry = Some(VelocityDigitEntry {
+          digit,
+          entered_at: now,
+        });
+        previous.digit * 10 + digit
+      }
+      _ => {
+        self.velocity_digit_entry = Some(VelocityDigitEntry {
+          digit,
+          entered_at: now,
+        });
+        digit
+      }
+    };
+
+    let pattern_index = self.get_current_pattern_index();
+    let Some(pattern) = self.patterns.get_mut(pattern_index) else {
+      return;
+    };
+    let Some(mut note) = pattern.get_note(self.focus.row_index, self.focus.track_index) else {
+      return;
+    };
+
+    note.velocity = velocity;
+    pattern.set_note(self.focus.row_index, self.focus.track_index, note);
+  }
+
   pub fn step_rows(&mut self) {
     let current_pattern = self.get_current_pattern();
     let step = self.editor_settings.step;
@@ -228,6 +269,7 @@ mod tests {
       },
       editor_settings: EditorSettings::default(),
       instrument_digit_entry: None,
+      velocity_digit_entry: None,
     }
   }
 
@@ -237,6 +279,14 @@ mod tests {
       .get_note(state.focus.row_index, state.focus.track_index)
       .unwrap()
       .instrument
+  }
+
+  fn focused_velocity(state: &AppState) -> u8 {
+    state
+      .get_current_pattern()
+      .get_note(state.focus.row_index, state.focus.track_index)
+      .unwrap()
+      .velocity
   }
 
   #[test]
@@ -272,5 +322,30 @@ mod tests {
     state.set_focused_note_instrument_digit(2, start + Duration::from_millis(1001));
 
     assert_eq!(focused_instrument(&state), 2);
+  }
+
+  #[test]
+  fn focused_velocity_digits_keep_only_the_latest_two() {
+    let mut state = test_state();
+    let start = Instant::now();
+
+    state.set_focused_note_velocity_digit(1, start);
+    assert_eq!(focused_velocity(&state), 1);
+
+    state.set_focused_note_velocity_digit(2, start + Duration::from_millis(500));
+    state.set_focused_note_velocity_digit(3, start + Duration::from_millis(999));
+
+    assert_eq!(focused_velocity(&state), 23);
+  }
+
+  #[test]
+  fn focused_velocity_digit_starts_over_after_one_second() {
+    let mut state = test_state();
+    let start = Instant::now();
+
+    state.set_focused_note_velocity_digit(4, start);
+    state.set_focused_note_velocity_digit(2, start + Duration::from_millis(1001));
+
+    assert_eq!(focused_velocity(&state), 2);
   }
 }
