@@ -43,21 +43,30 @@ pub struct AppState {
   #[serde(skip, default)]
   pub editor_settings: EditorSettings,
   #[serde(skip, default)]
-  instrument_digit_entry: Option<InstrumentDigitEntry>,
+  instrument_digit_entry: Option<DigitEntry>,
   #[serde(skip, default)]
-  velocity_digit_entry: Option<VelocityDigitEntry>,
+  velocity_digit_entry: Option<DigitEntry>,
 }
 
 #[derive(Clone, Copy)]
-struct InstrumentDigitEntry {
+struct DigitEntry {
   digit: u8,
   entered_at: Instant,
 }
 
-#[derive(Clone, Copy)]
-struct VelocityDigitEntry {
-  digit: u8,
-  entered_at: Instant,
+fn enter_digit(entry: &mut Option<DigitEntry>, digit: u8, now: Instant) -> u8 {
+  const DIGIT_PAIR_TIMEOUT: Duration = Duration::from_secs(1);
+
+  let previous_digit = entry
+    .filter(|previous| now.duration_since(previous.entered_at) <= DIGIT_PAIR_TIMEOUT)
+    .map(|previous| previous.digit);
+
+  *entry = Some(DigitEntry {
+    digit,
+    entered_at: now,
+  });
+
+  previous_digit.map_or(digit, |previous| previous * 10 + digit)
 }
 
 impl AppState {
@@ -150,24 +159,7 @@ impl AppState {
 
   /// Set the instrument of the focused note from a digit typed in the pattern editor.
   pub fn set_focused_note_instrument_digit(&mut self, digit: u8, now: Instant) {
-    const DIGIT_PAIR_TIMEOUT: Duration = Duration::from_secs(1);
-
-    let instrument = match self.instrument_digit_entry {
-      Some(previous) if now.duration_since(previous.entered_at) <= DIGIT_PAIR_TIMEOUT => {
-        self.instrument_digit_entry = Some(InstrumentDigitEntry {
-          digit,
-          entered_at: now,
-        });
-        previous.digit * 10 + digit
-      }
-      _ => {
-        self.instrument_digit_entry = Some(InstrumentDigitEntry {
-          digit,
-          entered_at: now,
-        });
-        digit
-      }
-    };
+    let instrument = enter_digit(&mut self.instrument_digit_entry, digit, now);
 
     let pattern_index = self.get_current_pattern_index();
     let Some(pattern) = self.patterns.get_mut(pattern_index) else {
@@ -183,24 +175,7 @@ impl AppState {
 
   /// Set the velocity of the focused note from a digit typed in the pattern editor.
   pub fn set_focused_note_velocity_digit(&mut self, digit: u8, now: Instant) {
-    const DIGIT_PAIR_TIMEOUT: Duration = Duration::from_secs(1);
-
-    let velocity = match self.velocity_digit_entry {
-      Some(previous) if now.duration_since(previous.entered_at) <= DIGIT_PAIR_TIMEOUT => {
-        self.velocity_digit_entry = Some(VelocityDigitEntry {
-          digit,
-          entered_at: now,
-        });
-        previous.digit * 10 + digit
-      }
-      _ => {
-        self.velocity_digit_entry = Some(VelocityDigitEntry {
-          digit,
-          entered_at: now,
-        });
-        digit
-      }
-    };
+    let velocity = enter_digit(&mut self.velocity_digit_entry, digit, now);
 
     let pattern_index = self.get_current_pattern_index();
     let Some(pattern) = self.patterns.get_mut(pattern_index) else {
