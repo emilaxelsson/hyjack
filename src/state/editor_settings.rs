@@ -1,14 +1,10 @@
 use crate::state::instruments::InstrumentIndex;
 use crate::state::pattern::{Note, Octave, Semitone, Velocity};
+use crate::utils::Adjustable;
 
 const LARGE_OCTAVE_STEP: u8 = 2;
-const LARGE_VELOCITY_STEP: u8 = 10;
 const LARGE_STEP_STEP: u8 = 4;
-const LARGE_INSTRUMENT_STEP: u8 = 8;
-
-const MAX_VELOCITY: u8 = 99;
 const MAX_STEP: u8 = 16;
-const MAX_INSTRUMENT: u8 = 99;
 
 #[derive(Clone, Copy)]
 pub struct EditorSettings {
@@ -48,16 +44,6 @@ impl EditorSettings {
     self.octave.0 = self.octave.0.saturating_sub(step);
   }
 
-  pub fn increase_velocity(&mut self, small_step: bool) {
-    let step = if small_step { 1 } else { LARGE_VELOCITY_STEP };
-    self.velocity.0 = (self.velocity.0 + step).min(MAX_VELOCITY);
-  }
-
-  pub fn decrease_velocity(&mut self, small_step: bool) {
-    let step = if small_step { 1 } else { LARGE_VELOCITY_STEP };
-    self.velocity.0 = self.velocity.0.saturating_sub(step);
-  }
-
   pub fn increase_step(&mut self, small_step: bool) {
     let step = if small_step { 1 } else { LARGE_STEP_STEP };
     self.step = (self.step + step).min(MAX_STEP);
@@ -66,21 +52,6 @@ impl EditorSettings {
   pub fn decrease_step(&mut self, small_step: bool) {
     let step = if small_step { 1 } else { LARGE_STEP_STEP };
     self.step = self.step.saturating_sub(step);
-  }
-
-  pub fn increase_instrument(&mut self, small_step: bool, max_instrument: InstrumentIndex) {
-    let step = if small_step { 1 } else { LARGE_INSTRUMENT_STEP };
-
-    // `max_instrument` should typically not exceed `MAX_INSTRUMENT`, but we cap by
-    // `MAX_INSTRUMENT` to ensure that we don't ever get more than two digits.
-    self.instrument.0 = (self.instrument.0 + step)
-      .min(MAX_INSTRUMENT)
-      .min(max_instrument.0);
-  }
-
-  pub fn decrease_instrument(&mut self, small_step: bool) {
-    let step = if small_step { 1 } else { LARGE_INSTRUMENT_STEP };
-    self.instrument.0 = self.instrument.0.saturating_sub(step);
   }
 
   pub fn increase(
@@ -94,30 +65,35 @@ impl EditorSettings {
         self.increase_octave(small_step);
       }
       EditorSettingFocus::Velocity => {
-        self.increase_velocity(small_step);
+        self.velocity.increase((), small_step);
       }
       EditorSettingFocus::Step => {
         self.increase_step(small_step);
       }
       EditorSettingFocus::Instrument => {
-        self.increase_instrument(small_step, max_instrument);
+        self.instrument.increase(max_instrument, small_step);
       }
     }
   }
 
-  pub fn decrease(&mut self, setting: EditorSettingFocus, small_step: bool) {
+  pub fn decrease(
+    &mut self,
+    setting: EditorSettingFocus,
+    small_step: bool,
+    max_instrument: InstrumentIndex,
+  ) {
     match setting {
       EditorSettingFocus::Octave => {
         self.decrease_octave(small_step);
       }
       EditorSettingFocus::Velocity => {
-        self.decrease_velocity(small_step);
+        self.velocity.decrease((), small_step);
       }
       EditorSettingFocus::Step => {
         self.decrease_step(small_step);
       }
       EditorSettingFocus::Instrument => {
-        self.decrease_instrument(small_step);
+        self.instrument.decrease(max_instrument, small_step);
       }
     }
   }

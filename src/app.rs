@@ -319,24 +319,28 @@ fn handle_edit_settings_event(
 ) -> HandleEventResult {
   let mut new_mode: Option<UIMode> = None;
 
+  let max_instrument = state.instruments.max_index().unwrap_or(InstrumentIndex(0));
+
   match key.code {
     KeyCode::Up => {
-      let max_instrument = state.instruments.max_index().unwrap_or(InstrumentIndex(0));
       state
         .editor_settings
         .increase(current_setting, true, max_instrument);
     }
     KeyCode::Down => {
-      state.editor_settings.decrease(current_setting, true);
+      state
+        .editor_settings
+        .decrease(current_setting, true, max_instrument);
     }
     KeyCode::PageUp => {
-      let max_instrument = state.instruments.max_index().unwrap_or(InstrumentIndex(0));
       state
         .editor_settings
         .increase(current_setting, false, max_instrument);
     }
     KeyCode::PageDown => {
-      state.editor_settings.decrease(current_setting, false);
+      state
+        .editor_settings
+        .decrease(current_setting, false, max_instrument);
     }
     KeyCode::Char('z') => new_mode = Some(UIMode::EditSetting(EditorSettingFocus::Octave)),
     KeyCode::Char('x') => new_mode = Some(UIMode::EditSetting(EditorSettingFocus::Velocity)),

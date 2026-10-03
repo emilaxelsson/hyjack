@@ -11,11 +11,12 @@ use anyhow::Result;
 use nonempty::NonEmpty;
 use serde::{Deserialize, Serialize};
 
-use crate::state::editor_settings::{EditorSettingFocus, EditorSettings};
+use crate::state::editor_settings::EditorSettings;
 use crate::state::instruments::{InstrumentIndex, Instruments};
 use crate::state::name::normalize_and_validate_name;
-use crate::state::pattern::{Focus, Note, Pattern, Velocity};
+use crate::state::pattern::{Focus, Note, Pattern, TrackColumn, Velocity};
 use crate::state::sequence::Sequence;
+use crate::utils::Adjustable;
 
 #[derive(Serialize, Deserialize)]
 pub struct PlayerTime {
@@ -167,36 +168,20 @@ impl AppState {
       return;
     };
 
-    let setting = match self.focus.track_column {
-      crate::state::pattern::TrackColumn::Note => {
-        if increase {
-          note.increase(small_step);
-        } else {
-          note.decrease(small_step);
-        }
-        pattern.set_note(self.focus.row_index, self.focus.track_index, note);
-        return;
+    match self.focus.track_column {
+      TrackColumn::Note => {
+        note.adjust((), increase, small_step);
       }
-      crate::state::pattern::TrackColumn::Instrument => EditorSettingFocus::Instrument,
-      crate::state::pattern::TrackColumn::Velocity => EditorSettingFocus::Velocity,
-      crate::state::pattern::TrackColumn::Effect => return,
-    };
-
-    let mut settings = self.editor_settings;
-    settings.octave = note.octave;
-    settings.instrument = note.instrument;
-    settings.velocity = note.velocity;
-
-    if increase {
-      let max_instrument = self.instruments.max_index().unwrap_or(InstrumentIndex(0));
-      settings.increase(setting, small_step, max_instrument);
-    } else {
-      settings.decrease(setting, small_step);
+      TrackColumn::Instrument => {
+        let max_instrument = self.instruments.max_index().unwrap_or(InstrumentIndex(0));
+        note.instrument.adjust(max_instrument, increase, small_step);
+      }
+      TrackColumn::Velocity => {
+        note.velocity.adjust((), increase, small_step);
+      }
+      TrackColumn::Effect => {}
     }
 
-    note.octave = settings.octave;
-    note.instrument = settings.instrument;
-    note.velocity = settings.velocity;
     pattern.set_note(self.focus.row_index, self.focus.track_index, note);
   }
 

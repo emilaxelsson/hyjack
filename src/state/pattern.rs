@@ -4,7 +4,7 @@ use nonempty::NonEmpty;
 use serde::{Deserialize, Serialize};
 
 use crate::state::instruments::InstrumentIndex;
-use crate::utils::{nonzero_len, sub_one};
+use crate::utils::{Adjustable, nonzero_len, sub_one};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
@@ -18,6 +18,43 @@ pub struct Semitone(pub u8);
 #[serde(transparent)]
 pub struct Velocity(pub u8);
 
+impl Octave {
+  const LARGE_STEP: u8 = 2;
+}
+
+impl Velocity {
+  const LARGE_STEP: u8 = 10;
+  const MAX: u8 = 99;
+}
+
+impl Adjustable for Octave {
+  type Context = ();
+
+  fn increase(&mut self, _context: (), small_step: bool) {
+    let step = if small_step { 1 } else { Self::LARGE_STEP };
+    self.0 = (self.0 + step).min(Note::MAX_OCTAVE);
+  }
+
+  fn decrease(&mut self, _context: (), small_step: bool) {
+    let step = if small_step { 1 } else { Self::LARGE_STEP };
+    self.0 = self.0.saturating_sub(step);
+  }
+}
+
+impl Adjustable for Velocity {
+  type Context = ();
+
+  fn increase(&mut self, _context: (), small_step: bool) {
+    let step = if small_step { 1 } else { Self::LARGE_STEP };
+    self.0 = (self.0 + step).min(Self::MAX);
+  }
+
+  fn decrease(&mut self, _context: (), small_step: bool) {
+    let step = if small_step { 1 } else { Self::LARGE_STEP };
+    self.0 = self.0.saturating_sub(step);
+  }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Note {
   pub octave: Octave,
@@ -29,8 +66,12 @@ pub struct Note {
 impl Note {
   pub const MAX_OCTAVE: u8 = 8;
   const MAX_SEMITONE: u8 = 11;
+}
 
-  pub fn increase(&mut self, small_step: bool) {
+impl Adjustable for Note {
+  type Context = ();
+
+  fn increase(&mut self, _context: (), small_step: bool) {
     if small_step {
       if self.semitone.0 < Self::MAX_SEMITONE {
         self.semitone.0 += 1;
@@ -43,7 +84,7 @@ impl Note {
     }
   }
 
-  pub fn decrease(&mut self, small_step: bool) {
+  fn decrease(&mut self, _context: (), small_step: bool) {
     if small_step {
       if self.semitone.0 > 0 {
         self.semitone.0 -= 1;
@@ -496,17 +537,17 @@ mod focus_tests {
       velocity: Velocity(50),
     };
 
-    note.increase(true);
+    note.increase((), true);
     assert_eq!((note.octave, note.semitone), (Octave(4), Semitone(0)));
-    note.decrease(true);
+    note.decrease((), true);
     assert_eq!((note.octave, note.semitone), (Octave(3), Semitone(11)));
-    note.decrease(true);
+    note.decrease((), true);
     assert_eq!((note.octave, note.semitone), (Octave(3), Semitone(10)));
-    note.increase(true);
+    note.increase((), true);
     assert_eq!((note.octave, note.semitone), (Octave(3), Semitone(11)));
-    note.increase(false);
+    note.increase((), false);
     assert_eq!((note.octave, note.semitone), (Octave(4), Semitone(11)));
-    note.decrease(false);
+    note.decrease((), false);
     assert_eq!((note.octave, note.semitone), (Octave(3), Semitone(11)));
   }
 }
