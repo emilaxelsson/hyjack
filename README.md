@@ -21,7 +21,8 @@
 
 * `Up`/`Down` – Increase/decrease value of focused setting
 * `PgUp`/`PgDown` – Increase/decrease value by larger amount
-* `z`/`x`/`c`/`v` – Switch focus to octave/velocity/step/instrument setting
+* `Left`/`Right` – Navigate to previous/next setting within the editor settings
+* `z`/`x`/`c`/`v` – Navigate to octave/velocity/step/instrument setting
 * `Enter`/`Esc` – Exit editor settings
 
 ### Player
