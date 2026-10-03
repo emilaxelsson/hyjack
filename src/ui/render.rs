@@ -34,7 +34,7 @@ pub fn draw_ui(
   let remaining_area = frame.area();
   let remaining_area = draw_head(frame, state, remaining_area);
   let sequence_is_active = matches!(mode, UIMode::EditSequence);
-  let pattern_is_active = matches!(mode, UIMode::EditPattern);
+  let pattern_is_active = matches!(mode, UIMode::EditPattern | UIMode::EditPatternElement);
   let (remaining_area, sequence_viewport_height) = draw_sequence_panel(
     frame,
     remaining_area,

@@ -11,7 +11,7 @@ use anyhow::Result;
 use nonempty::NonEmpty;
 use serde::{Deserialize, Serialize};
 
-use crate::state::editor_settings::EditorSettings;
+use crate::state::editor_settings::{EditorSettingFocus, EditorSettings};
 use crate::state::instruments::Instruments;
 use crate::state::name::normalize_and_validate_name;
 use crate::state::pattern::{Focus, Note, Pattern, Velocity};
@@ -157,6 +157,49 @@ impl AppState {
     pattern.set_note(self.focus.row_index, self.focus.track_index, note);
   }
 
+  /// Adjust the value in the focused pattern column.
+  pub fn adjust_focused_note(&mut self, increase: bool, small_step: bool) {
+    let pattern_index = self.get_current_pattern_index();
+    let Some(pattern) = self.patterns.get_mut(pattern_index) else {
+      return;
+    };
+    let Some(mut note) = pattern.get_note(self.focus.row_index, self.focus.track_index) else {
+      return;
+    };
+
+    let setting = match self.focus.track_column {
+      crate::state::pattern::TrackColumn::Note => {
+        if increase {
+          note.increase(small_step);
+        } else {
+          note.decrease(small_step);
+        }
+        pattern.set_note(self.focus.row_index, self.focus.track_index, note);
+        return;
+      }
+      crate::state::pattern::TrackColumn::Instrument => EditorSettingFocus::Instrument,
+      crate::state::pattern::TrackColumn::Velocity => EditorSettingFocus::Velocity,
+      crate::state::pattern::TrackColumn::Effect => return,
+    };
+
+    let mut settings = self.editor_settings;
+    settings.octave = note.octave;
+    settings.instrument = note.instrument;
+    settings.velocity = note.velocity;
+
+    if increase {
+      let max_instrument = self.instruments.max_index().unwrap_or(0);
+      settings.increase(setting, small_step, max_instrument);
+    } else {
+      settings.decrease(setting, small_step);
+    }
+
+    note.octave = settings.octave;
+    note.instrument = settings.instrument;
+    note.velocity = settings.velocity;
+    pattern.set_note(self.focus.row_index, self.focus.track_index, note);
+  }
+
   /// Set the instrument of the focused note from a digit typed in the pattern editor.
   pub fn set_focused_note_instrument_digit(&mut self, digit: u8, now: Instant) {
     let instrument = enter_digit(&mut self.instrument_digit_entry, digit, now);
@@ -202,7 +245,7 @@ mod tests {
 
   use super::*;
   use crate::state::instruments::InstrumentIndex;
-  use crate::state::pattern::Track;
+  use crate::state::pattern::{Octave, Semitone, Track};
 
   fn test_state() -> AppState {
     AppState {
@@ -262,6 +305,66 @@ mod tests {
       .get_note(state.focus.row_index, state.focus.track_index)
       .unwrap()
       .velocity
+  }
+
+  fn focused_octave(state: &AppState) -> Octave {
+    state
+      .get_current_pattern()
+      .get_note(state.focus.row_index, state.focus.track_index)
+      .unwrap()
+      .octave
+  }
+
+  fn focused_semitone(state: &AppState) -> Semitone {
+    state
+      .get_current_pattern()
+      .get_note(state.focus.row_index, state.focus.track_index)
+      .unwrap()
+      .semitone
+  }
+
+  #[test]
+  fn focused_note_adjustments_use_editor_setting_steps() {
+    let mut state = test_state();
+    state.instruments =
+      Instruments::DirectMapped((0..=10).map(|index| index.to_string()).collect());
+
+    state.focus.track_column = crate::state::pattern::TrackColumn::Note;
+    state.adjust_focused_note(true, true);
+    assert_eq!(focused_semitone(&state), Semitone(1));
+    state.adjust_focused_note(false, true);
+    assert_eq!(focused_semitone(&state), Semitone(0));
+    state.adjust_focused_note(false, true);
+    assert_eq!(focused_semitone(&state), Semitone(11));
+    assert_eq!(focused_octave(&state), Octave(2));
+    state.adjust_focused_note(true, true);
+    assert_eq!(focused_semitone(&state), Semitone(0));
+    assert_eq!(focused_octave(&state), Octave(3));
+    state.set_focused_note(Note {
+      octave: Octave(3),
+      semitone: Semitone(11),
+      instrument: 0,
+      velocity: Velocity(50),
+    });
+    state.adjust_focused_note(true, true);
+    assert_eq!(focused_semitone(&state), Semitone(0));
+    assert_eq!(focused_octave(&state), Octave(4));
+    state.adjust_focused_note(true, false);
+    assert_eq!(focused_octave(&state), Octave(5));
+    state.adjust_focused_note(false, false);
+    assert_eq!(focused_octave(&state), Octave(4));
+
+    state.focus.track_column = crate::state::pattern::TrackColumn::Instrument;
+    state.adjust_focused_note(true, false);
+    assert_eq!(focused_instrument(&state), 8);
+    state.adjust_focused_note(true, false);
+    assert_eq!(focused_instrument(&state), 10);
+
+    state.focus.track_column = crate::state::pattern::TrackColumn::Velocity;
+    state.adjust_focused_note(true, false);
+    assert_eq!(focused_velocity(&state), Velocity(60));
+    state.adjust_focused_note(false, true);
+    assert_eq!(focused_velocity(&state), Velocity(59));
   }
 
   #[test]

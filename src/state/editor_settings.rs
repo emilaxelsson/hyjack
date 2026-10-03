@@ -6,7 +6,6 @@ const LARGE_VELOCITY_STEP: u8 = 10;
 const LARGE_STEP_STEP: u8 = 4;
 const LARGE_INSTRUMENT_STEP: u8 = 8;
 
-const MAX_OCTAVE: u8 = 8;
 const MAX_VELOCITY: u8 = 99;
 const MAX_STEP: u8 = 16;
 const MAX_INSTRUMENT: u8 = 99;
@@ -41,7 +40,7 @@ pub enum EditorSettingFocus {
 impl EditorSettings {
   pub fn increase_octave(&mut self, small_step: bool) {
     let step = if small_step { 1 } else { LARGE_OCTAVE_STEP };
-    self.octave.0 = (self.octave.0 + step).min(MAX_OCTAVE);
+    self.octave.0 = (self.octave.0 + step).min(Note::MAX_OCTAVE);
   }
 
   pub fn decrease_octave(&mut self, small_step: bool) {

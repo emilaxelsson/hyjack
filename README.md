@@ -7,6 +7,10 @@
 * `F2` – Rename pattern
 * `F3` – Switch to sequence panel
 * `z`/`x`/`c`/`v` – Switch focus to editor's octave/velocity/step/instrument setting
+* `Enter` – Edit the focused pattern element. Enters a mode with the following controls:
+    - `Up`/`Down` – Increase/decrease value of the focused element
+    - `PgUp`/`PgDown` – Increase/decrease value by a larger amount
+    - `Enter`/`Esc` – Exit edit mode
 
 ### Sequence panel
 

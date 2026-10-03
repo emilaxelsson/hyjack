@@ -26,6 +26,37 @@ pub struct Note {
   pub velocity: Velocity,
 }
 
+impl Note {
+  pub const MAX_OCTAVE: u8 = 8;
+  const MAX_SEMITONE: u8 = 11;
+
+  pub fn increase(&mut self, small_step: bool) {
+    if small_step {
+      if self.semitone.0 < Self::MAX_SEMITONE {
+        self.semitone.0 += 1;
+      } else if self.octave.0 < Self::MAX_OCTAVE {
+        self.semitone.0 = 0;
+        self.octave.0 += 1;
+      }
+    } else {
+      self.octave.0 = (self.octave.0 + 1).min(Self::MAX_OCTAVE);
+    }
+  }
+
+  pub fn decrease(&mut self, small_step: bool) {
+    if small_step {
+      if self.semitone.0 > 0 {
+        self.semitone.0 -= 1;
+      } else if self.octave.0 > 0 {
+        self.semitone.0 = Self::MAX_SEMITONE;
+        self.octave.0 -= 1;
+      }
+    } else {
+      self.octave.0 = self.octave.0.saturating_sub(1);
+    }
+  }
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct Track {
   pub name: String,
@@ -454,5 +485,28 @@ mod focus_tests {
     assert_eq!(midi_pitch_from_octave(Octave(3), Semitone(0)), 48);
     assert_eq!(midi_pitch_from_octave(Octave(3), Semitone(11)), 59);
     assert_eq!(midi_pitch_from_octave(Octave(8), Semitone(11)), 119);
+  }
+
+  #[test]
+  fn note_adjustments_change_semitones_and_octaves() {
+    let mut note = Note {
+      octave: Octave(3),
+      semitone: Semitone(11),
+      instrument: 0,
+      velocity: Velocity(50),
+    };
+
+    note.increase(true);
+    assert_eq!((note.octave, note.semitone), (Octave(4), Semitone(0)));
+    note.decrease(true);
+    assert_eq!((note.octave, note.semitone), (Octave(3), Semitone(11)));
+    note.decrease(true);
+    assert_eq!((note.octave, note.semitone), (Octave(3), Semitone(10)));
+    note.increase(true);
+    assert_eq!((note.octave, note.semitone), (Octave(3), Semitone(11)));
+    note.increase(false);
+    assert_eq!((note.octave, note.semitone), (Octave(4), Semitone(11)));
+    note.decrease(false);
+    assert_eq!((note.octave, note.semitone), (Octave(3), Semitone(11)));
   }
 }

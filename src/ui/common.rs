@@ -14,6 +14,7 @@ pub enum ComponentAction {
 #[derive(Clone, Copy, PartialEq)]
 pub enum UIMode {
   EditPattern,
+  EditPatternElement,
   EditSequence,
   EditSetting(EditorSettingFocus),
 }

@@ -221,6 +221,9 @@ fn handle_edit_pattern_event(
     KeyCode::F(3) => {
       new_mode = Some(UIMode::EditSequence);
     }
+    KeyCode::Enter => {
+      new_mode = Some(UIMode::EditPatternElement);
+    }
     KeyCode::Char('z') => {
       new_mode = Some(UIMode::EditSetting(EditorSettingFocus::Octave));
     }
@@ -285,6 +288,26 @@ mod tests {
     assert_eq!(note_key_to_semitone('h'), Some(Semitone(9)));
     assert_eq!(note_key_to_semitone('u'), Some(Semitone(10)));
     assert_eq!(note_key_to_semitone('j'), Some(Semitone(11)));
+  }
+}
+
+fn handle_edit_pattern_element_event(state: &mut AppState, key: KeyEvent) -> HandleEventResult {
+  let mut new_mode: Option<UIMode> = None;
+
+  match key.code {
+    KeyCode::Up => state.adjust_focused_note(true, true),
+    KeyCode::Down => state.adjust_focused_note(false, true),
+    KeyCode::PageUp => state.adjust_focused_note(true, false),
+    KeyCode::PageDown => state.adjust_focused_note(false, false),
+    KeyCode::Enter | KeyCode::Esc => new_mode = Some(UIMode::EditPattern),
+    _ => {}
+  }
+
+  HandleEventResult {
+    quit: false,
+    new_mode,
+    banner: None,
+    dialog: None,
   }
 }
 
@@ -378,6 +401,7 @@ fn handle_event(
       let result = handle_edit_pattern_event(state, pattern_scroll_state, viewports, key);
       Ok(result)
     }
+    UIMode::EditPatternElement => Ok(handle_edit_pattern_element_event(state, key)),
     UIMode::EditSequence => {
       let result = handle_edit_sequence_event(state, sequence_scroll_state, viewports, key);
       Ok(result)
