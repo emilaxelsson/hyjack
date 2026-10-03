@@ -250,7 +250,7 @@ mod focus_tests {
     (
       any::<u8>(),
       0u8..12u8,
-      any::<InstrumentIndex>(),
+      any::<u8>().prop_map(InstrumentIndex),
       any::<u8>(),
     )
       .prop_map(|(octave, semitone, instrument, velocity)| Note {
@@ -492,7 +492,7 @@ mod focus_tests {
     let mut note = Note {
       octave: Octave(3),
       semitone: Semitone(11),
-      instrument: 0,
+      instrument: InstrumentIndex(0),
       velocity: Velocity(50),
     };
 

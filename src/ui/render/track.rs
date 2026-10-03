@@ -24,7 +24,7 @@ fn note_cell_text(note: &Option<Note>) -> String {
     format!(
       "{} {:02} v{:02}  ...",
       tracker_note_text(note.octave, note.semitone),
-      note.instrument,
+      note.instrument.0,
       note.velocity.0,
     )
   } else {

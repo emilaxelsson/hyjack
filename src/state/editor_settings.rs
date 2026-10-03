@@ -24,7 +24,7 @@ impl Default for EditorSettings {
       octave: Octave(3),
       velocity: Velocity(50),
       step: 4,
-      instrument: 0,
+      instrument: InstrumentIndex(0),
     }
   }
 }
@@ -68,22 +68,27 @@ impl EditorSettings {
     self.step = self.step.saturating_sub(step);
   }
 
-  pub fn increase_instrument(&mut self, small_step: bool, max_instrument: u8) {
+  pub fn increase_instrument(&mut self, small_step: bool, max_instrument: InstrumentIndex) {
     let step = if small_step { 1 } else { LARGE_INSTRUMENT_STEP };
 
     // `max_instrument` should typically not exceed `MAX_INSTRUMENT`, but we cap by
     // `MAX_INSTRUMENT` to ensure that we don't ever get more than two digits.
-    self.instrument = (self.instrument + step)
+    self.instrument.0 = (self.instrument.0 + step)
       .min(MAX_INSTRUMENT)
-      .min(max_instrument);
+      .min(max_instrument.0);
   }
 
   pub fn decrease_instrument(&mut self, small_step: bool) {
     let step = if small_step { 1 } else { LARGE_INSTRUMENT_STEP };
-    self.instrument = self.instrument.saturating_sub(step);
+    self.instrument.0 = self.instrument.0.saturating_sub(step);
   }
 
-  pub fn increase(&mut self, setting: EditorSettingFocus, small_step: bool, max_instrument: u8) {
+  pub fn increase(
+    &mut self,
+    setting: EditorSettingFocus,
+    small_step: bool,
+    max_instrument: InstrumentIndex,
+  ) {
     match setting {
       EditorSettingFocus::Octave => {
         self.increase_octave(small_step);

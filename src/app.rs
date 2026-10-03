@@ -12,6 +12,7 @@ use tui_scrollview::ScrollViewState;
 
 use crate::state::AppState;
 use crate::state::editor_settings::EditorSettingFocus;
+use crate::state::instruments::InstrumentIndex;
 use crate::state::pattern::{Semitone, TrackColumn};
 use crate::ui::common::{Component, ComponentAction, UIMode};
 use crate::ui::component::input_dialog::InputDialog;
@@ -320,7 +321,7 @@ fn handle_edit_settings_event(
 
   match key.code {
     KeyCode::Up => {
-      let max_instrument = state.instruments.max_index().unwrap_or(0);
+      let max_instrument = state.instruments.max_index().unwrap_or(InstrumentIndex(0));
       state
         .editor_settings
         .increase(current_setting, true, max_instrument);
@@ -329,7 +330,7 @@ fn handle_edit_settings_event(
       state.editor_settings.decrease(current_setting, true);
     }
     KeyCode::PageUp => {
-      let max_instrument = state.instruments.max_index().unwrap_or(0);
+      let max_instrument = state.instruments.max_index().unwrap_or(InstrumentIndex(0));
       state
         .editor_settings
         .increase(current_setting, false, max_instrument);

@@ -125,11 +125,11 @@ fn draw_pattern_details(
   let instr_ix = note
     .note
     .as_ref()
-    .map(|n| format!("{:2}", n.instrument))
+    .map(|n| format!("{:2}", n.instrument.0))
     .unwrap_or(" -".to_string());
   let editing_instr = format!(
     "{:2}/{}",
-    editor_settings.instrument, editor_instrument_name
+    editor_settings.instrument.0, editor_instrument_name
   );
 
   let mut octave_bg = SUB_TITLE_BG;
@@ -275,6 +275,7 @@ pub fn draw_pattern_panel(
   let current_instrument = current_note
     .clone()
     .and_then(|note| state.instruments.get_name(note.instrument))
+    .map(|name| name.0)
     .unwrap_or("-".to_string());
   let note_info = NoteInfo {
     note: current_note,
@@ -283,6 +284,7 @@ pub fn draw_pattern_panel(
   let editor_instrument_name = state
     .instruments
     .get_name(state.editor_settings.instrument)
+    .map(|name| name.0)
     .unwrap_or("-".to_string());
   let focused_setting = match mode {
     UIMode::EditSetting(setting) => Some(setting),

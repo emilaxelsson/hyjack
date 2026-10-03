@@ -1,7 +1,12 @@
 use serde::{Deserialize, Serialize};
 
-pub type InstrumentIndex = u8;
-pub type InstrumentName = String;
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct InstrumentIndex(pub u8);
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct InstrumentName(pub String);
 
 #[derive(Serialize, Deserialize)]
 pub enum Instruments {
@@ -11,7 +16,7 @@ pub enum Instruments {
 impl Instruments {
   pub fn get_name(&self, index: InstrumentIndex) -> Option<InstrumentName> {
     match self {
-      Instruments::DirectMapped(names) => names.get(index as usize).cloned(),
+      Instruments::DirectMapped(names) => names.get(index.0 as usize).cloned(),
     }
   }
 
@@ -21,7 +26,9 @@ impl Instruments {
         if names.is_empty() {
           None
         } else {
-          Some((names.len() - 1).min(InstrumentIndex::MAX as usize) as InstrumentIndex)
+          Some(InstrumentIndex(
+            (names.len() - 1).min(u8::MAX as usize) as u8
+          ))
         }
       }
     }

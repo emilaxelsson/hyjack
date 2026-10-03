@@ -12,7 +12,7 @@ use nonempty::NonEmpty;
 use serde::{Deserialize, Serialize};
 
 use crate::state::editor_settings::{EditorSettingFocus, EditorSettings};
-use crate::state::instruments::Instruments;
+use crate::state::instruments::{InstrumentIndex, Instruments};
 use crate::state::name::normalize_and_validate_name;
 use crate::state::pattern::{Focus, Note, Pattern, Velocity};
 use crate::state::sequence::Sequence;
@@ -188,7 +188,7 @@ impl AppState {
     settings.velocity = note.velocity;
 
     if increase {
-      let max_instrument = self.instruments.max_index().unwrap_or(0);
+      let max_instrument = self.instruments.max_index().unwrap_or(InstrumentIndex(0));
       settings.increase(setting, small_step, max_instrument);
     } else {
       settings.decrease(setting, small_step);
@@ -212,7 +212,7 @@ impl AppState {
       return;
     };
 
-    note.instrument = instrument;
+    note.instrument = InstrumentIndex(instrument);
     pattern.set_note(self.focus.row_index, self.focus.track_index, note);
   }
 
@@ -244,7 +244,7 @@ mod tests {
   use std::num::{NonZero, NonZeroU8};
 
   use super::*;
-  use crate::state::instruments::InstrumentIndex;
+  use crate::state::instruments::{InstrumentIndex, InstrumentName};
   use crate::state::pattern::{Octave, Semitone, Track};
 
   fn test_state() -> AppState {
@@ -258,7 +258,7 @@ mod tests {
           notes: NonEmpty::new(Some(Note {
             octave: crate::state::pattern::Octave(3),
             semitone: crate::state::pattern::Semitone(0),
-            instrument: 0,
+            instrument: InstrumentIndex(0),
             velocity: Velocity(50),
           })),
         }),
@@ -326,8 +326,11 @@ mod tests {
   #[test]
   fn focused_note_adjustments_use_editor_setting_steps() {
     let mut state = test_state();
-    state.instruments =
-      Instruments::DirectMapped((0..=10).map(|index| index.to_string()).collect());
+    state.instruments = Instruments::DirectMapped(
+      (0..=10)
+        .map(|index| InstrumentName(index.to_string()))
+        .collect(),
+    );
 
     state.focus.track_column = crate::state::pattern::TrackColumn::Note;
     state.adjust_focused_note(true, true);
@@ -343,7 +346,7 @@ mod tests {
     state.set_focused_note(Note {
       octave: Octave(3),
       semitone: Semitone(11),
-      instrument: 0,
+      instrument: InstrumentIndex(0),
       velocity: Velocity(50),
     });
     state.adjust_focused_note(true, true);
@@ -356,9 +359,9 @@ mod tests {
 
     state.focus.track_column = crate::state::pattern::TrackColumn::Instrument;
     state.adjust_focused_note(true, false);
-    assert_eq!(focused_instrument(&state), 8);
+    assert_eq!(focused_instrument(&state), InstrumentIndex(8));
     state.adjust_focused_note(true, false);
-    assert_eq!(focused_instrument(&state), 10);
+    assert_eq!(focused_instrument(&state), InstrumentIndex(10));
 
     state.focus.track_column = crate::state::pattern::TrackColumn::Velocity;
     state.adjust_focused_note(true, false);
@@ -373,10 +376,10 @@ mod tests {
     let start = Instant::now();
 
     state.set_focused_note_instrument_digit(4, start);
-    assert_eq!(focused_instrument(&state), 4);
+    assert_eq!(focused_instrument(&state), InstrumentIndex(4));
 
     state.set_focused_note_instrument_digit(2, start + Duration::from_millis(999));
-    assert_eq!(focused_instrument(&state), 42);
+    assert_eq!(focused_instrument(&state), InstrumentIndex(42));
   }
 
   #[test]
@@ -388,7 +391,7 @@ mod tests {
     state.set_focused_note_instrument_digit(2, start + Duration::from_millis(500));
     state.set_focused_note_instrument_digit(3, start + Duration::from_millis(999));
 
-    assert_eq!(focused_instrument(&state), 23);
+    assert_eq!(focused_instrument(&state), InstrumentIndex(23));
   }
 
   #[test]
@@ -399,7 +402,7 @@ mod tests {
     state.set_focused_note_instrument_digit(4, start);
     state.set_focused_note_instrument_digit(2, start + Duration::from_millis(1001));
 
-    assert_eq!(focused_instrument(&state), 2);
+    assert_eq!(focused_instrument(&state), InstrumentIndex(2));
   }
 
   #[test]
