@@ -3,7 +3,7 @@ use ratatui::layout::{Offset, Position, Rect, Size};
 use ratatui::widgets::{Block, Paragraph};
 use tui_scrollview::{ScrollView, ScrollViewState, ScrollbarVisibility};
 
-use crate::state::pattern::{Note, Pattern, Track, TrackColumn};
+use crate::state::pattern::{Note, Octave, Pattern, Semitone, Track, TrackColumn};
 use crate::ui::common::rect_from_origin;
 use crate::ui::render::style::{
   FOCUSED_ROW_STYLE, INACTIVE_FOCUSED_ROW_STYLE, PANEL_AREA_STYLE, SUB_TITLE_STYLE, default_block,
@@ -11,12 +11,12 @@ use crate::ui::render::style::{
 
 pub const TRACK_COLUMN_WIDTH: u16 = 15;
 
-fn tracker_note_text(octave: u8, semitone: u8) -> String {
+fn tracker_note_text(octave: Octave, semitone: Semitone) -> String {
   const NAMES: [&str; 12] = [
     "C-", "C#", "D-", "D#", "E-", "F-", "F#", "G-", "G#", "A-", "A#", "B-",
   ];
-  let name = NAMES[(semitone as usize) % 12];
-  format!("{}{}", name, octave)
+  let name = NAMES[(semitone.0 as usize) % 12];
+  format!("{}{}", name, octave.0)
 }
 
 fn note_cell_text(note: &Option<Note>) -> String {
@@ -25,7 +25,7 @@ fn note_cell_text(note: &Option<Note>) -> String {
       "{} {:02} v{:02}  ...",
       tracker_note_text(note.octave, note.semitone),
       note.instrument,
-      note.velocity,
+      note.velocity.0,
     )
   } else {
     "... ..  ..  ...".to_string()

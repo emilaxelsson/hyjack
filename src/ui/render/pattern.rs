@@ -160,8 +160,8 @@ fn draw_pattern_details(
     ]),
     Row::new(vec![
       Cell::from("Edit").style(Style::default().bold()),
-      Cell::from(format!("(octave {:2})", editor_settings.octave)).bg(octave_bg),
-      Cell::from(format!("(velocity {:2})", editor_settings.velocity)).bg(velocity_bg),
+      Cell::from(format!("(octave {:2})", editor_settings.octave.0)).bg(octave_bg),
+      Cell::from(format!("(velocity {:2})", editor_settings.velocity.0)).bg(velocity_bg),
       Cell::from(format!("(step {:2})", editor_settings.step)).bg(step_bg),
       Cell::from(format!("(instr {})", editing_instr)).bg(instr_bg),
     ]),

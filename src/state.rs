@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use crate::state::editor_settings::EditorSettings;
 use crate::state::instruments::Instruments;
 use crate::state::name::normalize_and_validate_name;
-use crate::state::pattern::{Focus, Note, Pattern};
+use crate::state::pattern::{Focus, Note, Pattern, Velocity};
 use crate::state::sequence::Sequence;
 
 #[derive(Serialize, Deserialize)]
@@ -185,7 +185,7 @@ impl AppState {
       return;
     };
 
-    note.velocity = velocity;
+    note.velocity = Velocity(velocity);
     pattern.set_note(self.focus.row_index, self.focus.track_index, note);
   }
 
@@ -213,10 +213,10 @@ mod tests {
         tracks: NonEmpty::new(Track {
           name: "Track".to_owned(),
           notes: NonEmpty::new(Some(Note {
-            octave: 3,
-            semitone: 0,
+            octave: crate::state::pattern::Octave(3),
+            semitone: crate::state::pattern::Semitone(0),
             instrument: 0,
-            velocity: 50,
+            velocity: Velocity(50),
           })),
         }),
         num_rows: NonZero::new(1).unwrap(),
@@ -256,7 +256,7 @@ mod tests {
       .instrument
   }
 
-  fn focused_velocity(state: &AppState) -> u8 {
+  fn focused_velocity(state: &AppState) -> Velocity {
     state
       .get_current_pattern()
       .get_note(state.focus.row_index, state.focus.track_index)
@@ -305,12 +305,12 @@ mod tests {
     let start = Instant::now();
 
     state.set_focused_note_velocity_digit(1, start);
-    assert_eq!(focused_velocity(&state), 1);
+    assert_eq!(focused_velocity(&state), Velocity(1));
 
     state.set_focused_note_velocity_digit(2, start + Duration::from_millis(500));
     state.set_focused_note_velocity_digit(3, start + Duration::from_millis(999));
 
-    assert_eq!(focused_velocity(&state), 23);
+    assert_eq!(focused_velocity(&state), Velocity(23));
   }
 
   #[test]
@@ -321,6 +321,6 @@ mod tests {
     state.set_focused_note_velocity_digit(4, start);
     state.set_focused_note_velocity_digit(2, start + Duration::from_millis(1001));
 
-    assert_eq!(focused_velocity(&state), 2);
+    assert_eq!(focused_velocity(&state), Velocity(2));
   }
 }

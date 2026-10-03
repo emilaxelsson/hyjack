@@ -6,12 +6,24 @@ use serde::{Deserialize, Serialize};
 use crate::state::instruments::InstrumentIndex;
 use crate::utils::{nonzero_len, sub_one};
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct Octave(pub u8);
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct Semitone(pub u8);
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct Velocity(pub u8);
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Note {
-  pub octave: u8,
-  pub semitone: u8,
+  pub octave: Octave,
+  pub semitone: Semitone,
   pub instrument: InstrumentIndex,
-  pub velocity: u8,
+  pub velocity: Velocity,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -161,8 +173,8 @@ impl Focus {
   }
 }
 
-pub fn midi_pitch_from_octave(octave: u8, semitone: u8) -> u8 {
-  octave.saturating_add(1).saturating_mul(12) + semitone
+pub fn midi_pitch_from_octave(octave: Octave, semitone: Semitone) -> u8 {
+  octave.0.saturating_add(1).saturating_mul(12) + semitone.0
 }
 
 #[cfg(test)]
@@ -211,10 +223,10 @@ mod focus_tests {
       any::<u8>(),
     )
       .prop_map(|(octave, semitone, instrument, velocity)| Note {
-        octave,
-        semitone,
+        octave: Octave(octave),
+        semitone: Semitone(semitone),
         instrument,
-        velocity,
+        velocity: Velocity(velocity),
       })
   }
 
@@ -439,8 +451,8 @@ mod focus_tests {
 
   #[test]
   fn midi_pitch_from_octave_matches_tracker_conversion() {
-    assert_eq!(midi_pitch_from_octave(3, 0), 48);
-    assert_eq!(midi_pitch_from_octave(3, 11), 59);
-    assert_eq!(midi_pitch_from_octave(8, 11), 119);
+    assert_eq!(midi_pitch_from_octave(Octave(3), Semitone(0)), 48);
+    assert_eq!(midi_pitch_from_octave(Octave(3), Semitone(11)), 59);
+    assert_eq!(midi_pitch_from_octave(Octave(8), Semitone(11)), 119);
   }
 }

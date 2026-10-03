@@ -1,5 +1,5 @@
 use crate::state::instruments::InstrumentIndex;
-use crate::state::pattern::Note;
+use crate::state::pattern::{Note, Octave, Semitone, Velocity};
 
 const LARGE_OCTAVE_STEP: u8 = 2;
 const LARGE_VELOCITY_STEP: u8 = 10;
@@ -13,8 +13,8 @@ const MAX_INSTRUMENT: u8 = 99;
 
 #[derive(Clone, Copy)]
 pub struct EditorSettings {
-  pub octave: u8,
-  pub velocity: u8,
+  pub octave: Octave,
+  pub velocity: Velocity,
   pub step: u8,
   pub instrument: InstrumentIndex,
 }
@@ -22,8 +22,8 @@ pub struct EditorSettings {
 impl Default for EditorSettings {
   fn default() -> Self {
     Self {
-      octave: 3,
-      velocity: 50,
+      octave: Octave(3),
+      velocity: Velocity(50),
       step: 4,
       instrument: 0,
     }
@@ -41,22 +41,22 @@ pub enum EditorSettingFocus {
 impl EditorSettings {
   pub fn increase_octave(&mut self, small_step: bool) {
     let step = if small_step { 1 } else { LARGE_OCTAVE_STEP };
-    self.octave = (self.octave + step).min(MAX_OCTAVE);
+    self.octave.0 = (self.octave.0 + step).min(MAX_OCTAVE);
   }
 
   pub fn decrease_octave(&mut self, small_step: bool) {
     let step = if small_step { 1 } else { LARGE_OCTAVE_STEP };
-    self.octave = self.octave.saturating_sub(step);
+    self.octave.0 = self.octave.0.saturating_sub(step);
   }
 
   pub fn increase_velocity(&mut self, small_step: bool) {
     let step = if small_step { 1 } else { LARGE_VELOCITY_STEP };
-    self.velocity = (self.velocity + step).min(MAX_VELOCITY);
+    self.velocity.0 = (self.velocity.0 + step).min(MAX_VELOCITY);
   }
 
   pub fn decrease_velocity(&mut self, small_step: bool) {
     let step = if small_step { 1 } else { LARGE_VELOCITY_STEP };
-    self.velocity = self.velocity.saturating_sub(step);
+    self.velocity.0 = self.velocity.0.saturating_sub(step);
   }
 
   pub fn increase_step(&mut self, small_step: bool) {
@@ -119,7 +119,7 @@ impl EditorSettings {
   }
 
   /// Create a `Note` based on the current editor settings and the given semitone.
-  pub fn make_note(&self, semitone: u8) -> Note {
+  pub fn make_note(&self, semitone: Semitone) -> Note {
     Note {
       octave: self.octave,
       semitone,
