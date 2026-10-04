@@ -173,6 +173,18 @@ impl AppState {
     self.refocus_pattern();
   }
 
+  /// Navigate to the first pattern column in the current row.
+  pub fn to_first_pattern_column(&mut self) {
+    self.focus.track_index = 0;
+    self.focus.track_column = TrackColumn::Note;
+  }
+
+  /// Navigate to the last pattern column in the current row.
+  pub fn to_last_pattern_column(&mut self) {
+    self.focus.track_index = self.get_current_pattern().bounds().num_tracks.get() - 1;
+    self.focus.track_column = TrackColumn::Effect;
+  }
+
   /// Navigate to the first row of the current pattern.
   pub fn to_first_pattern_row(&mut self) {
     self.focus.row_index = 0;
@@ -183,18 +195,40 @@ impl AppState {
     self.focus.row_index = self.get_current_pattern().bounds().num_rows.get() - 1;
   }
 
-  /// Navigate to the first row of the first pattern in the sequence.
-  pub fn to_first_sequence_pattern_row(&mut self) {
+  /// Navigate to the first row of the song.
+  pub fn to_first_song_row(&mut self) {
     self.sequence.focus_index = 0;
     self.focus.row_index = 0;
     self.refocus_pattern();
   }
 
-  /// Navigate to the last row of the last pattern in the sequence.
-  pub fn to_last_sequence_pattern_row(&mut self) {
-    self.sequence.focus_index = self.sequence.titles.len() - 1;
+  /// Navigate to the final song row, or to the end of the pool when already there.
+  pub fn to_last_song_or_pool_row(&mut self) {
+    self.sequence.focus_index = if self.sequence.focus_index >= self.sequence.end_of_song {
+      self.sequence.titles.len() - 1
+    } else {
+      self.sequence.end_of_song
+    };
     self.focus.row_index = self.get_current_pattern().bounds().num_rows.get() - 1;
     self.refocus_pattern();
+  }
+
+  /// Navigate to the first row, or the previous pattern when already on the first row.
+  pub fn page_up_pattern(&mut self) {
+    if self.focus.row_index == 0 {
+      self.to_previous_pattern();
+    } else {
+      self.to_first_pattern_row();
+    }
+  }
+
+  /// Navigate to the last row, or the next pattern when already on the last row.
+  pub fn page_down_pattern(&mut self) {
+    if self.focus.row_index + 1 == self.get_current_pattern().bounds().num_rows.get() {
+      self.to_next_pattern();
+    } else {
+      self.to_last_pattern_row();
+    }
   }
 
   pub fn rename_focused_pattern(&mut self, new_title: String) -> Result<()> {
@@ -437,7 +471,7 @@ mod tests {
   }
 
   #[test]
-  fn pattern_row_jumps_target_current_or_sequence_boundary_patterns() {
+  fn home_end_navigation_targets_pattern_columns_and_song_boundaries() {
     let mut state = test_state();
     state.patterns.get_mut(0).unwrap().num_rows = NonZero::new(3).unwrap();
     state.patterns.push(Pattern {
@@ -449,33 +483,44 @@ mod tests {
       num_rows: NonZero::new(2).unwrap(),
       rows_per_beat: NonZeroU8::new(4).unwrap(),
     });
-    state.sequence.titles.push("Second pattern".to_owned());
+    state
+      .sequence
+      .titles
+      .extend(["Second pattern".to_owned(), "Pattern".to_owned()]);
+    state.sequence.end_of_song = 1;
     state.sequence.focus_index = 1;
     state.focus.row_index = 1;
     state.focus.track_column = TrackColumn::Velocity;
 
-    state.to_first_pattern_row();
-    assert_eq!(state.sequence.focus_index, 1);
-    assert_eq!(state.focus.row_index, 0);
-    assert_eq!(state.focus.track_column, TrackColumn::Velocity);
-
-    state.to_last_pattern_row();
+    state.to_first_pattern_column();
     assert_eq!(state.sequence.focus_index, 1);
     assert_eq!(state.focus.row_index, 1);
+    assert_eq!(state.focus.track_index, 0);
+    assert_eq!(state.focus.track_column, TrackColumn::Note);
 
-    state.to_first_sequence_pattern_row();
+    state.to_last_pattern_column();
+    assert_eq!(state.sequence.focus_index, 1);
+    assert_eq!(state.focus.row_index, 1);
+    assert_eq!(state.focus.track_index, 0);
+    assert_eq!(state.focus.track_column, TrackColumn::Effect);
+
+    state.to_first_song_row();
     assert_eq!(state.sequence.focus_index, 0);
     assert_eq!(state.focus.row_index, 0);
-    assert_eq!(state.focus.track_column, TrackColumn::Velocity);
+    assert_eq!(state.focus.track_column, TrackColumn::Effect);
 
-    state.to_last_sequence_pattern_row();
+    state.to_last_song_or_pool_row();
     assert_eq!(state.sequence.focus_index, 1);
     assert_eq!(state.focus.row_index, 1);
-    assert_eq!(state.focus.track_column, TrackColumn::Velocity);
+    assert_eq!(state.focus.track_column, TrackColumn::Effect);
+
+    state.to_last_song_or_pool_row();
+    assert_eq!(state.sequence.focus_index, 2);
+    assert_eq!(state.focus.row_index, 2);
   }
 
   #[test]
-  fn pattern_navigation_moves_between_sequence_entries_and_clamps_focus() {
+  fn page_navigation_seeks_pattern_boundaries_before_changing_patterns() {
     let mut state = test_state();
     state.patterns.get_mut(0).unwrap().num_rows = NonZero::new(3).unwrap();
     state.patterns.push(Pattern {
@@ -491,21 +536,33 @@ mod tests {
     state.focus.row_index = 2;
     state.focus.track_column = TrackColumn::Velocity;
 
-    state.to_previous_pattern();
+    state.page_up_pattern();
+    assert_eq!(state.sequence.focus_index, 0);
+    assert_eq!(state.focus.row_index, 0);
+
+    state.page_up_pattern();
+    assert_eq!(state.sequence.focus_index, 0);
+    assert_eq!(state.focus.row_index, 0);
+
+    state.page_down_pattern();
     assert_eq!(state.sequence.focus_index, 0);
     assert_eq!(state.focus.row_index, 2);
 
-    state.to_next_pattern();
+    state.page_down_pattern();
     assert_eq!(state.sequence.focus_index, 1);
     assert_eq!(state.focus.row_index, 1);
     assert_eq!(state.focus.track_column, TrackColumn::Velocity);
 
-    state.to_next_pattern();
+    state.page_down_pattern();
     assert_eq!(state.sequence.focus_index, 1);
 
-    state.to_previous_pattern();
+    state.page_up_pattern();
+    assert_eq!(state.sequence.focus_index, 1);
+    assert_eq!(state.focus.row_index, 0);
+
+    state.page_up_pattern();
     assert_eq!(state.sequence.focus_index, 0);
-    assert_eq!(state.focus.row_index, 1);
+    assert_eq!(state.focus.row_index, 0);
   }
 
   #[test]

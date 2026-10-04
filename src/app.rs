@@ -201,26 +201,26 @@ fn handle_edit_pattern_event(
       }
     }
     KeyCode::PageUp => {
-      state.to_previous_pattern();
+      state.page_up_pattern();
       scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
     }
     KeyCode::PageDown => {
-      state.to_next_pattern();
+      state.page_down_pattern();
       scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
     }
     KeyCode::Home => {
       if key.modifiers == KeyModifiers::CONTROL {
-        state.to_first_sequence_pattern_row();
+        state.to_first_song_row();
       } else {
-        state.to_first_pattern_row();
+        state.to_first_pattern_column();
       }
       scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
     }
     KeyCode::End => {
       if key.modifiers == KeyModifiers::CONTROL {
-        state.to_last_sequence_pattern_row();
+        state.to_last_song_or_pool_row();
       } else {
-        state.to_last_pattern_row();
+        state.to_last_pattern_column();
       }
       scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
     }
