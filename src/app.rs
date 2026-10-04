@@ -188,7 +188,7 @@ fn handle_edit_pattern_event(
       if key.modifiers == KeyModifiers::CONTROL {
         pattern_scroll_state.scroll_up();
       } else {
-        state.focus.to_previous_row();
+        state.to_previous_pattern_row();
         scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
       }
     }
@@ -196,7 +196,7 @@ fn handle_edit_pattern_event(
       if key.modifiers == KeyModifiers::CONTROL {
         pattern_scroll_state.scroll_down();
       } else {
-        state.focus.to_next_row(bounds);
+        state.to_next_pattern_row();
         scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
       }
     }

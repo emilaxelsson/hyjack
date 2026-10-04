@@ -117,6 +117,41 @@ impl AppState {
     self.focus.refocus(&current_pattern.bounds());
   }
 
+  /// Navigate to the previous pattern row, crossing to the preceding sequence entry at row zero.
+  pub fn to_previous_pattern_row(&mut self) {
+    if self.focus.row_index > 0 {
+      self.focus.to_previous_row();
+      return;
+    }
+
+    let previous_sequence_index = self.sequence.focus_index.saturating_sub(1);
+    if previous_sequence_index == self.sequence.focus_index {
+      return;
+    }
+
+    self.sequence.focus_index = previous_sequence_index;
+    let bounds = self.get_current_pattern().bounds();
+    self.focus.row_index = bounds.num_rows.get() - 1;
+    self.focus.refocus(&bounds);
+  }
+
+  /// Navigate to the next pattern row, crossing to the following sequence entry at the last row.
+  pub fn to_next_pattern_row(&mut self) {
+    let bounds = self.get_current_pattern().bounds();
+    if self.focus.row_index + 1 < bounds.num_rows.get() {
+      self.focus.to_next_row(bounds);
+      return;
+    }
+
+    if self.sequence.focus_index + 1 >= self.sequence.titles.len() {
+      return;
+    }
+
+    self.sequence.focus_index += 1;
+    self.focus.row_index = 0;
+    self.refocus_pattern();
+  }
+
   pub fn rename_focused_pattern(&mut self, new_title: String) -> Result<()> {
     let normalized = normalize_and_validate_name("Pattern title", &new_title)?;
     let old_title = self.get_current_pattern().title.clone();
@@ -306,6 +341,54 @@ mod tests {
       .get_note(state.focus.row_index, state.focus.track_index)
       .unwrap()
       .semitone
+  }
+
+  #[test]
+  fn pattern_row_navigation_crosses_sequence_entries_at_pattern_boundaries() {
+    let mut state = test_state();
+    state.patterns.get_mut(0).unwrap().num_rows = NonZero::new(3).unwrap();
+    state.patterns.push(Pattern {
+      title: "Second pattern".to_owned(),
+      tracks: NonEmpty::new(Track {
+        name: "Track".to_owned(),
+        notes: NonEmpty::new(None),
+      }),
+      num_rows: NonZero::new(2).unwrap(),
+      rows_per_beat: NonZeroU8::new(4).unwrap(),
+    });
+    state.sequence.titles.push("Second pattern".to_owned());
+
+    state.to_next_pattern_row();
+    assert_eq!(state.sequence.focus_index, 0);
+    assert_eq!(state.focus.row_index, 1);
+
+    state.focus.row_index = 2;
+    state.to_next_pattern_row();
+    assert_eq!(state.sequence.focus_index, 1);
+    assert_eq!(state.focus.row_index, 0);
+
+    state.to_previous_pattern_row();
+    assert_eq!(state.sequence.focus_index, 0);
+    assert_eq!(state.focus.row_index, 2);
+
+    state.focus.row_index = 0;
+    state.to_previous_pattern_row();
+    assert_eq!(state.sequence.focus_index, 0);
+    assert_eq!(state.focus.row_index, 0);
+
+    state.focus.row_index = 1;
+    state.to_next_pattern_row();
+    assert_eq!(state.sequence.focus_index, 0);
+    assert_eq!(state.focus.row_index, 2);
+
+    state.to_next_pattern_row();
+    assert_eq!(state.sequence.focus_index, 1);
+    assert_eq!(state.focus.row_index, 0);
+
+    state.focus.row_index = 1;
+    state.to_next_pattern_row();
+    assert_eq!(state.sequence.focus_index, 1);
+    assert_eq!(state.focus.row_index, 1);
   }
 
   #[test]
