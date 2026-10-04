@@ -152,6 +152,30 @@ impl AppState {
     self.refocus_pattern();
   }
 
+  /// Navigate to the first row of the current pattern.
+  pub fn to_first_pattern_row(&mut self) {
+    self.focus.row_index = 0;
+  }
+
+  /// Navigate to the last row of the current pattern.
+  pub fn to_last_pattern_row(&mut self) {
+    self.focus.row_index = self.get_current_pattern().bounds().num_rows.get() - 1;
+  }
+
+  /// Navigate to the first row of the first pattern in the sequence.
+  pub fn to_first_sequence_pattern_row(&mut self) {
+    self.sequence.focus_index = 0;
+    self.focus.row_index = 0;
+    self.refocus_pattern();
+  }
+
+  /// Navigate to the last row of the last pattern in the sequence.
+  pub fn to_last_sequence_pattern_row(&mut self) {
+    self.sequence.focus_index = self.sequence.titles.len() - 1;
+    self.focus.row_index = self.get_current_pattern().bounds().num_rows.get() - 1;
+    self.refocus_pattern();
+  }
+
   pub fn rename_focused_pattern(&mut self, new_title: String) -> Result<()> {
     let normalized = normalize_and_validate_name("Pattern title", &new_title)?;
     let old_title = self.get_current_pattern().title.clone();
@@ -389,6 +413,44 @@ mod tests {
     state.to_next_pattern_row();
     assert_eq!(state.sequence.focus_index, 1);
     assert_eq!(state.focus.row_index, 1);
+  }
+
+  #[test]
+  fn pattern_row_jumps_target_current_or_sequence_boundary_patterns() {
+    let mut state = test_state();
+    state.patterns.get_mut(0).unwrap().num_rows = NonZero::new(3).unwrap();
+    state.patterns.push(Pattern {
+      title: "Second pattern".to_owned(),
+      tracks: NonEmpty::new(Track {
+        name: "Track".to_owned(),
+        notes: NonEmpty::new(None),
+      }),
+      num_rows: NonZero::new(2).unwrap(),
+      rows_per_beat: NonZeroU8::new(4).unwrap(),
+    });
+    state.sequence.titles.push("Second pattern".to_owned());
+    state.sequence.focus_index = 1;
+    state.focus.row_index = 1;
+    state.focus.track_column = TrackColumn::Velocity;
+
+    state.to_first_pattern_row();
+    assert_eq!(state.sequence.focus_index, 1);
+    assert_eq!(state.focus.row_index, 0);
+    assert_eq!(state.focus.track_column, TrackColumn::Velocity);
+
+    state.to_last_pattern_row();
+    assert_eq!(state.sequence.focus_index, 1);
+    assert_eq!(state.focus.row_index, 1);
+
+    state.to_first_sequence_pattern_row();
+    assert_eq!(state.sequence.focus_index, 0);
+    assert_eq!(state.focus.row_index, 0);
+    assert_eq!(state.focus.track_column, TrackColumn::Velocity);
+
+    state.to_last_sequence_pattern_row();
+    assert_eq!(state.sequence.focus_index, 1);
+    assert_eq!(state.focus.row_index, 1);
+    assert_eq!(state.focus.track_column, TrackColumn::Velocity);
   }
 
   #[test]

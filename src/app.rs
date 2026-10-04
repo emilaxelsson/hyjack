@@ -200,6 +200,22 @@ fn handle_edit_pattern_event(
         scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
       }
     }
+    KeyCode::Home => {
+      if key.modifiers == KeyModifiers::CONTROL {
+        state.to_first_sequence_pattern_row();
+      } else {
+        state.to_first_pattern_row();
+      }
+      scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
+    }
+    KeyCode::End => {
+      if key.modifiers == KeyModifiers::CONTROL {
+        state.to_last_sequence_pattern_row();
+      } else {
+        state.to_last_pattern_row();
+      }
+      scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
+    }
     KeyCode::Left => {
       if key.modifiers == KeyModifiers::CONTROL {
         pattern_scroll_state.scroll_left();

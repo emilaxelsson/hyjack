@@ -4,6 +4,8 @@
 
 * `Up`/`Down`/`Left`/`Right` – Navigate to previous/next row/column in the pattern grid
 * `Ctrl+Up`/`Ctrl+Down`/`Ctrl+Left`/`Ctrl+Right` – Scroll pattern up/down/left/right
+* `Home`/`End` – Navigate to the first/last row of the current pattern
+* `Ctrl+Home`/`Ctrl+End` – Navigate to the first row of the first pattern/last row of the last pattern
 * `F2` – Rename pattern
 * `F3` – Switch to sequence panel
 * `z`/`x`/`c`/`v` – Switch focus to editor's octave/velocity/step/instrument setting
