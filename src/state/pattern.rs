@@ -214,6 +214,24 @@ impl Focus {
     self.jump_rows(1, bounds);
   }
 
+  /// Navigate to the previous track while retaining the focused column, or the first column.
+  pub fn to_previous_track(&mut self) {
+    if self.track_index > 0 {
+      self.track_index -= 1;
+    } else {
+      self.track_column = TrackColumn::Note;
+    }
+  }
+
+  /// Navigate to the next track while retaining the focused column, or the last column.
+  pub fn to_next_track(&mut self, bounds: PatternBounds) {
+    if self.track_index + 1 < bounds.num_tracks.get() {
+      self.track_index += 1;
+    } else {
+      self.track_column = TrackColumn::Effect;
+    }
+  }
+
   /// Navigate to the previous editable field in the current pattern row.
   pub fn to_previous_track_field(&mut self) {
     match self.track_column {
@@ -435,6 +453,41 @@ mod focus_tests {
     focus.to_next_row(bounds(4, 2));
 
     assert_eq!(focus.row_index, 3);
+  }
+
+  #[test]
+  fn track_navigation_moves_between_tracks_without_changing_column() {
+    let mut focus = Focus {
+      row_index: 0,
+      track_index: 1,
+      track_column: TrackColumn::Velocity,
+    };
+
+    focus.to_previous_track();
+    assert_eq!(focus.track_index, 0);
+    assert_eq!(focus.track_column, TrackColumn::Velocity);
+
+    focus.to_next_track(bounds(8, 3));
+    assert_eq!(focus.track_index, 1);
+    assert_eq!(focus.track_column, TrackColumn::Velocity);
+  }
+
+  #[test]
+  fn track_navigation_jumps_to_pattern_columns_at_boundaries() {
+    let mut focus = Focus {
+      row_index: 0,
+      track_index: 0,
+      track_column: TrackColumn::Instrument,
+    };
+
+    focus.to_previous_track();
+    assert_eq!(focus.track_index, 0);
+    assert_eq!(focus.track_column, TrackColumn::Note);
+
+    focus.track_index = 2;
+    focus.to_next_track(bounds(8, 3));
+    assert_eq!(focus.track_index, 2);
+    assert_eq!(focus.track_column, TrackColumn::Effect);
   }
 
   #[test]

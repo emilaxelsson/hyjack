@@ -224,6 +224,14 @@ fn handle_edit_pattern_event(
       }
       scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
     }
+    KeyCode::BackTab | KeyCode::Tab if key.modifiers.contains(KeyModifiers::SHIFT) => {
+      state.focus.to_previous_track();
+      scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
+    }
+    KeyCode::Tab => {
+      state.focus.to_next_track(bounds);
+      scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
+    }
     KeyCode::Left => {
       if key.modifiers == KeyModifiers::CONTROL {
         pattern_scroll_state.scroll_left();

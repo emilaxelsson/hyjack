@@ -4,6 +4,7 @@
 
 * `Up`/`Down`/`Left`/`Right` – Navigate to previous/next row/column in the pattern grid
 * `Ctrl+Up`/`Ctrl+Down`/`Ctrl+Left`/`Ctrl+Right` – Scroll pattern up/down/left/right
+* `Tab`/`Shift+Tab` – Navigate to the next/previous track in the same column, or the last/first column at the pattern boundary
 * `PgUp`/`PgDown` – Navigate to the first/last row of the current pattern, then previous/next pattern
 * `Home`/`End` – Navigate to the first/last column of the current pattern row
 * `Ctrl+Home`/`Ctrl+End` – Navigate to the first row of the song/last row of the song or pool
