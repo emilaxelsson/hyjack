@@ -200,6 +200,14 @@ fn handle_edit_pattern_event(
         scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
       }
     }
+    KeyCode::PageUp => {
+      state.to_previous_pattern();
+      scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
+    }
+    KeyCode::PageDown => {
+      state.to_next_pattern();
+      scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
+    }
     KeyCode::Home => {
       if key.modifiers == KeyModifiers::CONTROL {
         state.to_first_sequence_pattern_row();

@@ -152,6 +152,27 @@ impl AppState {
     self.refocus_pattern();
   }
 
+  /// Navigate to the previous pattern in the sequence.
+  pub fn to_previous_pattern(&mut self) {
+    let previous_sequence_index = self.sequence.focus_index.saturating_sub(1);
+    if previous_sequence_index == self.sequence.focus_index {
+      return;
+    }
+
+    self.sequence.focus_index = previous_sequence_index;
+    self.refocus_pattern();
+  }
+
+  /// Navigate to the next pattern in the sequence.
+  pub fn to_next_pattern(&mut self) {
+    if self.sequence.focus_index + 1 >= self.sequence.titles.len() {
+      return;
+    }
+
+    self.sequence.focus_index += 1;
+    self.refocus_pattern();
+  }
+
   /// Navigate to the first row of the current pattern.
   pub fn to_first_pattern_row(&mut self) {
     self.focus.row_index = 0;
@@ -451,6 +472,40 @@ mod tests {
     assert_eq!(state.sequence.focus_index, 1);
     assert_eq!(state.focus.row_index, 1);
     assert_eq!(state.focus.track_column, TrackColumn::Velocity);
+  }
+
+  #[test]
+  fn pattern_navigation_moves_between_sequence_entries_and_clamps_focus() {
+    let mut state = test_state();
+    state.patterns.get_mut(0).unwrap().num_rows = NonZero::new(3).unwrap();
+    state.patterns.push(Pattern {
+      title: "Second pattern".to_owned(),
+      tracks: NonEmpty::new(Track {
+        name: "Track".to_owned(),
+        notes: NonEmpty::new(None),
+      }),
+      num_rows: NonZero::new(2).unwrap(),
+      rows_per_beat: NonZeroU8::new(4).unwrap(),
+    });
+    state.sequence.titles.push("Second pattern".to_owned());
+    state.focus.row_index = 2;
+    state.focus.track_column = TrackColumn::Velocity;
+
+    state.to_previous_pattern();
+    assert_eq!(state.sequence.focus_index, 0);
+    assert_eq!(state.focus.row_index, 2);
+
+    state.to_next_pattern();
+    assert_eq!(state.sequence.focus_index, 1);
+    assert_eq!(state.focus.row_index, 1);
+    assert_eq!(state.focus.track_column, TrackColumn::Velocity);
+
+    state.to_next_pattern();
+    assert_eq!(state.sequence.focus_index, 1);
+
+    state.to_previous_pattern();
+    assert_eq!(state.sequence.focus_index, 0);
+    assert_eq!(state.focus.row_index, 1);
   }
 
   #[test]

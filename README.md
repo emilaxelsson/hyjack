@@ -4,6 +4,7 @@
 
 * `Up`/`Down`/`Left`/`Right` – Navigate to previous/next row/column in the pattern grid
 * `Ctrl+Up`/`Ctrl+Down`/`Ctrl+Left`/`Ctrl+Right` – Scroll pattern up/down/left/right
+* `PgUp`/`PgDown` – Navigate to the previous/next pattern
 * `Home`/`End` – Navigate to the first/last row of the current pattern
 * `Ctrl+Home`/`Ctrl+End` – Navigate to the first row of the first pattern/last row of the last pattern
 * `F2` – Rename pattern
