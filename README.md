@@ -22,7 +22,8 @@
 * `PgUp`/`PgDown` – Navigate to the previous/next page in the sequence
 * `Home`/`End` – Navigate to the first/last title in the sequence
 * `Ctrl+Up`/`Ctrl+Down` – Move current title up/down in the sequence list
-* `Ctrl+D` – Duplicate current title in the sequence list
+* `D` – Duplicate current title in the sequence list
+* `Ctrl+D` – Duplicate pattern
 * `Delete` – Remove current title (moves to pool if it is the only reference)
 * `F2` – Rename pattern
 * `F4`/`Enter` – Switch to pattern panel

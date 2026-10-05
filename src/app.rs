@@ -168,8 +168,16 @@ fn handle_edit_sequence_event(
         viewports.sequence_height,
       );
     }
-    KeyCode::Char('d') if key.modifiers == KeyModifiers::CONTROL => {
+    KeyCode::Char('d') if key.modifiers == KeyModifiers::NONE => {
       state.sequence.duplicate_focused_title();
+      scroll_focused_sequence_into_view(
+        &state.sequence,
+        sequence_scroll_state,
+        viewports.sequence_height,
+      );
+    }
+    KeyCode::Char('d') if key.modifiers == KeyModifiers::CONTROL => {
+      state.duplicate_focused_pattern();
       scroll_focused_sequence_into_view(
         &state.sequence,
         sequence_scroll_state,

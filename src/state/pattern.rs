@@ -98,13 +98,13 @@ impl Adjustable for Note {
   }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Track {
   pub name: String,
   pub notes: NonEmpty<Option<Note>>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Pattern {
   pub title: String,
   pub tracks: NonEmpty<Track>,

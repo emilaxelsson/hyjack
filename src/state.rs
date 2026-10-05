@@ -16,7 +16,7 @@ use crate::state::instruments::{InstrumentIndex, Instruments};
 use crate::state::name::normalize_and_validate_name;
 use crate::state::pattern::{Focus, Note, Pattern, TrackColumn, Velocity};
 use crate::state::sequence::Sequence;
-use crate::utils::Adjustable;
+use crate::utils::{Adjustable, fresh_name};
 
 #[derive(Serialize, Deserialize)]
 pub struct PlayerTime {
@@ -263,6 +263,23 @@ impl AppState {
     Ok(())
   }
 
+  /// Duplicate the focused pattern and insert its title below the current sequence entry.
+  pub fn duplicate_focused_pattern(&mut self) {
+    let mut pattern = self.get_current_pattern().clone();
+    pattern.title = fresh_name(
+      &pattern.title,
+      self.patterns.iter().map(|existing| existing.title.as_str()),
+    );
+
+    let focused_last_song_title = self.sequence.focus_index == self.sequence.end_of_song;
+    self.sequence.insert_title_at_focus(pattern.title.clone());
+    if focused_last_song_title {
+      self.sequence.end_of_song += 1;
+    }
+    self.sequence.focus_index += 1;
+    self.patterns.push(pattern);
+  }
+
   /// Set the note at the current pattern focus.
   pub fn set_focused_note(&mut self, note: Note) {
     let pattern_index = self.get_current_pattern_index();
@@ -420,6 +437,58 @@ mod tests {
       .get_note(state.focus.row_index, state.focus.track_index)
       .unwrap()
       .semitone
+  }
+
+  #[test]
+  fn duplicate_focused_pattern_inserts_a_unique_copy_below_the_current_title() {
+    let mut state = test_state();
+    state.sequence.titles.push("Pattern".to_owned());
+    state.sequence.end_of_song = 1;
+    state.sequence.focus_index = 0;
+    state.patterns.push(Pattern {
+      title: "Pattern copy".to_owned(),
+      tracks: NonEmpty::new(Track {
+        name: "Other track".to_owned(),
+        notes: NonEmpty::new(None),
+      }),
+      num_rows: NonZero::new(1).unwrap(),
+      rows_per_beat: NonZeroU8::new(4).unwrap(),
+    });
+
+    state.duplicate_focused_pattern();
+
+    assert_eq!(
+      state.sequence.titles,
+      ["Pattern", "Pattern copy1", "Pattern"]
+    );
+    assert_eq!(state.sequence.focus_index, 1);
+    assert_eq!(state.sequence.end_of_song, 2);
+    assert_eq!(state.patterns.len(), 3);
+    assert_eq!(state.get_current_pattern().title, "Pattern copy1");
+    assert_eq!(state.get_current_pattern().tracks[0].name, "Track");
+
+    state.duplicate_focused_pattern();
+
+    assert_eq!(state.get_current_pattern().title, "Pattern copy2");
+  }
+
+  #[test]
+  fn duplicate_focused_pattern_keeps_a_copy_of_the_last_song_title_out_of_the_pool() {
+    let mut state = test_state();
+    state.sequence.titles.push("Pattern".to_owned());
+    state.sequence.titles.push("Pattern".to_owned());
+    state.sequence.end_of_song = 1;
+    state.sequence.focus_index = 1;
+
+    state.duplicate_focused_pattern();
+
+    assert_eq!(
+      state.sequence.titles,
+      ["Pattern", "Pattern", "Pattern copy", "Pattern"]
+    );
+    assert_eq!(state.sequence.focus_index, 2);
+    assert_eq!(state.sequence.end_of_song, 2);
+    assert_eq!(state.sequence.pool_size(), 1);
   }
 
   #[test]
