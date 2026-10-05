@@ -342,6 +342,7 @@ fn handle_edit_pattern_event(
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::state::pattern::Note;
 
   #[test]
   fn note_key_to_semitone_maps_requested_layout() {
@@ -357,6 +358,39 @@ mod tests {
     assert_eq!(note_key_to_semitone('h'), Some(Semitone(9)));
     assert_eq!(note_key_to_semitone('u'), Some(Semitone(10)));
     assert_eq!(note_key_to_semitone('j'), Some(Semitone(11)));
+  }
+
+  #[test]
+  fn editor_setting_home_end_set_each_setting_to_its_bound() {
+    let mut state: AppState = serde_json::from_str(include_str!("../songs/test.json")).unwrap();
+    let max_instrument = state.instruments.max_index().unwrap();
+
+    for setting in [
+      EditorSettingFocus::Octave,
+      EditorSettingFocus::Velocity,
+      EditorSettingFocus::Step,
+      EditorSettingFocus::Instrument,
+    ] {
+      handle_edit_settings_event(&mut state, KeyEvent::from(KeyCode::End), setting);
+      match setting {
+        EditorSettingFocus::Octave => assert_eq!(state.editor_settings.octave.0, Note::MAX_OCTAVE),
+        EditorSettingFocus::Velocity => assert_eq!(state.editor_settings.velocity.0, 99),
+        EditorSettingFocus::Step => assert_eq!(state.editor_settings.step, 16),
+        EditorSettingFocus::Instrument => {
+          assert_eq!(state.editor_settings.instrument, max_instrument);
+        }
+      }
+
+      handle_edit_settings_event(&mut state, KeyEvent::from(KeyCode::Home), setting);
+      match setting {
+        EditorSettingFocus::Octave => assert_eq!(state.editor_settings.octave.0, 0),
+        EditorSettingFocus::Velocity => assert_eq!(state.editor_settings.velocity.0, 0),
+        EditorSettingFocus::Step => assert_eq!(state.editor_settings.step, 0),
+        EditorSettingFocus::Instrument => {
+          assert_eq!(state.editor_settings.instrument, InstrumentIndex(0));
+        }
+      }
+    }
   }
 }
 
@@ -409,6 +443,14 @@ fn handle_edit_settings_event(
       state
         .editor_settings
         .decrease(current_setting, false, max_instrument);
+    }
+    KeyCode::Home => {
+      state.editor_settings.set_to_minimum(current_setting);
+    }
+    KeyCode::End => {
+      state
+        .editor_settings
+        .set_to_maximum(current_setting, max_instrument);
     }
     KeyCode::Char('z') => new_mode = Some(UIMode::EditSetting(EditorSettingFocus::Octave)),
     KeyCode::Char('x') => new_mode = Some(UIMode::EditSetting(EditorSettingFocus::Velocity)),

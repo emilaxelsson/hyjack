@@ -98,6 +98,24 @@ impl EditorSettings {
     }
   }
 
+  pub fn set_to_minimum(&mut self, setting: EditorSettingFocus) {
+    match setting {
+      EditorSettingFocus::Octave => self.octave = Octave(0),
+      EditorSettingFocus::Velocity => self.velocity = Velocity(0),
+      EditorSettingFocus::Step => self.step = 0,
+      EditorSettingFocus::Instrument => self.instrument = InstrumentIndex(0),
+    }
+  }
+
+  pub fn set_to_maximum(&mut self, setting: EditorSettingFocus, max_instrument: InstrumentIndex) {
+    match setting {
+      EditorSettingFocus::Octave => self.octave = Octave(Note::MAX_OCTAVE),
+      EditorSettingFocus::Velocity => self.velocity = Velocity(Velocity::MAX),
+      EditorSettingFocus::Step => self.step = MAX_STEP,
+      EditorSettingFocus::Instrument => self.instrument = max_instrument,
+    }
+  }
+
   /// Create a `Note` based on the current editor settings and the given semitone.
   pub fn make_note(&self, semitone: Semitone) -> Note {
     Note {

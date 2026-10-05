@@ -24,7 +24,7 @@ impl Octave {
 
 impl Velocity {
   const LARGE_STEP: u8 = 10;
-  const MAX: u8 = 99;
+  pub const MAX: u8 = 99;
 }
 
 impl Adjustable for Octave {

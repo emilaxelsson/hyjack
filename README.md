@@ -32,6 +32,7 @@
 * `Up`/`Down` – Increase/decrease value of focused setting
 * `PgUp`/`PgDown` – Increase/decrease value by larger amount
 * `Left`/`Right` – Navigate to previous/next setting within the editor settings
+* `Home`/`End` – Set value to minimum/maximum
 * `z`/`x`/`c`/`v` – Navigate to octave/velocity/step/instrument setting
 * `Enter`/`Esc` – Exit editor settings
 
