@@ -132,6 +132,42 @@ fn handle_edit_sequence_event(
         viewports.sequence_height,
       );
     }
+    KeyCode::PageUp => {
+      state
+        .sequence
+        .to_previous_page(usize::from(viewports.sequence_height));
+      scroll_focused_sequence_into_view(
+        &state.sequence,
+        sequence_scroll_state,
+        viewports.sequence_height,
+      );
+    }
+    KeyCode::PageDown => {
+      state
+        .sequence
+        .to_next_page(usize::from(viewports.sequence_height));
+      scroll_focused_sequence_into_view(
+        &state.sequence,
+        sequence_scroll_state,
+        viewports.sequence_height,
+      );
+    }
+    KeyCode::Home => {
+      state.sequence.to_first_title();
+      scroll_focused_sequence_into_view(
+        &state.sequence,
+        sequence_scroll_state,
+        viewports.sequence_height,
+      );
+    }
+    KeyCode::End => {
+      state.sequence.to_last_title();
+      scroll_focused_sequence_into_view(
+        &state.sequence,
+        sequence_scroll_state,
+        viewports.sequence_height,
+      );
+    }
     KeyCode::Char('d') if key.modifiers == KeyModifiers::CONTROL => {
       state.sequence.duplicate_focused_title();
       scroll_focused_sequence_into_view(

@@ -35,6 +35,30 @@ impl Sequence {
     }
   }
 
+  /// Navigate to the previous page of titles.
+  pub fn to_previous_page(&mut self, page_size: usize) {
+    self.focus_index = self.focus_index.saturating_sub(page_size.max(1));
+  }
+
+  /// Navigate to the next page of titles.
+  pub fn to_next_page(&mut self, page_size: usize) {
+    let last_index = self.titles.len().saturating_sub(1);
+    self.focus_index = self
+      .focus_index
+      .saturating_add(page_size.max(1))
+      .min(last_index);
+  }
+
+  /// Navigate to the first title.
+  pub fn to_first_title(&mut self) {
+    self.focus_index = 0;
+  }
+
+  /// Navigate to the last title.
+  pub fn to_last_title(&mut self) {
+    self.focus_index = self.titles.len().saturating_sub(1);
+  }
+
   /// Move the focused title up by one position.
   pub fn move_title_up(&mut self) {
     if self.focus_index > 0 {
@@ -211,6 +235,44 @@ mod tests {
       .iter()
       .filter(|t| t.as_str() == title)
       .count()
+  }
+
+  #[test]
+  fn page_navigation_moves_focus_by_page_size_and_clamps_to_bounds() {
+    let mut sequence = Sequence {
+      titles: vec![
+        "A".to_string(),
+        "B".to_string(),
+        "C".to_string(),
+        "D".to_string(),
+      ],
+      focus_index: 2,
+      end_of_song: 3,
+    };
+
+    sequence.to_previous_page(2);
+    assert_eq!(sequence.focus_index, 0);
+
+    sequence.to_next_page(3);
+    assert_eq!(sequence.focus_index, 3);
+
+    sequence.to_next_page(0);
+    assert_eq!(sequence.focus_index, 3);
+  }
+
+  #[test]
+  fn endpoint_navigation_selects_first_and_last_title() {
+    let mut sequence = Sequence {
+      titles: vec!["A".to_string(), "B".to_string(), "C".to_string()],
+      focus_index: 1,
+      end_of_song: 2,
+    };
+
+    sequence.to_first_title();
+    assert_eq!(sequence.focus_index, 0);
+
+    sequence.to_last_title();
+    assert_eq!(sequence.focus_index, 2);
   }
 
   proptest! {
