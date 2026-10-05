@@ -13,7 +13,8 @@ use crate::ui::render::style::{
   TITLE_STYLE, default_block,
 };
 use crate::ui::render::track::{
-  TRACK_COLUMN_WIDTH, draw_track_names, draw_tracks, track_column_offset, track_start_offset,
+  TRACK_COLUMN_WIDTH, TrackActivity, draw_track_names, draw_tracks, track_column_offset,
+  track_start_offset,
 };
 use crate::ui::widgets::title_block::TitleBlock;
 
@@ -247,12 +248,20 @@ pub fn draw_pattern_panel(
   };
   scroll_view.render_widget(Block::default().style(focused_row_style), focused_row_area);
 
+  let track_activity = if is_active {
+    TrackActivity::Active
+  } else {
+    TrackActivity::Inactive
+  };
+  let editing_track_index =
+    matches!(mode, UIMode::EditPatternElement).then_some(state.focus.track_index);
   draw_tracks(
     current_pattern,
     content_height,
     &mut scroll_view,
     focused_row_area,
-    is_active,
+    track_activity,
+    editing_track_index,
   );
 
   frame.render_stateful_widget(scroll_view, notes_area, pattern_scroll_state);

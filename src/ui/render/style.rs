@@ -24,6 +24,9 @@ pub const PANEL_AREA_BG: Color = Color::Rgb(35, 35, 35);
 pub const PANEL_AREA_STYLE: Style = Style::new().bg(PANEL_AREA_BG).fg(DEFAULT_FG);
 pub const FOCUSED_ROW_BG: Color = Color::Rgb(60, 60, 160);
 pub const FOCUSED_ROW_STYLE: Style = Style::new().bg(FOCUSED_ROW_BG);
+pub const ELEMENT_EDITING_FOCUSED_ROW_BG: Color = Color::Rgb(140, 85, 25);
+pub const ELEMENT_EDITING_FOCUSED_ROW_STYLE: Style =
+  Style::new().bg(ELEMENT_EDITING_FOCUSED_ROW_BG);
 pub const INACTIVE_FOCUSED_ROW_BG: Color = Color::Rgb(80, 80, 120);
 pub const INACTIVE_FOCUSED_ROW_STYLE: Style = Style::new().bg(INACTIVE_FOCUSED_ROW_BG);
 pub const BEHIND_FOCUSED_ROW_STYLE: Style = Style::new().bg(Color::Rgb(48, 48, 120));

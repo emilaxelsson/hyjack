@@ -6,7 +6,8 @@ use tui_scrollview::{ScrollView, ScrollViewState, ScrollbarVisibility};
 use crate::state::pattern::{Note, Octave, Pattern, Semitone, Track, TrackColumn};
 use crate::ui::common::rect_from_origin;
 use crate::ui::render::style::{
-  FOCUSED_ROW_STYLE, INACTIVE_FOCUSED_ROW_STYLE, PANEL_AREA_STYLE, SUB_TITLE_STYLE, default_block,
+  ELEMENT_EDITING_FOCUSED_ROW_STYLE, FOCUSED_ROW_STYLE, INACTIVE_FOCUSED_ROW_STYLE,
+  PANEL_AREA_STYLE, SUB_TITLE_STYLE, default_block,
 };
 
 pub const TRACK_COLUMN_WIDTH: u16 = 15;
@@ -47,11 +48,21 @@ pub fn track_start_offset(track_index: usize) -> usize {
   track_index * (TRACK_COLUMN_WIDTH as usize + 1)
 }
 
+#[derive(Clone, Copy)]
+pub enum TrackActivity {
+  /// The pattern panel is inactive.
+  Inactive,
+  /// The pattern panel is active.
+  Active,
+  /// An element is being edited in this track.
+  ElementEditing,
+}
+
 fn draw_track(
   scroll_view: &mut ScrollView,
   focused_row_area: Rect,
   content_height: u16,
-  is_active: bool,
+  activity: TrackActivity,
   track_index: usize,
   track: &Track,
 ) {
@@ -63,10 +74,10 @@ fn draw_track(
   };
   let focused_row_track_area = focused_row_area.intersection(current_track_area);
   scroll_view.render_widget(Block::default().style(PANEL_AREA_STYLE), current_track_area);
-  let focused_row_style = if is_active {
-    FOCUSED_ROW_STYLE
-  } else {
-    INACTIVE_FOCUSED_ROW_STYLE
+  let focused_row_style = match activity {
+    TrackActivity::Inactive => INACTIVE_FOCUSED_ROW_STYLE,
+    TrackActivity::Active => FOCUSED_ROW_STYLE,
+    TrackActivity::ElementEditing => ELEMENT_EDITING_FOCUSED_ROW_STYLE,
   };
   scroll_view.render_widget(
     Block::default().style(focused_row_style),
@@ -91,14 +102,20 @@ pub fn draw_tracks(
   content_height: u16,
   scroll_view: &mut ScrollView,
   focused_row_area: Rect,
-  is_active: bool,
+  activity: TrackActivity,
+  editing_track_index: Option<usize>,
 ) {
   for (track_index, track) in current_pattern.tracks.iter().enumerate() {
+    let track_activity = if editing_track_index == Some(track_index) {
+      TrackActivity::ElementEditing
+    } else {
+      activity
+    };
     draw_track(
       scroll_view,
       focused_row_area,
       content_height,
-      is_active,
+      track_activity,
       track_index,
       track,
     );
