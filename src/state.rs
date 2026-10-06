@@ -284,6 +284,30 @@ impl AppState {
     self.patterns.push(pattern);
   }
 
+  /// Create a new pattern from the song defaults and insert it below the focused sequence entry.
+  pub fn insert_new_pattern(&mut self) {
+    let existing_titles: Vec<_> = self
+      .patterns
+      .iter()
+      .map(|pattern| pattern.title.as_str())
+      .collect();
+    let title = if existing_titles.contains(&"New pattern") {
+      fresh_name("New pattern", existing_titles)
+    } else {
+      "New pattern".to_owned()
+    };
+    let pattern = self.pattern_defaults.make_pattern(title.clone());
+
+    let focused_last_song_title = self.sequence.focus_index == self.sequence.end_of_song;
+    self.sequence.insert_title_at_focus(title);
+    if focused_last_song_title {
+      self.sequence.end_of_song += 1;
+    }
+    self.sequence.focus_index += 1;
+    self.patterns.push(pattern);
+    self.refocus_pattern();
+  }
+
   /// Set the note at the current pattern focus.
   pub fn set_focused_note(&mut self, note: Note) {
     let pattern_index = self.get_current_pattern_index();
@@ -525,6 +549,30 @@ mod tests {
     assert_eq!(state.sequence.focus_index, 2);
     assert_eq!(state.sequence.end_of_song, 2);
     assert_eq!(state.sequence.pool_size(), 1);
+  }
+
+  #[test]
+  fn insert_new_pattern_uses_defaults_and_selects_the_new_song_entry() {
+    let mut state = test_state();
+    state.pattern_defaults = PatternDefaults {
+      num_rows: NonZero::new(8).unwrap(),
+      track_titles: NonEmpty::from_vec(vec!["Drums".to_owned(), "Bass".to_owned()]).unwrap(),
+      rows_per_beat: NonZeroU8::new(2).unwrap(),
+    };
+
+    state.insert_new_pattern();
+
+    assert_eq!(state.sequence.titles, ["Pattern", "New pattern"]);
+    assert_eq!(state.sequence.focus_index, 1);
+    assert_eq!(state.sequence.end_of_song, 1);
+    assert_eq!(state.focus.row_index, 0);
+    assert_eq!(state.focus.track_index, 0);
+    let pattern = state.get_current_pattern();
+    assert_eq!(pattern.num_rows.get(), 8);
+    assert_eq!(pattern.rows_per_beat.get(), 2);
+    assert_eq!(pattern.tracks.len(), 2);
+    assert_eq!(pattern.tracks[0].name, "Drums");
+    assert_eq!(pattern.tracks[1].name, "Bass");
   }
 
   #[test]

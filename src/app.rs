@@ -184,6 +184,14 @@ fn handle_edit_sequence_event(
         viewports.sequence_height,
       );
     }
+    KeyCode::Insert => {
+      state.insert_new_pattern();
+      scroll_focused_sequence_into_view(
+        &state.sequence,
+        sequence_scroll_state,
+        viewports.sequence_height,
+      );
+    }
     KeyCode::Delete => {
       let remove_error = state.sequence.soft_remove_focused_title();
       scroll_focused_sequence_into_view(
