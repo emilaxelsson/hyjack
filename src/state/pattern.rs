@@ -112,6 +112,13 @@ pub struct Pattern {
   pub rows_per_beat: NonZeroU8,
 }
 
+#[derive(Clone, Serialize, Deserialize)]
+pub struct PatternDefaults {
+  pub num_rows: NonZero<usize>,
+  pub track_titles: NonEmpty<String>,
+  pub rows_per_beat: NonZeroU8,
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct PatternBounds {
   pub num_rows: NonZero<usize>,
@@ -175,6 +182,45 @@ impl Pattern {
     }
     let track = &mut self.tracks[track_index];
     track.notes[row_index] = Some(note);
+  }
+}
+
+impl Default for PatternDefaults {
+  fn default() -> Self {
+    Self {
+      num_rows: NonZero::new(16).unwrap(),
+      track_titles: NonEmpty::new("Track 1".to_owned()),
+      rows_per_beat: NonZeroU8::new(4).unwrap(),
+    }
+  }
+}
+
+impl PatternDefaults {
+  pub fn make_pattern(&self, title: String) -> Pattern {
+    let mut notes = NonEmpty::new(None);
+    for _ in 1..self.num_rows.get() {
+      notes.push(None);
+    }
+
+    let mut track_titles = self.track_titles.iter();
+    let first_track_title = track_titles.next().unwrap();
+    let mut tracks = NonEmpty::new(Track {
+      name: first_track_title.clone(),
+      notes: notes.clone(),
+    });
+    for track_title in track_titles {
+      tracks.push(Track {
+        name: track_title.clone(),
+        notes: notes.clone(),
+      });
+    }
+
+    Pattern {
+      title,
+      tracks,
+      num_rows: self.num_rows,
+      rows_per_beat: self.rows_per_beat,
+    }
   }
 }
 

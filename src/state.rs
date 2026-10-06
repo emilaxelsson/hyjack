@@ -14,7 +14,9 @@ use serde::{Deserialize, Serialize};
 use crate::state::editor_settings::EditorSettings;
 use crate::state::instruments::{InstrumentIndex, Instruments};
 use crate::state::name::normalize_and_validate_name;
-use crate::state::pattern::{Focus, Note, Octave, Pattern, Semitone, TrackColumn, Velocity};
+use crate::state::pattern::{
+  Focus, Note, Octave, Pattern, PatternDefaults, Semitone, TrackColumn, Velocity,
+};
 use crate::state::sequence::Sequence;
 use crate::utils::{Adjustable, fresh_name};
 
@@ -36,6 +38,8 @@ pub struct PlayerState {
 pub struct AppState {
   pub dracker_version: String,
   pub song_title: String,
+  #[serde(default)]
+  pub pattern_defaults: PatternDefaults,
   pub patterns: NonEmpty<Pattern>,
   pub sequence: Sequence,
   pub instruments: Instruments,
@@ -398,6 +402,7 @@ mod tests {
     AppState {
       dracker_version: "test".to_owned(),
       song_title: "Test song".to_owned(),
+      pattern_defaults: PatternDefaults::default(),
       patterns: NonEmpty::new(Pattern {
         title: "Pattern".to_owned(),
         tracks: NonEmpty::new(Track {
@@ -520,6 +525,33 @@ mod tests {
     assert_eq!(state.sequence.focus_index, 2);
     assert_eq!(state.sequence.end_of_song, 2);
     assert_eq!(state.sequence.pool_size(), 1);
+  }
+
+  #[test]
+  fn new_patterns_use_song_defaults() {
+    let mut state = test_state();
+    state.pattern_defaults = PatternDefaults {
+      num_rows: NonZero::new(8).unwrap(),
+      track_titles: NonEmpty::from_vec(vec!["Drums".to_owned(), "Bass".to_owned()]).unwrap(),
+      rows_per_beat: NonZeroU8::new(2).unwrap(),
+    };
+
+    let pattern = state
+      .pattern_defaults
+      .make_pattern("New pattern".to_owned());
+
+    assert_eq!(pattern.title, "New pattern");
+    assert_eq!(pattern.num_rows.get(), 8);
+    assert_eq!(pattern.rows_per_beat.get(), 2);
+    assert_eq!(pattern.tracks.len(), 2);
+    assert_eq!(pattern.tracks[0].name, "Drums");
+    assert_eq!(pattern.tracks[1].name, "Bass");
+    assert!(
+      pattern
+        .tracks
+        .iter()
+        .all(|track| { track.notes.len() == 8 && track.notes.iter().all(Option::is_none) })
+    );
   }
 
   #[test]

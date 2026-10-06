@@ -1,6 +1,16 @@
 {
   "dracker_version": "0.2",
   "song_title": "My song",
+  "pattern_defaults": {
+    "num_rows": 16,
+    "track_titles": [
+      "Hat/ride",
+      "Kick",
+      "Snare",
+      "Cymbals"
+    ],
+    "rows_per_beat": 4
+  },
   "patterns": [
     {
       "title": "Intro A",
