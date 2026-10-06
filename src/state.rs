@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use crate::state::editor_settings::EditorSettings;
 use crate::state::instruments::{InstrumentIndex, Instruments};
 use crate::state::name::normalize_and_validate_name;
-use crate::state::pattern::{Focus, Note, Pattern, TrackColumn, Velocity};
+use crate::state::pattern::{Focus, Note, Octave, Pattern, Semitone, TrackColumn, Velocity};
 use crate::state::sequence::Sequence;
 use crate::utils::{Adjustable, fresh_name};
 
@@ -309,6 +309,37 @@ impl AppState {
       }
       TrackColumn::Velocity => {
         note.velocity.adjust((), increase, small_step);
+      }
+      TrackColumn::Effect => {}
+    }
+
+    pattern.set_note(self.focus.row_index, self.focus.track_index, note);
+  }
+
+  /// Set the value in the focused pattern column to its minimum or maximum.
+  pub fn set_focused_note_to_bound(&mut self, maximum: bool) {
+    let pattern_index = self.get_current_pattern_index();
+    let Some(pattern) = self.patterns.get_mut(pattern_index) else {
+      return;
+    };
+    let Some(mut note) = pattern.get_note(self.focus.row_index, self.focus.track_index) else {
+      return;
+    };
+
+    match self.focus.track_column {
+      TrackColumn::Note => {
+        note.octave = Octave(if maximum { Note::MAX_OCTAVE } else { 0 });
+        note.semitone = Semitone(if maximum { Note::MAX_SEMITONE } else { 0 });
+      }
+      TrackColumn::Instrument => {
+        note.instrument = if maximum {
+          self.instruments.max_index().unwrap_or(InstrumentIndex(0))
+        } else {
+          InstrumentIndex(0)
+        };
+      }
+      TrackColumn::Velocity => {
+        note.velocity = Velocity(if maximum { Velocity::MAX } else { 0 });
       }
       TrackColumn::Effect => {}
     }
@@ -679,6 +710,36 @@ mod tests {
     assert_eq!(focused_velocity(&state), Velocity(60));
     state.adjust_focused_note(false, true);
     assert_eq!(focused_velocity(&state), Velocity(59));
+  }
+
+  #[test]
+  fn focused_note_bounds_match_the_focused_column() {
+    let mut state = test_state();
+    state.instruments = Instruments::DirectMapped(
+      (0..=10)
+        .map(|index| InstrumentName(index.to_string()))
+        .collect(),
+    );
+
+    state.focus.track_column = TrackColumn::Note;
+    state.set_focused_note_to_bound(false);
+    assert_eq!(focused_octave(&state), Octave(0));
+    assert_eq!(focused_semitone(&state), Semitone(0));
+    state.set_focused_note_to_bound(true);
+    assert_eq!(focused_octave(&state), Octave(Note::MAX_OCTAVE));
+    assert_eq!(focused_semitone(&state), Semitone(Note::MAX_SEMITONE));
+
+    state.focus.track_column = TrackColumn::Instrument;
+    state.set_focused_note_to_bound(false);
+    assert_eq!(focused_instrument(&state), InstrumentIndex(0));
+    state.set_focused_note_to_bound(true);
+    assert_eq!(focused_instrument(&state), InstrumentIndex(10));
+
+    state.focus.track_column = TrackColumn::Velocity;
+    state.set_focused_note_to_bound(false);
+    assert_eq!(focused_velocity(&state), Velocity(0));
+    state.set_focused_note_to_bound(true);
+    assert_eq!(focused_velocity(&state), Velocity(Velocity::MAX));
   }
 
   #[test]

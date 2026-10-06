@@ -410,6 +410,8 @@ fn handle_edit_pattern_element_event(state: &mut AppState, key: KeyEvent) -> Han
     KeyCode::Down => state.adjust_focused_note(false, true),
     KeyCode::PageUp => state.adjust_focused_note(true, false),
     KeyCode::PageDown => state.adjust_focused_note(false, false),
+    KeyCode::Home => state.set_focused_note_to_bound(false),
+    KeyCode::End => state.set_focused_note_to_bound(true),
     KeyCode::Enter | KeyCode::Esc => new_mode = Some(UIMode::EditPattern),
     _ => {}
   }

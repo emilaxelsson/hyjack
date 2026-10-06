@@ -65,7 +65,7 @@ pub struct Note {
 
 impl Note {
   pub const MAX_OCTAVE: u8 = 8;
-  const MAX_SEMITONE: u8 = 11;
+  pub const MAX_SEMITONE: u8 = 11;
 }
 
 impl Adjustable for Note {
