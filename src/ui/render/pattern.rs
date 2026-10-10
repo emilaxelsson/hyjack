@@ -186,7 +186,7 @@ fn draw_pattern_details(
 
 pub fn draw_pattern_panel(
   frame: &mut Frame,
-  mode: UIMode,
+  mode: &UIMode,
   state: &AppState,
   is_active: bool,
   pattern_scroll_state: &mut ScrollViewState,
@@ -296,7 +296,7 @@ pub fn draw_pattern_panel(
     .map(|name| name.0)
     .unwrap_or("-".to_string());
   let focused_setting = match mode {
-    UIMode::EditSetting(setting) => Some(setting),
+    UIMode::EditSetting(setting) => Some(*setting),
     _ => None,
   };
 

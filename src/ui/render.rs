@@ -22,7 +22,7 @@ use crate::ui::widgets::banner::Banner;
 pub fn draw_ui(
   frame: &mut Frame,
   state: &AppState,
-  mode: UIMode,
+  mode: &UIMode,
   sequence_scroll_state: &mut ScrollViewState,
   pattern_scroll_state: &mut ScrollViewState,
   optional_banner: Option<(&str, Style)>,

@@ -10,6 +10,7 @@ use ratatui::layout::Size;
 use ratatui::style::Style;
 use tui_scrollview::ScrollViewState;
 
+use crate::player::{MidiSink, Player};
 use crate::state::AppState;
 use crate::state::editor_settings::EditorSettingFocus;
 use crate::state::instruments::InstrumentIndex;
@@ -21,6 +22,7 @@ use crate::ui::render::style::{ERROR_BANNER_STYLE, INFO_BANNER_STYLE};
 use crate::ui::render::{draw_ui, scroll_focused_sequence_into_view};
 
 const SAVE_BANNER_TIMEOUT: Duration = Duration::from_millis(1400);
+const MAX_EVENT_POLL_TIMEOUT: Duration = Duration::from_millis(100);
 
 #[derive(Clone, Copy)]
 struct Viewports {
@@ -543,17 +545,43 @@ fn handle_event(
       let result = handle_edit_settings_event(state, key, *setting);
       Ok(result)
     }
+    UIMode::Player { .. } => Ok(HandleEventResult {
+      quit: false,
+      new_mode: None,
+      banner: None,
+      dialog: None,
+    }),
   }
+}
+
+/// Align editor focus and scrolling with the current playback position.
+fn sync_player_position(
+  state: &mut AppState,
+  sequence_scroll_state: &mut ScrollViewState,
+  pattern_scroll_state: &mut ScrollViewState,
+  viewports: Viewports,
+) {
+  state.sequence.focus_index = state.player.sequence_index;
+  state.focus.row_index = state.player.row_index;
+  state.refocus_pattern();
+  scroll_focused_sequence_into_view(
+    &state.sequence,
+    sequence_scroll_state,
+    viewports.sequence_height,
+  );
+  scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
 }
 
 pub fn run_app(
   terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
   song_file_path: &Path,
+  midi: &mut dyn MidiSink,
 ) -> Result<()> {
   let mut state = AppState::load_from_file(song_file_path)?;
   let mut mode = UIMode::EditPattern;
   let mut dialog: Option<InputDialog<AppState>> = None;
   let mut banner: Option<Banner> = None;
+  let mut player = Player::default();
   let mut sequence_scroll_state = ScrollViewState::default();
   let mut pattern_scroll_state = ScrollViewState::default();
   let mut viewports = Viewports {
@@ -570,7 +598,7 @@ pub fn run_app(
       (viewports.sequence_height, viewports.pattern_size) = draw_ui(
         frame,
         &state,
-        mode,
+        &mode,
         &mut sequence_scroll_state,
         &mut pattern_scroll_state,
         banner
@@ -580,8 +608,47 @@ pub fn run_app(
       );
     })?;
 
-    if event::poll(Duration::from_millis(100))? {
+    let timeout = match &mode {
+      UIMode::Player { .. } => player
+        .next_deadline()
+        .expect("Player mode requires active playback")
+        .saturating_duration_since(Instant::now())
+        .min(MAX_EVENT_POLL_TIMEOUT),
+      _ => MAX_EVENT_POLL_TIMEOUT,
+    };
+
+    if event::poll(timeout)? {
       let event = event::read()?;
+
+      if let Event::Key(key) = &event
+        && key.code == KeyCode::Char(' ')
+        && key.modifiers == KeyModifiers::NONE
+      {
+        if matches!(mode, UIMode::Player { .. }) {
+          let UIMode::Player { previous_mode } = mode else {
+            unreachable!();
+          };
+          player.stop(midi)?;
+          mode = *previous_mode;
+        } else {
+          dialog = None;
+          player.start(&mut state, midi, Instant::now())?;
+          mode = UIMode::Player {
+            previous_mode: Box::new(mode),
+          };
+          sync_player_position(
+            &mut state,
+            &mut sequence_scroll_state,
+            &mut pattern_scroll_state,
+            viewports,
+          );
+        }
+        continue;
+      }
+
+      if matches!(mode, UIMode::Player { .. }) {
+        continue;
+      }
 
       if let Event::Key(key) = &event
         && key.code == KeyCode::Char('s')
@@ -613,9 +680,13 @@ pub fn run_app(
       )?;
 
       if result.quit {
+        if matches!(mode, UIMode::Player { .. }) {
+          player.stop(midi)?;
+        }
         break;
       }
 
+      let mode_changed = result.new_mode.is_some();
       if let Some(new_mode) = result.new_mode {
         mode = new_mode;
       }
@@ -628,9 +699,17 @@ pub fn run_app(
         dialog = Some(new_dialog);
       }
 
-      if mode == UIMode::EditPattern && result.new_mode.is_some() {
+      if matches!(mode, UIMode::EditPattern) && mode_changed {
         state.refocus_pattern();
       }
+    } else if matches!(mode, UIMode::Player { .. }) {
+      player.tick(&mut state, midi, Instant::now())?;
+      sync_player_position(
+        &mut state,
+        &mut sequence_scroll_state,
+        &mut pattern_scroll_state,
+        viewports,
+      );
     }
   }
 

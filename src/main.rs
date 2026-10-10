@@ -10,6 +10,7 @@ use crossterm::terminal::{
   EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode,
 };
 use dracker::app::run_app;
+use dracker::player::select_midi_sink;
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 
@@ -86,6 +87,7 @@ fn main() -> Result<()> {
     anyhow::bail!("usage: {program_name} <song-file-path>");
   }
 
+  let mut midi = select_midi_sink()?;
   install_panic_hook();
   enable_raw_mode()?;
   let mut stdout = io::stdout();
@@ -94,14 +96,15 @@ fn main() -> Result<()> {
   let backend = CrosstermBackend::new(stdout);
   let mut terminal = Terminal::new(backend)?;
 
-  let result =
-    match panic::catch_unwind(AssertUnwindSafe(|| run_app(&mut terminal, &song_file_path))) {
-      Ok(result) => result,
-      Err(payload) => Err(anyhow::anyhow!(
-        "application panicked: {}",
-        panic_payload_to_string(payload.as_ref())
-      )),
-    };
+  let result = match panic::catch_unwind(AssertUnwindSafe(|| {
+    run_app(&mut terminal, &song_file_path, midi.as_mut())
+  })) {
+    Ok(result) => result,
+    Err(payload) => Err(anyhow::anyhow!(
+      "application panicked: {}",
+      panic_payload_to_string(payload.as_ref())
+    )),
+  };
 
   // `restore` has better error handling than `restore_fallback` which is called in `Drop`
   cleanup.restore(&mut terminal)?;

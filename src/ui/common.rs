@@ -11,12 +11,12 @@ pub enum ComponentAction {
   Close,
 }
 
-#[derive(Clone, Copy, PartialEq)]
 pub enum UIMode {
   EditPattern,
   EditPatternElement,
   EditSequence,
   EditSetting(EditorSettingFocus),
+  Player { previous_mode: Box<UIMode> },
 }
 
 pub trait Component {

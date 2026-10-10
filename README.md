@@ -1,5 +1,9 @@
 ## Keyboard shortcuts
 
+### Universal
+
+* `Space` – Start/stop playback
+
 ### Pattern panel
 
 * `Up`/`Down`/`Left`/`Right` – Navigate to previous/next row/column in the pattern grid

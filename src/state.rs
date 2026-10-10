@@ -32,6 +32,8 @@ pub struct PlayerTime {
 pub struct PlayerState {
   pub time: PlayerTime,
   pub sequence_index: usize,
+  #[serde(default)]
+  pub row_index: usize,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -460,6 +462,7 @@ mod tests {
           millis: 0,
         },
         sequence_index: 0,
+        row_index: 0,
       },
       editor_settings: EditorSettings::default(),
       instrument_digit_entry: None,
