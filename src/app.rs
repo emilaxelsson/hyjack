@@ -19,7 +19,7 @@ use crate::ui::common::{Component, ComponentAction, UIMode};
 use crate::ui::component::input_dialog::InputDialog;
 use crate::ui::render::pattern::scroll_cursor_into_view;
 use crate::ui::render::style::{ERROR_BANNER_STYLE, INFO_BANNER_STYLE};
-use crate::ui::render::{draw_ui, scroll_focused_sequence_into_view};
+use crate::ui::render::{DrawState, draw_ui, scroll_focused_sequence_into_view};
 
 const SAVE_BANNER_TIMEOUT: Duration = Duration::from_millis(1400);
 const MAX_EVENT_POLL_TIMEOUT: Duration = Duration::from_millis(100);
@@ -557,12 +557,13 @@ fn handle_event(
 /// Align editor focus and scrolling with the current playback position.
 fn sync_player_position(
   state: &mut AppState,
+  player: &Player,
   sequence_scroll_state: &mut ScrollViewState,
   pattern_scroll_state: &mut ScrollViewState,
   viewports: Viewports,
 ) {
-  state.sequence.focus_index = state.player.sequence_index;
-  state.focus.row_index = state.player.row_index;
+  state.sequence.focus_index = player.state().sequence_index;
+  state.focus.row_index = player.state().row_index;
   state.refocus_pattern();
   scroll_focused_sequence_into_view(
     &state.sequence,
@@ -597,8 +598,11 @@ pub fn run_app(
     terminal.draw(|frame| {
       (viewports.sequence_height, viewports.pattern_size) = draw_ui(
         frame,
-        &state,
-        &mode,
+        DrawState {
+          app: &state,
+          player: &player,
+          mode: &mode,
+        },
         &mut sequence_scroll_state,
         &mut pattern_scroll_state,
         banner
@@ -632,12 +636,13 @@ pub fn run_app(
           mode = *previous_mode;
         } else {
           dialog = None;
-          player.start(&mut state, midi, Instant::now())?;
+          player.start(&state, midi, Instant::now())?;
           mode = UIMode::Player {
             previous_mode: Box::new(mode),
           };
           sync_player_position(
             &mut state,
+            &player,
             &mut sequence_scroll_state,
             &mut pattern_scroll_state,
             viewports,
@@ -703,9 +708,10 @@ pub fn run_app(
         state.refocus_pattern();
       }
     } else if matches!(mode, UIMode::Player { .. }) {
-      player.tick(&mut state, midi, Instant::now())?;
+      player.tick(&state, midi, Instant::now())?;
       sync_player_position(
         &mut state,
+        &player,
         &mut sequence_scroll_state,
         &mut pattern_scroll_state,
         viewports,

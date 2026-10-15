@@ -21,33 +21,6 @@ use crate::state::sequence::Sequence;
 use crate::utils::{Adjustable, fresh_name};
 
 #[derive(Serialize, Deserialize)]
-pub struct PlayerTime {
-  pub hour: u8,
-  pub minute: u8,
-  pub second: u8,
-  pub millis: u16,
-}
-
-#[allow(clippy::derivable_impls)]
-impl Default for PlayerTime {
-  fn default() -> Self {
-    Self {
-      hour: 0,
-      minute: 0,
-      second: 0,
-      millis: 0,
-    }
-  }
-}
-
-#[derive(Default, Serialize, Deserialize)]
-pub struct PlayerState {
-  pub time: PlayerTime,
-  pub sequence_index: usize,
-  pub row_index: usize,
-}
-
-#[derive(Serialize, Deserialize)]
 pub struct AppState {
   pub dracker_version: String,
   pub song_title: String,
@@ -56,8 +29,6 @@ pub struct AppState {
   pub sequence: Sequence,
   pub instruments: Instruments,
   pub focus: Focus,
-  #[serde(skip, default)]
-  pub player: PlayerState,
   #[serde(skip, default)]
   pub editor_settings: EditorSettings,
   #[serde(skip, default)]
@@ -464,16 +435,6 @@ mod tests {
         row_index: 0,
         track_index: 0,
         track_column: crate::state::pattern::TrackColumn::Instrument,
-      },
-      player: PlayerState {
-        time: PlayerTime {
-          hour: 0,
-          minute: 0,
-          second: 0,
-          millis: 0,
-        },
-        sequence_index: 0,
-        row_index: 0,
       },
       editor_settings: EditorSettings::default(),
       instrument_digit_entry: None,

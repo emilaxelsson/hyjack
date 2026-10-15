@@ -10,6 +10,32 @@ use crate::state::pattern::Pattern;
 pub const BPM: u64 = 120;
 const MIDI_CHANNEL: u8 = 0;
 
+pub struct PlayerTime {
+  pub hour: u8,
+  pub minute: u8,
+  pub second: u8,
+  pub millis: u16,
+}
+
+#[allow(clippy::derivable_impls)]
+impl Default for PlayerTime {
+  fn default() -> Self {
+    Self {
+      hour: 0,
+      minute: 0,
+      second: 0,
+      millis: 0,
+    }
+  }
+}
+
+#[derive(Default)]
+pub struct PlayerState {
+  pub time: PlayerTime,
+  pub sequence_index: usize,
+  pub row_index: usize,
+}
+
 pub trait MidiSink {
   fn send(&mut self, message: &[u8]) -> Result<()>;
 }
@@ -71,20 +97,24 @@ pub struct Playback {
 
 #[derive(Default)]
 pub struct Player {
+  state: PlayerState,
   playback: Option<Playback>,
 }
 
 impl Player {
-  pub fn start(
-    &mut self,
-    state: &mut AppState,
-    midi: &mut dyn MidiSink,
-    now: Instant,
-  ) -> Result<()> {
+  pub fn state(&self) -> &PlayerState {
+    &self.state
+  }
+
+  pub fn state_mut(&mut self) -> &mut PlayerState {
+    &mut self.state
+  }
+
+  pub fn start(&mut self, song: &AppState, midi: &mut dyn MidiSink, now: Instant) -> Result<()> {
     if self.playback.is_some() {
       bail!("Player is already running");
     }
-    self.playback = Some(Playback::start(state, midi, now)?);
+    self.playback = Some(Playback::start(song, &mut self.state, midi, now)?);
     Ok(())
   }
 
@@ -92,17 +122,12 @@ impl Player {
     self.playback.as_ref().map(Playback::next_deadline)
   }
 
-  pub fn tick(
-    &mut self,
-    state: &mut AppState,
-    midi: &mut dyn MidiSink,
-    now: Instant,
-  ) -> Result<()> {
+  pub fn tick(&mut self, song: &AppState, midi: &mut dyn MidiSink, now: Instant) -> Result<()> {
     self
       .playback
       .as_mut()
       .ok_or_else(|| anyhow::anyhow!("Player is not running"))?
-      .tick(state, midi, now)
+      .tick(song, &mut self.state, midi, now)
   }
 
   pub fn stop(&mut self, midi: &mut dyn MidiSink) -> Result<()> {
@@ -114,14 +139,19 @@ impl Player {
 }
 
 impl Playback {
-  pub fn start(state: &mut AppState, midi: &mut dyn MidiSink, now: Instant) -> Result<Self> {
-    normalize_position(state)?;
+  pub fn start(
+    song: &AppState,
+    player: &mut PlayerState,
+    midi: &mut dyn MidiSink,
+    now: Instant,
+  ) -> Result<Self> {
+    normalize_position(song, player)?;
     let mut playback = Self {
-      next_row_at: now + row_duration(current_pattern(state)?),
+      next_row_at: now + row_duration(current_pattern(song, player)?),
       active_notes: Vec::new(),
       last_program: None,
     };
-    playback.play_row(state, midi)?;
+    playback.play_row(song, player, midi)?;
     Ok(playback)
   }
 
@@ -131,16 +161,17 @@ impl Playback {
 
   pub fn tick(
     &mut self,
-    state: &mut AppState,
+    song: &AppState,
+    player: &mut PlayerState,
     midi: &mut dyn MidiSink,
     now: Instant,
   ) -> Result<()> {
     while now >= self.next_row_at {
-      let duration = row_duration(current_pattern(state)?);
-      advance_position(state)?;
-      advance_time(state, duration);
+      let duration = row_duration(current_pattern(song, player)?);
+      advance_position(song, player)?;
+      advance_time(player, duration);
       self.next_row_at += duration;
-      self.play_row(state, midi)?;
+      self.play_row(song, player, midi)?;
     }
     Ok(())
   }
@@ -149,13 +180,17 @@ impl Playback {
     self.release_notes(midi)
   }
 
-  fn play_row(&mut self, state: &AppState, midi: &mut dyn MidiSink) -> Result<()> {
+  fn play_row(
+    &mut self,
+    song: &AppState,
+    player: &PlayerState,
+    midi: &mut dyn MidiSink,
+  ) -> Result<()> {
     self.release_notes(midi)?;
-    let row_index = state.player.row_index;
-    let notes: Vec<_> = current_pattern(state)?
+    let notes: Vec<_> = current_pattern(song, player)?
       .tracks
       .iter()
-      .filter_map(|track| track.notes[row_index].as_ref())
+      .filter_map(|track| track.notes[player.row_index].as_ref())
       .collect();
 
     for note in notes {
@@ -184,62 +219,62 @@ pub fn row_duration(pattern: &Pattern) -> Duration {
   Duration::from_secs(60).div_f64(BPM as f64 * f64::from(pattern.rows_per_beat.get()))
 }
 
-fn current_pattern(state: &AppState) -> Result<&Pattern> {
-  let title = state
+fn current_pattern<'a>(song: &'a AppState, player: &PlayerState) -> Result<&'a Pattern> {
+  let title = song
     .sequence
     .titles
-    .get(state.player.sequence_index)
+    .get(player.sequence_index)
     .ok_or_else(|| anyhow::anyhow!("Player sequence index is out of bounds"))?;
-  state
+  song
     .patterns
     .iter()
     .find(|pattern| pattern.title == *title)
     .ok_or_else(|| anyhow::anyhow!("Pattern not found: {title}"))
 }
 
-fn normalize_position(state: &mut AppState) -> Result<()> {
-  if state.sequence.titles.is_empty() {
+fn normalize_position(song: &AppState, player: &mut PlayerState) -> Result<()> {
+  if song.sequence.titles.is_empty() {
     bail!("Cannot play an empty sequence");
   }
-  let last_song_index = state
+  let last_song_index = song
     .sequence
     .end_of_song
-    .min(state.sequence.titles.len() - 1);
-  state.player.sequence_index = state.player.sequence_index.min(last_song_index);
-  let num_rows = current_pattern(state)?.num_rows.get();
-  state.player.row_index = state.player.row_index.min(num_rows - 1);
+    .min(song.sequence.titles.len() - 1);
+  player.sequence_index = player.sequence_index.min(last_song_index);
+  let num_rows = current_pattern(song, player)?.num_rows.get();
+  player.row_index = player.row_index.min(num_rows - 1);
   Ok(())
 }
 
-fn advance_position(state: &mut AppState) -> Result<()> {
-  let num_rows = current_pattern(state)?.num_rows.get();
-  if state.player.row_index + 1 < num_rows {
-    state.player.row_index += 1;
+fn advance_position(song: &AppState, player: &mut PlayerState) -> Result<()> {
+  let num_rows = current_pattern(song, player)?.num_rows.get();
+  if player.row_index + 1 < num_rows {
+    player.row_index += 1;
   } else {
-    let last_song_index = state
+    let last_song_index = song
       .sequence
       .end_of_song
-      .min(state.sequence.titles.len() - 1);
-    state.player.sequence_index = if state.player.sequence_index >= last_song_index {
+      .min(song.sequence.titles.len() - 1);
+    player.sequence_index = if player.sequence_index >= last_song_index {
       0
     } else {
-      state.player.sequence_index + 1
+      player.sequence_index + 1
     };
-    state.player.row_index = 0;
+    player.row_index = 0;
   }
   Ok(())
 }
 
-fn advance_time(state: &mut AppState, duration: Duration) {
-  let current_millis = u64::from(state.player.time.hour) * 3_600_000
-    + u64::from(state.player.time.minute) * 60_000
-    + u64::from(state.player.time.second) * 1_000
-    + u64::from(state.player.time.millis);
+fn advance_time(player: &mut PlayerState, duration: Duration) {
+  let current_millis = u64::from(player.time.hour) * 3_600_000
+    + u64::from(player.time.minute) * 60_000
+    + u64::from(player.time.second) * 1_000
+    + u64::from(player.time.millis);
   let total_millis = current_millis + duration.as_millis() as u64;
-  state.player.time.hour = ((total_millis / 3_600_000) % 256) as u8;
-  state.player.time.minute = ((total_millis / 60_000) % 60) as u8;
-  state.player.time.second = ((total_millis / 1_000) % 60) as u8;
-  state.player.time.millis = (total_millis % 1_000) as u16;
+  player.time.hour = ((total_millis / 3_600_000) % 256) as u8;
+  player.time.minute = ((total_millis / 60_000) % 60) as u8;
+  player.time.second = ((total_millis / 1_000) % 60) as u8;
+  player.time.millis = (total_millis % 1_000) as u16;
 }
 
 #[cfg(test)]
@@ -259,26 +294,27 @@ mod tests {
 
   #[test]
   fn starts_with_program_changes_and_notes_in_track_order() {
-    let mut state: AppState = serde_json::from_str(include_str!("../songs/test.json")).unwrap();
-    state.player.sequence_index = 1;
-    state.player.row_index = 0;
+    let state: AppState = serde_json::from_str(include_str!("../songs/test.json")).unwrap();
+    let mut player_state = PlayerState {
+      sequence_index: 1,
+      ..Default::default()
+    };
     let mut midi = RecordingMidiSink(Vec::new());
 
-    Playback::start(&mut state, &mut midi, Instant::now()).unwrap();
+    Playback::start(&state, &mut player_state, &mut midi, Instant::now()).unwrap();
 
     assert_eq!(midi.0, vec![vec![0xc0, 2], vec![0x90, 36, 20]]);
   }
 
   #[test]
   fn player_start_and_stop_manage_the_active_playback() {
-    let mut state: AppState = serde_json::from_str(include_str!("../songs/test.json")).unwrap();
-    state.player.sequence_index = 1;
-    state.player.row_index = 0;
+    let state: AppState = serde_json::from_str(include_str!("../songs/test.json")).unwrap();
     let mut midi = RecordingMidiSink(Vec::new());
     let mut player = Player::default();
+    player.state_mut().sequence_index = 1;
 
     assert!(player.next_deadline().is_none());
-    player.start(&mut state, &mut midi, Instant::now()).unwrap();
+    player.start(&state, &mut midi, Instant::now()).unwrap();
     assert!(player.next_deadline().is_some());
     player.stop(&mut midi).unwrap();
 
@@ -289,8 +325,10 @@ mod tests {
   #[test]
   fn linearizes_simultaneous_notes_with_program_changes() {
     let mut state: AppState = serde_json::from_str(include_str!("../songs/test.json")).unwrap();
-    state.player.sequence_index = 1;
-    state.player.row_index = 0;
+    let mut player_state = PlayerState {
+      sequence_index: 1,
+      ..Default::default()
+    };
     let pattern = state
       .patterns
       .iter_mut()
@@ -304,7 +342,7 @@ mod tests {
     });
     let now = Instant::now();
     let mut midi = RecordingMidiSink(Vec::new());
-    let mut playback = Playback::start(&mut state, &mut midi, now).unwrap();
+    let mut playback = Playback::start(&state, &mut player_state, &mut midi, now).unwrap();
 
     assert_eq!(
       midi.0,
@@ -317,7 +355,12 @@ mod tests {
     );
 
     playback
-      .tick(&mut state, &mut midi, now + Duration::from_millis(125))
+      .tick(
+        &state,
+        &mut player_state,
+        &mut midi,
+        now + Duration::from_millis(125),
+      )
       .unwrap();
     assert_eq!(midi.0[4..], [vec![0x80, 36, 0], vec![0x80, 52, 0]]);
   }
@@ -326,17 +369,24 @@ mod tests {
   fn loops_after_the_last_song_pattern() {
     let mut state: AppState = serde_json::from_str(include_str!("../songs/test.json")).unwrap();
     state.sequence.end_of_song = 0;
-    state.player.sequence_index = 0;
-    state.player.row_index = 7;
+    let mut player_state = PlayerState {
+      row_index: 7,
+      ..Default::default()
+    };
     let now = Instant::now();
     let mut midi = RecordingMidiSink(Vec::new());
-    let mut playback = Playback::start(&mut state, &mut midi, now).unwrap();
+    let mut playback = Playback::start(&state, &mut player_state, &mut midi, now).unwrap();
 
     playback
-      .tick(&mut state, &mut midi, now + Duration::from_millis(125))
+      .tick(
+        &state,
+        &mut player_state,
+        &mut midi,
+        now + Duration::from_millis(125),
+      )
       .unwrap();
 
-    assert_eq!(state.player.sequence_index, 0);
-    assert_eq!(state.player.row_index, 0);
+    assert_eq!(player_state.sequence_index, 0);
+    assert_eq!(player_state.row_index, 0);
   }
 }
