@@ -420,6 +420,7 @@ mod tests {
             semitone: crate::state::pattern::Semitone(0),
             instrument: InstrumentIndex(0),
             velocity: Velocity(50),
+            effect: None,
           })),
         }),
         num_rows: NonZero::new(1).unwrap(),
@@ -759,6 +760,7 @@ mod tests {
       semitone: Semitone(11),
       instrument: InstrumentIndex(0),
       velocity: Velocity(50),
+      effect: None,
     });
     state.adjust_focused_note(true, true);
     assert_eq!(focused_semitone(&state), Semitone(0));

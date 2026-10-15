@@ -1,37 +1,19 @@
 use std::io::{self, Write};
+use std::num::NonZeroU8;
 use std::time::{Duration, Instant};
 
 use anyhow::{Result, bail};
 use midir::{MidiOutput, MidiOutputConnection};
 
 use crate::state::AppState;
-use crate::state::pattern::Pattern;
+use crate::state::pattern::{Effect, Pattern};
 
-pub const BPM: u64 = 120;
+pub const BPM: u8 = 120;
 const MIDI_CHANNEL: u8 = 0;
-
-pub struct PlayerTime {
-  pub hour: u8,
-  pub minute: u8,
-  pub second: u8,
-  pub millis: u16,
-}
-
-#[allow(clippy::derivable_impls)]
-impl Default for PlayerTime {
-  fn default() -> Self {
-    Self {
-      hour: 0,
-      minute: 0,
-      second: 0,
-      millis: 0,
-    }
-  }
-}
 
 #[derive(Default)]
 pub struct PlayerState {
-  pub time: PlayerTime,
+  pub time: Duration,
   pub sequence_index: usize,
   pub row_index: usize,
 }
@@ -91,8 +73,18 @@ pub fn select_midi_sink() -> Result<Box<dyn MidiSink>> {
 
 pub struct Playback {
   next_row_at: Instant,
+  timeline: PlaybackTimeline,
   active_notes: Vec<u8>,
   last_program: Option<u8>,
+}
+
+struct PlaybackTimeline {
+  rows: Vec<Vec<TimelineRow>>,
+}
+
+struct TimelineRow {
+  start_time: Duration,
+  duration: Duration,
 }
 
 #[derive(Default)]
@@ -146,8 +138,11 @@ impl Playback {
     now: Instant,
   ) -> Result<Self> {
     normalize_position(song, player);
+    let timeline = PlaybackTimeline::from_song(song)?;
+    player.time = timeline.row(player)?.start_time;
     let mut playback = Self {
-      next_row_at: now + row_duration(current_pattern(song, player)?),
+      next_row_at: now + timeline.row(player)?.duration,
+      timeline,
       active_notes: Vec::new(),
       last_program: None,
     };
@@ -167,10 +162,10 @@ impl Playback {
     now: Instant,
   ) -> Result<()> {
     while now >= self.next_row_at {
-      let duration = row_duration(current_pattern(song, player)?);
       advance_position(song, player)?;
-      advance_time(player, duration);
-      self.next_row_at += duration;
+      let row = self.timeline.row(player)?;
+      player.time = row.start_time;
+      self.next_row_at += row.duration;
       self.play_row(song, player, midi)?;
     }
     Ok(())
@@ -215,21 +210,71 @@ impl Playback {
   }
 }
 
-pub fn row_duration(pattern: &Pattern) -> Duration {
-  Duration::from_secs(60).div_f64(BPM as f64 * f64::from(pattern.rows_per_beat.get()))
+fn row_duration(bpm: NonZeroU8, rows_per_beat: NonZeroU8) -> Duration {
+  Duration::from_secs(60).div_f64(bpm.get() as f64 * f64::from(rows_per_beat.get()))
 }
 
-fn current_pattern<'a>(song: &'a AppState, player: &PlayerState) -> Result<&'a Pattern> {
+fn pattern_at(song: &AppState, sequence_index: usize) -> Result<&Pattern> {
   let title = song
     .sequence
     .titles
-    .get(player.sequence_index)
+    .get(sequence_index)
     .ok_or_else(|| anyhow::anyhow!("Player sequence index is out of bounds"))?;
   song
     .patterns
     .iter()
     .find(|pattern| pattern.title == *title)
     .ok_or_else(|| anyhow::anyhow!("Pattern not found: {title}"))
+}
+
+fn current_pattern<'a>(song: &'a AppState, player: &PlayerState) -> Result<&'a Pattern> {
+  pattern_at(song, player.sequence_index)
+}
+
+impl PlaybackTimeline {
+  fn from_song(song: &AppState) -> Result<Self> {
+    let last_song_index = song
+      .sequence
+      .end_of_song
+      .min(song.sequence.titles.len() - 1);
+    let mut bpm = NonZeroU8::new(BPM).expect("BPM must be nonzero");
+    let mut start_time = Duration::ZERO;
+    let mut rows = Vec::with_capacity(last_song_index + 1);
+
+    for sequence_index in 0..=last_song_index {
+      let pattern = pattern_at(song, sequence_index)?;
+      let mut pattern_rows = Vec::with_capacity(pattern.num_rows.get());
+
+      for row_index in 0..pattern.num_rows.get() {
+        for track in &pattern.tracks {
+          if let Some(Effect::SetTempo(new_bpm)) =
+            track.notes[row_index].as_ref().and_then(|note| note.effect)
+          {
+            bpm = new_bpm;
+          }
+        }
+
+        let duration = row_duration(bpm, pattern.rows_per_beat);
+        pattern_rows.push(TimelineRow {
+          start_time,
+          duration,
+        });
+        start_time += duration;
+      }
+
+      rows.push(pattern_rows);
+    }
+
+    Ok(Self { rows })
+  }
+
+  fn row(&self, player: &PlayerState) -> Result<&TimelineRow> {
+    self
+      .rows
+      .get(player.sequence_index)
+      .and_then(|rows| rows.get(player.row_index))
+      .ok_or_else(|| anyhow::anyhow!("Player position is out of bounds for playback timeline"))
+  }
 }
 
 /// Clamps the playback cursor to the playable sequence and row ranges.
@@ -271,23 +316,11 @@ fn advance_position(song: &AppState, player: &mut PlayerState) -> Result<()> {
   Ok(())
 }
 
-fn advance_time(player: &mut PlayerState, duration: Duration) {
-  let current_millis = u64::from(player.time.hour) * 3_600_000
-    + u64::from(player.time.minute) * 60_000
-    + u64::from(player.time.second) * 1_000
-    + u64::from(player.time.millis);
-  let total_millis = current_millis + duration.as_millis() as u64;
-  player.time.hour = ((total_millis / 3_600_000) % 256) as u8;
-  player.time.minute = ((total_millis / 60_000) % 60) as u8;
-  player.time.second = ((total_millis / 1_000) % 60) as u8;
-  player.time.millis = (total_millis % 1_000) as u16;
-}
-
 #[cfg(test)]
 mod tests {
   use super::*;
   use crate::state::instruments::InstrumentIndex;
-  use crate::state::pattern::{Note, Octave, Semitone, Velocity};
+  use crate::state::pattern::{Effect, Note, Octave, Semitone, Velocity};
 
   struct RecordingMidiSink(Vec<Vec<u8>>);
 
@@ -313,7 +346,7 @@ mod tests {
   }
 
   #[test]
-  fn starts_at_the_beginning_when_the_selected_pattern_is_missing() {
+  fn fails_to_start_when_a_song_pattern_is_missing() {
     let mut state: AppState = serde_json::from_str(include_str!("../songs/test.json")).unwrap();
     state.sequence.titles[1] = "Missing pattern".to_owned();
     let mut player_state = PlayerState {
@@ -323,10 +356,10 @@ mod tests {
     };
     let mut midi = RecordingMidiSink(Vec::new());
 
-    Playback::start(&state, &mut player_state, &mut midi, Instant::now()).unwrap();
-
-    assert_eq!(player_state.sequence_index, 0);
-    assert_eq!(player_state.row_index, 0);
+    assert!(matches!(
+      Playback::start(&state, &mut player_state, &mut midi, Instant::now()),
+      Err(error) if error.to_string() == "Pattern not found: Missing pattern"
+    ));
   }
 
   #[test]
@@ -362,6 +395,7 @@ mod tests {
       semitone: Semitone(4),
       instrument: InstrumentIndex(4),
       velocity: Velocity(80),
+      effect: None,
     });
     let now = Instant::now();
     let mut midi = RecordingMidiSink(Vec::new());
@@ -386,6 +420,48 @@ mod tests {
       )
       .unwrap();
     assert_eq!(midi.0[4..], [vec![0x80, 36, 0], vec![0x80, 52, 0]]);
+  }
+
+  #[test]
+  fn derives_row_time_and_schedule_from_left_to_right_tempo_effects() {
+    let mut state: AppState = serde_json::from_str(include_str!("../songs/test.json")).unwrap();
+    let pattern = state
+      .patterns
+      .iter_mut()
+      .find(|pattern| pattern.title == "Intro B")
+      .unwrap();
+    pattern.tracks[0].notes[0].as_mut().unwrap().effect =
+      Some(Effect::SetTempo(NonZeroU8::new(240).unwrap()));
+    pattern.tracks[1].notes[0] = Some(Note {
+      octave: Octave(3),
+      semitone: Semitone(4),
+      instrument: InstrumentIndex(4),
+      velocity: Velocity(80),
+      effect: Some(Effect::SetTempo(NonZeroU8::new(60).unwrap())),
+    });
+    let now = Instant::now();
+    let mut player_state = PlayerState {
+      sequence_index: 1,
+      row_index: 1,
+      ..Default::default()
+    };
+    let mut midi = RecordingMidiSink(Vec::new());
+    let mut playback = Playback::start(&state, &mut player_state, &mut midi, now).unwrap();
+
+    assert_eq!(player_state.time, Duration::from_millis(1_250));
+    assert_eq!(playback.next_deadline(), now + Duration::from_millis(250));
+
+    playback
+      .tick(
+        &state,
+        &mut player_state,
+        &mut midi,
+        now + Duration::from_millis(250),
+      )
+      .unwrap();
+
+    assert_eq!(player_state.time, Duration::from_millis(1_500));
+    assert_eq!(playback.next_deadline(), now + Duration::from_millis(500));
   }
 
   #[test]

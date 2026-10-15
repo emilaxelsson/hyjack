@@ -61,6 +61,13 @@ pub struct Note {
   pub semitone: Semitone,
   pub instrument: InstrumentIndex,
   pub velocity: Velocity,
+  #[serde(default)]
+  pub effect: Option<Effect>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Effect {
+  SetTempo(NonZeroU8),
 }
 
 impl Note {
@@ -363,6 +370,7 @@ mod focus_tests {
         semitone: Semitone(semitone),
         instrument,
         velocity: Velocity(velocity),
+        effect: None,
       })
   }
 
@@ -634,6 +642,7 @@ mod focus_tests {
       semitone: Semitone(11),
       instrument: InstrumentIndex(0),
       velocity: Velocity(50),
+      effect: None,
     };
 
     note.increase((), true);

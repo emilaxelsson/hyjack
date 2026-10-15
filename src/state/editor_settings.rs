@@ -123,6 +123,7 @@ impl EditorSettings {
       semitone,
       instrument: self.instrument,
       velocity: self.velocity,
+      effect: None,
     }
   }
 }
