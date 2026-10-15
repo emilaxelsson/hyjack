@@ -5,7 +5,8 @@ After making changes, run
   * `cargo clippy`
   * `cargo test`
 
-and fix any warnings or errors.
+and fix any warnings or errors. When possible, use the exact commands above, to avoid manual command approvals.
+
 
 
 ## Testing
