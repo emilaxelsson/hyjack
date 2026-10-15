@@ -448,8 +448,8 @@ mod tests {
     let mut midi = RecordingMidiSink(Vec::new());
     let mut playback = Playback::start(&state, &mut player_state, &mut midi, now).unwrap();
 
-    assert_eq!(player_state.time, Duration::from_millis(1_250));
-    assert_eq!(playback.next_deadline(), now + Duration::from_millis(250));
+    assert_eq!(player_state.time, Duration::from_millis(1_125));
+    assert_eq!(playback.next_deadline(), now + Duration::from_millis(125));
 
     playback
       .tick(
@@ -460,8 +460,8 @@ mod tests {
       )
       .unwrap();
 
-    assert_eq!(player_state.time, Duration::from_millis(1_500));
-    assert_eq!(playback.next_deadline(), now + Duration::from_millis(500));
+    assert_eq!(player_state.time, Duration::from_millis(1_375));
+    assert_eq!(playback.next_deadline(), now + Duration::from_millis(375));
   }
 
   #[test]

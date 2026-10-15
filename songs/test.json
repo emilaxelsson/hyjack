@@ -42,7 +42,8 @@
               "octave": 2,
               "semitone": 0,
               "instrument": 2,
-              "velocity": 20
+              "velocity": 20,
+              "effect": null
             },
             null,
             null,
@@ -93,7 +94,8 @@
               "octave": 2,
               "semitone": 0,
               "instrument": 2,
-              "velocity": 20
+              "velocity": 20,
+              "effect": null
             },
             null,
             null,
@@ -131,7 +133,7 @@
         }
       ],
       "num_rows": 16,
-      "rows_per_beat": 4
+      "rows_per_beat": 8
     },
     {
       "title": "Verse 1 A",
@@ -278,8 +280,8 @@
     ]
   },
   "focus": {
-    "row_index": 4,
-    "track_index": 2,
+    "row_index": 7,
+    "track_index": 0,
     "track_column": "Note"
   }
 }
