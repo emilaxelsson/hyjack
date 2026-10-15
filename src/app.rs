@@ -627,6 +627,7 @@ pub fn run_app(
       if let Event::Key(key) = &event
         && key.code == KeyCode::Char(' ')
         && key.modifiers == KeyModifiers::NONE
+        && dialog.is_none()
       {
         if matches!(mode, UIMode::Player { .. }) {
           let UIMode::Player { previous_mode } = mode else {
