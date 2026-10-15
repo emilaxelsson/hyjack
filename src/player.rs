@@ -145,7 +145,7 @@ impl Playback {
     midi: &mut dyn MidiSink,
     now: Instant,
   ) -> Result<Self> {
-    normalize_position(song, player)?;
+    normalize_position(song, player);
     let mut playback = Self {
       next_row_at: now + row_duration(current_pattern(song, player)?),
       active_notes: Vec::new(),
@@ -232,15 +232,24 @@ fn current_pattern<'a>(song: &'a AppState, player: &PlayerState) -> Result<&'a P
     .ok_or_else(|| anyhow::anyhow!("Pattern not found: {title}"))
 }
 
-fn normalize_position(song: &AppState, player: &mut PlayerState) -> Result<()> {
+/// Clamps the playback cursor to the playable sequence and row ranges.
+///
+/// Resets the cursor to the beginning when the selected pattern cannot be found.
+fn normalize_position(song: &AppState, player: &mut PlayerState) {
   let last_song_index = song
     .sequence
     .end_of_song
     .min(song.sequence.titles.len() - 1);
   player.sequence_index = player.sequence_index.min(last_song_index);
-  let num_rows = current_pattern(song, player)?.num_rows.get();
-  player.row_index = player.row_index.min(num_rows - 1);
-  Ok(())
+  match current_pattern(song, player) {
+    Ok(pattern) => {
+      player.row_index = player.row_index.min(pattern.num_rows.get() - 1);
+    }
+    Err(_) => {
+      player.sequence_index = 0;
+      player.row_index = 0;
+    }
+  }
 }
 
 fn advance_position(song: &AppState, player: &mut PlayerState) -> Result<()> {
@@ -301,6 +310,23 @@ mod tests {
     Playback::start(&state, &mut player_state, &mut midi, Instant::now()).unwrap();
 
     assert_eq!(midi.0, vec![vec![0xc0, 2], vec![0x90, 36, 20]]);
+  }
+
+  #[test]
+  fn starts_at_the_beginning_when_the_selected_pattern_is_missing() {
+    let mut state: AppState = serde_json::from_str(include_str!("../songs/test.json")).unwrap();
+    state.sequence.titles[1] = "Missing pattern".to_owned();
+    let mut player_state = PlayerState {
+      sequence_index: 1,
+      row_index: 7,
+      ..Default::default()
+    };
+    let mut midi = RecordingMidiSink(Vec::new());
+
+    Playback::start(&state, &mut player_state, &mut midi, Instant::now()).unwrap();
+
+    assert_eq!(player_state.sequence_index, 0);
+    assert_eq!(player_state.row_index, 0);
   }
 
   #[test]
