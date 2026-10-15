@@ -426,7 +426,7 @@ mod tests {
         rows_per_beat: NonZeroU8::new(4).unwrap(),
       }),
       sequence: Sequence {
-        titles: vec!["Pattern".to_owned()],
+        titles: NonEmpty::new("Pattern".to_owned()),
         focus_index: 0,
         end_of_song: 0,
       },
@@ -494,7 +494,12 @@ mod tests {
 
     assert_eq!(
       state.sequence.titles,
-      ["Pattern", "Pattern copy1", "Pattern"]
+      NonEmpty::from_vec(vec![
+        "Pattern".to_owned(),
+        "Pattern copy1".to_owned(),
+        "Pattern".to_owned(),
+      ])
+      .unwrap()
     );
     assert_eq!(state.sequence.focus_index, 1);
     assert_eq!(state.sequence.end_of_song, 2);
@@ -519,7 +524,13 @@ mod tests {
 
     assert_eq!(
       state.sequence.titles,
-      ["Pattern", "Pattern", "Pattern copy", "Pattern"]
+      NonEmpty::from_vec(vec![
+        "Pattern".to_owned(),
+        "Pattern".to_owned(),
+        "Pattern copy".to_owned(),
+        "Pattern".to_owned(),
+      ])
+      .unwrap()
     );
     assert_eq!(state.sequence.focus_index, 2);
     assert_eq!(state.sequence.end_of_song, 2);
@@ -537,7 +548,10 @@ mod tests {
 
     state.insert_new_pattern();
 
-    assert_eq!(state.sequence.titles, ["Pattern", "New pattern"]);
+    assert_eq!(
+      state.sequence.titles,
+      NonEmpty::from_vec(vec!["Pattern".to_owned(), "New pattern".to_owned()]).unwrap()
+    );
     assert_eq!(state.sequence.focus_index, 1);
     assert_eq!(state.sequence.end_of_song, 1);
     assert_eq!(state.focus.row_index, 0);

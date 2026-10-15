@@ -233,9 +233,6 @@ fn current_pattern<'a>(song: &'a AppState, player: &PlayerState) -> Result<&'a P
 }
 
 fn normalize_position(song: &AppState, player: &mut PlayerState) -> Result<()> {
-  if song.sequence.titles.is_empty() {
-    bail!("Cannot play an empty sequence");
-  }
   let last_song_index = song
     .sequence
     .end_of_song

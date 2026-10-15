@@ -1,3 +1,4 @@
+use nonempty::NonEmpty;
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect, Size};
 use ratatui::style::{Modifier, Style, Stylize};
@@ -45,7 +46,7 @@ fn draw_list_block(
   frame: &mut Frame,
   area: Rect,
   title: &str,
-  items: &[String],
+  items: &NonEmpty<String>,
   focused_index: usize,
   end_index: usize,
   is_active: bool,

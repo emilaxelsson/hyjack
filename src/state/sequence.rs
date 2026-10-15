@@ -1,13 +1,16 @@
 //! This module contains the `Sequence` struct, which is used to represent a sequence of
 //! patterns in a song.
 
+use nonempty::NonEmpty;
 use serde::{Deserialize, Serialize};
+
+use crate::utils::NonEmptyExt;
 
 #[derive(Debug, PartialEq)]
 #[cfg_attr(test, derive(Clone))]
 #[derive(Serialize, Deserialize)]
 pub struct Sequence {
-  pub titles: Vec<String>,
+  pub titles: NonEmpty<String>,
   pub focus_index: usize,
   /// Index of the last title in the sequence that is part of the song. Titles after this
   /// index can be seen as a "pool" of titles that can be used in the song.
@@ -149,14 +152,22 @@ impl Sequence {
     if title_count == 1 {
       if title_in_song {
         // Move to end of pool
-        self.titles.remove(idx);
+        self
+          .titles
+          .remove(idx)
+          // Should not fail, already checked
+          .expect("cannot move the final title to the pool");
         self.titles.push(focused_title);
       } else {
         // Don't allow deleting the last remaining title in the pool.
         return Some("Cannot remove the last occurrence of title.".to_string());
       }
     } else {
-      self.titles.remove(idx);
+      self
+        .titles
+        .remove(idx)
+        // Should not fail, already checked
+        .expect("cannot remove the final title");
       if self.focus_index >= self.titles.len() {
         self.focus_index = self.titles.len().saturating_sub(1);
       }
@@ -183,10 +194,13 @@ mod tests {
       any::<usize>(),
     )
       .prop_map(|(title_ids, focus_seed, end_seed)| {
-        let titles: Vec<String> = title_ids
-          .into_iter()
-          .map(|id| format!("Title {id}"))
-          .collect();
+        let titles = NonEmpty::from_vec(
+          title_ids
+            .into_iter()
+            .map(|id| format!("Title {id}"))
+            .collect(),
+        )
+        .unwrap();
         let len = titles.len();
 
         Sequence {
@@ -240,12 +254,13 @@ mod tests {
   #[test]
   fn page_navigation_moves_focus_by_page_size_and_clamps_to_bounds() {
     let mut sequence = Sequence {
-      titles: vec![
+      titles: NonEmpty::from_vec(vec![
         "A".to_string(),
         "B".to_string(),
         "C".to_string(),
         "D".to_string(),
-      ],
+      ])
+      .unwrap(),
       focus_index: 2,
       end_of_song: 3,
     };
@@ -263,7 +278,7 @@ mod tests {
   #[test]
   fn endpoint_navigation_selects_first_and_last_title() {
     let mut sequence = Sequence {
-      titles: vec!["A".to_string(), "B".to_string(), "C".to_string()],
+      titles: NonEmpty::from_vec(vec!["A".to_string(), "B".to_string(), "C".to_string()]).unwrap(),
       focus_index: 1,
       end_of_song: 2,
     };
