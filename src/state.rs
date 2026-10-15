@@ -28,11 +28,22 @@ pub struct PlayerTime {
   pub millis: u16,
 }
 
-#[derive(Serialize, Deserialize)]
+#[allow(clippy::derivable_impls)]
+impl Default for PlayerTime {
+  fn default() -> Self {
+    Self {
+      hour: 0,
+      minute: 0,
+      second: 0,
+      millis: 0,
+    }
+  }
+}
+
+#[derive(Default, Serialize, Deserialize)]
 pub struct PlayerState {
   pub time: PlayerTime,
   pub sequence_index: usize,
-  #[serde(default)]
   pub row_index: usize,
 }
 
@@ -45,6 +56,7 @@ pub struct AppState {
   pub sequence: Sequence,
   pub instruments: Instruments,
   pub focus: Focus,
+  #[serde(skip, default)]
   pub player: PlayerState,
   #[serde(skip, default)]
   pub editor_settings: EditorSettings,

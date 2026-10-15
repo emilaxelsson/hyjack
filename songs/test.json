@@ -281,14 +281,5 @@
     "row_index": 4,
     "track_index": 2,
     "track_column": "Note"
-  },
-  "player": {
-    "time": {
-      "hour": 0,
-      "minute": 2,
-      "second": 32,
-      "millis": 0
-    },
-    "sequence_index": 0
   }
 }
