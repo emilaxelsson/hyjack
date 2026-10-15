@@ -40,7 +40,6 @@ pub struct PlayerState {
 pub struct AppState {
   pub dracker_version: String,
   pub song_title: String,
-  #[serde(default)]
   pub pattern_defaults: PatternDefaults,
   pub patterns: NonEmpty<Pattern>,
   pub sequence: Sequence,
