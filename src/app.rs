@@ -36,11 +36,30 @@ struct Banner {
   expires_at: Instant,
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum ViewportSync {
+  #[default]
+  None,
+  Pattern,
+  Sequence,
+  PlayerPosition,
+}
+
 struct HandleEventResult {
   quit: bool,
   new_mode: Option<UIMode>,
   banner: Option<Banner>,
   dialog: Option<InputDialog<AppState>>,
+  viewport_sync: ViewportSync,
+}
+
+struct EventContext<'a> {
+  pattern_scroll_state: &'a mut ScrollViewState,
+  viewports: Viewports,
+  optional_dialog: &'a mut Option<InputDialog<AppState>>,
+  song_file_path: &'a Path,
+  player: &'a mut Player,
+  midi: &'a mut dyn MidiSink,
 }
 
 impl Banner {
@@ -95,13 +114,13 @@ fn can_type_note(modifiers: KeyModifiers) -> bool {
 
 fn handle_edit_sequence_event(
   state: &mut AppState,
-  sequence_scroll_state: &mut ScrollViewState,
   viewports: Viewports,
   key: event::KeyEvent,
 ) -> HandleEventResult {
   let mut new_mode: Option<UIMode> = None;
   let mut banner: Option<Banner> = None;
   let mut dialog: Option<InputDialog<AppState>> = None;
+  let mut viewport_sync = ViewportSync::None;
 
   match key.code {
     KeyCode::Up => {
@@ -110,11 +129,7 @@ fn handle_edit_sequence_event(
       } else {
         state.sequence.to_previous_title();
       }
-      scroll_focused_sequence_into_view(
-        &state.sequence,
-        sequence_scroll_state,
-        viewports.sequence_height,
-      );
+      viewport_sync = ViewportSync::Sequence;
     }
     KeyCode::Down => {
       if key.modifiers == KeyModifiers::CONTROL {
@@ -128,79 +143,43 @@ fn handle_edit_sequence_event(
       } else {
         state.sequence.to_next_title();
       }
-      scroll_focused_sequence_into_view(
-        &state.sequence,
-        sequence_scroll_state,
-        viewports.sequence_height,
-      );
+      viewport_sync = ViewportSync::Sequence;
     }
     KeyCode::PageUp => {
       state
         .sequence
         .to_previous_page(usize::from(viewports.sequence_height));
-      scroll_focused_sequence_into_view(
-        &state.sequence,
-        sequence_scroll_state,
-        viewports.sequence_height,
-      );
+      viewport_sync = ViewportSync::Sequence;
     }
     KeyCode::PageDown => {
       state
         .sequence
         .to_next_page(usize::from(viewports.sequence_height));
-      scroll_focused_sequence_into_view(
-        &state.sequence,
-        sequence_scroll_state,
-        viewports.sequence_height,
-      );
+      viewport_sync = ViewportSync::Sequence;
     }
     KeyCode::Home => {
       state.sequence.to_first_title();
-      scroll_focused_sequence_into_view(
-        &state.sequence,
-        sequence_scroll_state,
-        viewports.sequence_height,
-      );
+      viewport_sync = ViewportSync::Sequence;
     }
     KeyCode::End => {
       state.sequence.to_last_title();
-      scroll_focused_sequence_into_view(
-        &state.sequence,
-        sequence_scroll_state,
-        viewports.sequence_height,
-      );
+      viewport_sync = ViewportSync::Sequence;
     }
     KeyCode::Char('d') if key.modifiers == KeyModifiers::NONE => {
       state.sequence.duplicate_focused_title();
-      scroll_focused_sequence_into_view(
-        &state.sequence,
-        sequence_scroll_state,
-        viewports.sequence_height,
-      );
+      viewport_sync = ViewportSync::Sequence;
     }
     KeyCode::Char('d') if key.modifiers == KeyModifiers::CONTROL => {
       state.duplicate_focused_pattern();
-      scroll_focused_sequence_into_view(
-        &state.sequence,
-        sequence_scroll_state,
-        viewports.sequence_height,
-      );
+      viewport_sync = ViewportSync::Sequence;
     }
     KeyCode::Insert => {
       state.insert_new_pattern();
-      scroll_focused_sequence_into_view(
-        &state.sequence,
-        sequence_scroll_state,
-        viewports.sequence_height,
-      );
+      viewport_sync = ViewportSync::Sequence;
     }
     KeyCode::Delete => {
       let remove_error = state.sequence.soft_remove_focused_title();
-      scroll_focused_sequence_into_view(
-        &state.sequence,
-        sequence_scroll_state,
-        viewports.sequence_height,
-      );
+      viewport_sync = ViewportSync::Sequence;
 
       if let Some(reason) = remove_error {
         banner = Some(Banner::with_timeout(
@@ -224,18 +203,19 @@ fn handle_edit_sequence_event(
     new_mode,
     banner,
     dialog,
+    viewport_sync,
   }
 }
 
 fn handle_edit_pattern_event(
   state: &mut AppState,
   pattern_scroll_state: &mut ScrollViewState,
-  viewports: Viewports,
   key: event::KeyEvent,
 ) -> HandleEventResult {
   let bounds = state.get_current_pattern().bounds();
   let mut new_mode: Option<UIMode> = None;
   let mut dialog: Option<InputDialog<AppState>> = None;
+  let mut viewport_sync = ViewportSync::None;
 
   match key.code {
     KeyCode::Up => {
@@ -243,7 +223,7 @@ fn handle_edit_pattern_event(
         pattern_scroll_state.scroll_up();
       } else {
         state.to_previous_pattern_row();
-        scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
+        viewport_sync = ViewportSync::Pattern;
       }
     }
     KeyCode::Down => {
@@ -251,16 +231,16 @@ fn handle_edit_pattern_event(
         pattern_scroll_state.scroll_down();
       } else {
         state.to_next_pattern_row();
-        scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
+        viewport_sync = ViewportSync::Pattern;
       }
     }
     KeyCode::PageUp => {
       state.page_up_pattern();
-      scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
+      viewport_sync = ViewportSync::Pattern;
     }
     KeyCode::PageDown => {
       state.page_down_pattern();
-      scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
+      viewport_sync = ViewportSync::Pattern;
     }
     KeyCode::Home => {
       if key.modifiers == KeyModifiers::CONTROL {
@@ -268,7 +248,7 @@ fn handle_edit_pattern_event(
       } else {
         state.to_first_pattern_column();
       }
-      scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
+      viewport_sync = ViewportSync::Pattern;
     }
     KeyCode::End => {
       if key.modifiers == KeyModifiers::CONTROL {
@@ -276,22 +256,22 @@ fn handle_edit_pattern_event(
       } else {
         state.to_last_pattern_column();
       }
-      scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
+      viewport_sync = ViewportSync::Pattern;
     }
     KeyCode::BackTab | KeyCode::Tab if key.modifiers.contains(KeyModifiers::SHIFT) => {
       state.focus.to_previous_track();
-      scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
+      viewport_sync = ViewportSync::Pattern;
     }
     KeyCode::Tab => {
       state.focus.to_next_track(bounds);
-      scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
+      viewport_sync = ViewportSync::Pattern;
     }
     KeyCode::Left => {
       if key.modifiers == KeyModifiers::CONTROL {
         pattern_scroll_state.scroll_left();
       } else {
         state.focus.to_previous_track_field();
-        scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
+        viewport_sync = ViewportSync::Pattern;
       }
     }
     KeyCode::Right => {
@@ -299,7 +279,7 @@ fn handle_edit_pattern_event(
         pattern_scroll_state.scroll_right();
       } else {
         state.focus.to_next_track_field(bounds);
-        scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
+        viewport_sync = ViewportSync::Pattern;
       }
     }
     KeyCode::F(2) => {
@@ -354,13 +334,19 @@ fn handle_edit_pattern_event(
     new_mode,
     banner: None,
     dialog,
+    viewport_sync,
   }
 }
 
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::player::SilentMidiSink;
   use crate::state::pattern::Note;
+
+  fn test_state() -> AppState {
+    serde_json::from_str(include_str!("../songs/test.json")).unwrap()
+  }
 
   #[test]
   fn note_key_to_semitone_maps_requested_layout() {
@@ -380,7 +366,7 @@ mod tests {
 
   #[test]
   fn editor_setting_home_end_set_each_setting_to_its_bound() {
-    let mut state: AppState = serde_json::from_str(include_str!("../songs/test.json")).unwrap();
+    let mut state = test_state();
     let max_instrument = state.instruments.max_index().unwrap();
 
     for setting in [
@@ -410,6 +396,75 @@ mod tests {
       }
     }
   }
+
+  #[test]
+  fn navigation_handlers_request_their_viewport_to_sync() {
+    let mut state = test_state();
+    let mut pattern_scroll_state = ScrollViewState::default();
+    let viewports = Viewports {
+      sequence_height: 1,
+      pattern_size: Size::new(1, 1),
+    };
+
+    let result = handle_edit_pattern_event(
+      &mut state,
+      &mut pattern_scroll_state,
+      KeyEvent::from(KeyCode::Down),
+    );
+    assert_eq!(result.viewport_sync, ViewportSync::Pattern);
+
+    let result = handle_edit_sequence_event(&mut state, viewports, KeyEvent::from(KeyCode::Down));
+    assert_eq!(result.viewport_sync, ViewportSync::Sequence);
+  }
+
+  #[test]
+  fn dialog_and_player_modes_capture_global_shortcuts() {
+    let mut state = test_state();
+    let mut pattern_scroll_state = ScrollViewState::default();
+    let viewports = Viewports {
+      sequence_height: 1,
+      pattern_size: Size::new(1, 1),
+    };
+    let mut dialog = Some(pattern_title_dialog(&state));
+    let mut player = Player::default();
+    let mut midi = SilentMidiSink;
+    let quit = Event::Key(KeyEvent::new(KeyCode::Char('q'), KeyModifiers::CONTROL));
+
+    let result = {
+      let mut context = EventContext {
+        pattern_scroll_state: &mut pattern_scroll_state,
+        viewports,
+        optional_dialog: &mut dialog,
+        song_file_path: Path::new("test.json"),
+        player: &mut player,
+        midi: &mut midi,
+      };
+      handle_event(&UIMode::EditPattern, quit.clone(), &mut state, &mut context).unwrap()
+    };
+    assert!(!result.quit);
+
+    dialog = None;
+    let result = {
+      let mut context = EventContext {
+        pattern_scroll_state: &mut pattern_scroll_state,
+        viewports,
+        optional_dialog: &mut dialog,
+        song_file_path: Path::new("test.json"),
+        player: &mut player,
+        midi: &mut midi,
+      };
+      handle_event(
+        &UIMode::Player {
+          previous_mode: Box::new(UIMode::EditPattern),
+        },
+        quit,
+        &mut state,
+        &mut context,
+      )
+      .unwrap()
+    };
+    assert!(!result.quit);
+  }
 }
 
 fn handle_edit_pattern_element_event(state: &mut AppState, key: KeyEvent) -> HandleEventResult {
@@ -431,6 +486,7 @@ fn handle_edit_pattern_element_event(state: &mut AppState, key: KeyEvent) -> Han
     new_mode,
     banner: None,
     dialog: None,
+    viewport_sync: ViewportSync::None,
   }
 }
 
@@ -489,6 +545,7 @@ fn handle_edit_settings_event(
     new_mode,
     banner: None,
     dialog: None,
+    viewport_sync: ViewportSync::None,
   }
 }
 
@@ -496,20 +553,18 @@ fn handle_event(
   mode: &UIMode,
   event: Event,
   state: &mut AppState,
-  sequence_scroll_state: &mut ScrollViewState,
-  pattern_scroll_state: &mut ScrollViewState,
-  viewports: Viewports,
-  optional_dialog: &mut Option<InputDialog<AppState>>,
+  context: &mut EventContext<'_>,
 ) -> Result<HandleEventResult> {
-  if let Some(dialog) = optional_dialog.as_mut() {
+  if let Some(dialog) = context.optional_dialog.as_mut() {
     if let ComponentAction::Close = dialog.handle_event(event, state)? {
-      *optional_dialog = None;
+      *context.optional_dialog = None;
     }
     return Ok(HandleEventResult {
       quit: false,
       new_mode: None,
       banner: None,
       dialog: None,
+      viewport_sync: ViewportSync::None,
     });
   }
 
@@ -519,26 +574,88 @@ fn handle_event(
       new_mode: None,
       banner: None,
       dialog: None,
+      viewport_sync: ViewportSync::None,
     });
   };
 
-  if matches!(key.code, KeyCode::Char('q')) && key.modifiers == KeyModifiers::CONTROL {
+  if key.code == KeyCode::Char(' ') && key.modifiers == KeyModifiers::NONE {
+    if let UIMode::Player { previous_mode } = mode {
+      context.player.stop(context.midi)?;
+      return Ok(HandleEventResult {
+        quit: false,
+        new_mode: Some((**previous_mode).clone()),
+        banner: None,
+        dialog: None,
+        viewport_sync: ViewportSync::None,
+      });
+    }
+
+    context.player.start(state, context.midi, Instant::now())?;
+    return Ok(HandleEventResult {
+      quit: false,
+      new_mode: Some(UIMode::Player {
+        previous_mode: Box::new(mode.clone()),
+      }),
+      banner: None,
+      dialog: None,
+      viewport_sync: ViewportSync::PlayerPosition,
+    });
+  }
+
+  if matches!(mode, UIMode::Player { .. }) {
+    return Ok(HandleEventResult {
+      quit: false,
+      new_mode: None,
+      banner: None,
+      dialog: None,
+      viewport_sync: ViewportSync::None,
+    });
+  }
+
+  if key.code == KeyCode::Char('s') && key.modifiers == KeyModifiers::CONTROL {
+    let banner = match state.save_to_file(context.song_file_path) {
+      Ok(()) => Banner::with_timeout(
+        format!("Saved {}", context.song_file_path.display()),
+        INFO_BANNER_STYLE,
+        SAVE_BANNER_TIMEOUT,
+      ),
+      Err(err) => Banner::with_timeout(
+        format!(
+          "Failure saving {}: {}",
+          context.song_file_path.display(),
+          err
+        ),
+        ERROR_BANNER_STYLE,
+        SAVE_BANNER_TIMEOUT,
+      ),
+    };
+    return Ok(HandleEventResult {
+      quit: false,
+      new_mode: None,
+      banner: Some(banner),
+      dialog: None,
+      viewport_sync: ViewportSync::None,
+    });
+  }
+
+  if key.code == KeyCode::Char('q') && key.modifiers == KeyModifiers::CONTROL {
     return Ok(HandleEventResult {
       quit: true,
       new_mode: None,
       banner: None,
       dialog: None,
+      viewport_sync: ViewportSync::None,
     });
   }
 
   match mode {
     UIMode::EditPattern => {
-      let result = handle_edit_pattern_event(state, pattern_scroll_state, viewports, key);
+      let result = handle_edit_pattern_event(state, context.pattern_scroll_state, key);
       Ok(result)
     }
     UIMode::EditPatternElement => Ok(handle_edit_pattern_element_event(state, key)),
     UIMode::EditSequence => {
-      let result = handle_edit_sequence_event(state, sequence_scroll_state, viewports, key);
+      let result = handle_edit_sequence_event(state, context.viewports, key);
       Ok(result)
     }
     UIMode::EditSetting(setting) => {
@@ -550,6 +667,7 @@ fn handle_event(
       new_mode: None,
       banner: None,
       dialog: None,
+      viewport_sync: ViewportSync::None,
     }),
   }
 }
@@ -571,6 +689,38 @@ fn sync_player_position(
     viewports.sequence_height,
   );
   scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
+}
+
+fn sync_viewport(
+  viewport_sync: ViewportSync,
+  state: &mut AppState,
+  player: &Player,
+  sequence_scroll_state: &mut ScrollViewState,
+  pattern_scroll_state: &mut ScrollViewState,
+  viewports: Viewports,
+) {
+  match viewport_sync {
+    ViewportSync::None => {}
+    ViewportSync::Pattern => {
+      scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
+    }
+    ViewportSync::Sequence => {
+      scroll_focused_sequence_into_view(
+        &state.sequence,
+        sequence_scroll_state,
+        viewports.sequence_height,
+      );
+    }
+    ViewportSync::PlayerPosition => {
+      sync_player_position(
+        state,
+        player,
+        sequence_scroll_state,
+        pattern_scroll_state,
+        viewports,
+      );
+    }
+  }
 }
 
 pub fn run_app(
@@ -624,66 +774,17 @@ pub fn run_app(
     if event::poll(timeout)? {
       let event = event::read()?;
 
-      if let Event::Key(key) = &event
-        && key.code == KeyCode::Char(' ')
-        && key.modifiers == KeyModifiers::NONE
-        && dialog.is_none()
-      {
-        if matches!(mode, UIMode::Player { .. }) {
-          let UIMode::Player { previous_mode } = mode else {
-            unreachable!();
-          };
-          player.stop(midi)?;
-          mode = *previous_mode;
-        } else {
-          dialog = None;
-          player.start(&state, midi, Instant::now())?;
-          mode = UIMode::Player {
-            previous_mode: Box::new(mode),
-          };
-          sync_player_position(
-            &mut state,
-            &player,
-            &mut sequence_scroll_state,
-            &mut pattern_scroll_state,
-            viewports,
-          );
-        }
-        continue;
-      }
-
-      if matches!(mode, UIMode::Player { .. }) {
-        continue;
-      }
-
-      if let Event::Key(key) = &event
-        && key.code == KeyCode::Char('s')
-        && key.modifiers == KeyModifiers::CONTROL
-      {
-        banner = Some(match state.save_to_file(song_file_path) {
-          Ok(()) => Banner::with_timeout(
-            format!("Saved {}", song_file_path.display()),
-            INFO_BANNER_STYLE,
-            SAVE_BANNER_TIMEOUT,
-          ),
-          Err(err) => Banner::with_timeout(
-            format!("Failure saving {}: {}", song_file_path.display(), err),
-            ERROR_BANNER_STYLE,
-            SAVE_BANNER_TIMEOUT,
-          ),
-        });
-        continue;
-      }
-
-      let result = handle_event(
-        &mode,
-        event,
-        &mut state,
-        &mut sequence_scroll_state,
-        &mut pattern_scroll_state,
-        viewports,
-        &mut dialog,
-      )?;
+      let result = {
+        let mut context = EventContext {
+          pattern_scroll_state: &mut pattern_scroll_state,
+          viewports,
+          optional_dialog: &mut dialog,
+          song_file_path,
+          player: &mut player,
+          midi,
+        };
+        handle_event(&mode, event, &mut state, &mut context)?
+      };
 
       if result.quit {
         if matches!(mode, UIMode::Player { .. }) {
@@ -708,6 +809,15 @@ pub fn run_app(
       if matches!(mode, UIMode::EditPattern) && mode_changed {
         state.refocus_pattern();
       }
+
+      sync_viewport(
+        result.viewport_sync,
+        &mut state,
+        &player,
+        &mut sequence_scroll_state,
+        &mut pattern_scroll_state,
+        viewports,
+      );
     } else if matches!(mode, UIMode::Player { .. }) {
       player.tick(&state, midi, Instant::now())?;
       sync_player_position(
