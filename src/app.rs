@@ -288,6 +288,9 @@ fn handle_edit_pattern_event(
     KeyCode::F(3) => {
       new_mode = Some(UIMode::EditSequence);
     }
+    KeyCode::Delete => {
+      state.remove_focused_note();
+    }
     KeyCode::Enter => {
       new_mode = Some(UIMode::EditPatternElement);
     }
@@ -415,6 +418,27 @@ mod tests {
 
     let result = handle_edit_sequence_event(&mut state, viewports, KeyEvent::from(KeyCode::Down));
     assert_eq!(result.viewport_sync, ViewportSync::Sequence);
+  }
+
+  #[test]
+  fn delete_removes_the_focused_note() {
+    let mut state = test_state();
+    let mut pattern_scroll_state = ScrollViewState::default();
+    let note = state.editor_settings.make_note(Semitone(0));
+    state.set_focused_note(note);
+
+    handle_edit_pattern_event(
+      &mut state,
+      &mut pattern_scroll_state,
+      KeyEvent::from(KeyCode::Delete),
+    );
+
+    let pattern = state.get_current_pattern();
+    assert!(
+      pattern
+        .get_note(state.focus.row_index, state.focus.track_index)
+        .is_none()
+    );
   }
 
   #[test]

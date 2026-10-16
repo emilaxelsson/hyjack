@@ -190,6 +190,14 @@ impl Pattern {
     let track = &mut self.tracks[track_index];
     track.notes[row_index] = Some(note);
   }
+
+  pub fn remove_note(&mut self, row_index: usize, track_index: usize) {
+    if row_index >= self.num_rows.get() || track_index >= self.tracks.len() {
+      return;
+    }
+    let track = &mut self.tracks[track_index];
+    track.notes[row_index] = None;
+  }
 }
 
 impl Default for PatternDefaults {

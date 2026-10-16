@@ -301,6 +301,15 @@ impl AppState {
     pattern.set_note(self.focus.row_index, self.focus.track_index, note);
   }
 
+  /// Remove the note at the current pattern focus.
+  pub fn remove_focused_note(&mut self) {
+    let pattern_index = self.get_current_pattern_index();
+    let Some(pattern) = self.patterns.get_mut(pattern_index) else {
+      return;
+    };
+    pattern.remove_note(self.focus.row_index, self.focus.track_index);
+  }
+
   /// Adjust the value in the focused pattern column.
   pub fn adjust_focused_note(&mut self, increase: bool, small_step: bool) {
     let pattern_index = self.get_current_pattern_index();
