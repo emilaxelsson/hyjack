@@ -73,18 +73,21 @@ pub fn select_midi_sink() -> Result<Box<dyn MidiSink>> {
 
 pub struct Playback {
   next_row_at: Instant,
-  timeline: PlaybackTimeline,
+  timeline: Timeline,
   active_notes: Vec<u8>,
   last_program: Option<u8>,
-}
-
-struct PlaybackTimeline {
-  rows: Vec<Vec<TimelineRow>>,
 }
 
 struct TimelineRow {
   start_time: Duration,
   duration: Duration,
+}
+
+/// Cached timing data for every row in each playable sequence entry.
+struct Timeline {
+  /// Cached row timing data. The outer index is the sequence index and the inner index is
+  /// the row index.
+  rows: Vec<Vec<TimelineRow>>,
 }
 
 #[derive(Default)]
@@ -138,7 +141,7 @@ impl Playback {
     now: Instant,
   ) -> Result<Self> {
     normalize_position(song, player);
-    let timeline = PlaybackTimeline::from_song(song)?;
+    let timeline = Timeline::from_song(song)?;
     player.time = timeline.row(player)?.start_time;
     let mut playback = Self {
       next_row_at: now + timeline.row(player)?.duration,
@@ -231,7 +234,12 @@ fn current_pattern<'a>(song: &'a AppState, player: &PlayerState) -> Result<&'a P
   pattern_at(song, player.sequence_index)
 }
 
-impl PlaybackTimeline {
+impl Timeline {
+  /// Builds the row start times and durations for every playable sequence entry.
+  ///
+  /// Effects are applied in track order before the affected row's duration is calculated, so
+  /// later tracks override earlier effects in the same row. Returns an error if a playable
+  /// sequence entry does not name a pattern.
   fn from_song(song: &AppState) -> Result<Self> {
     let last_song_index = song
       .sequence
