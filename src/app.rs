@@ -46,6 +46,8 @@ enum ViewportSync {
 }
 
 struct HandleEventResult {
+  /// Whether the event was handled by the UI. Intended for testing.
+  handled: bool,
   quit: bool,
   new_mode: Option<UIMode>,
   banner: Option<Banner>,
@@ -121,9 +123,11 @@ fn handle_edit_sequence_event(
   let mut banner: Option<Banner> = None;
   let mut dialog: Option<InputDialog<AppState>> = None;
   let mut viewport_sync = ViewportSync::None;
+  let mut handled = false;
 
   match key.code {
     KeyCode::Up => {
+      handled = true;
       if key.modifiers == KeyModifiers::CONTROL {
         state.sequence.move_title_up();
       } else {
@@ -132,6 +136,7 @@ fn handle_edit_sequence_event(
       viewport_sync = ViewportSync::Sequence;
     }
     KeyCode::Down => {
+      handled = true;
       if key.modifiers == KeyModifiers::CONTROL {
         if let Some(reason) = state.sequence.move_title_down() {
           banner = Some(Banner::with_timeout(
@@ -146,38 +151,46 @@ fn handle_edit_sequence_event(
       viewport_sync = ViewportSync::Sequence;
     }
     KeyCode::PageUp => {
+      handled = true;
       state
         .sequence
         .to_previous_page(usize::from(viewports.sequence_height));
       viewport_sync = ViewportSync::Sequence;
     }
     KeyCode::PageDown => {
+      handled = true;
       state
         .sequence
         .to_next_page(usize::from(viewports.sequence_height));
       viewport_sync = ViewportSync::Sequence;
     }
     KeyCode::Home => {
+      handled = true;
       state.sequence.to_first_title();
       viewport_sync = ViewportSync::Sequence;
     }
     KeyCode::End => {
+      handled = true;
       state.sequence.to_last_title();
       viewport_sync = ViewportSync::Sequence;
     }
     KeyCode::Char('d') if key.modifiers == KeyModifiers::NONE => {
+      handled = true;
       state.sequence.duplicate_focused_title();
       viewport_sync = ViewportSync::Sequence;
     }
     KeyCode::Char('d') if key.modifiers == KeyModifiers::CONTROL => {
+      handled = true;
       state.duplicate_focused_pattern();
       viewport_sync = ViewportSync::Sequence;
     }
     KeyCode::Insert => {
+      handled = true;
       state.insert_new_pattern();
       viewport_sync = ViewportSync::Sequence;
     }
     KeyCode::Delete => {
+      handled = true;
       let remove_error = state.sequence.soft_remove_focused_title();
       viewport_sync = ViewportSync::Sequence;
 
@@ -190,15 +203,18 @@ fn handle_edit_sequence_event(
       }
     }
     KeyCode::F(2) => {
+      handled = true;
       dialog = Some(pattern_title_dialog(state));
     }
     KeyCode::F(4) | KeyCode::Enter => {
+      handled = true;
       new_mode = Some(UIMode::EditPattern);
     }
     _ => {}
   }
 
   HandleEventResult {
+    handled,
     quit: false,
     new_mode,
     banner,
@@ -217,6 +233,7 @@ fn handle_edit_pattern_event(
   let mut new_mode: Option<UIMode> = None;
   let mut dialog: Option<InputDialog<AppState>> = None;
   let mut viewport_sync = ViewportSync::None;
+  let mut handled = false;
 
   match key.code {
     KeyCode::Up => {
@@ -226,6 +243,7 @@ fn handle_edit_pattern_event(
         state.to_previous_pattern_row();
         viewport_sync = ViewportSync::Pattern;
       }
+      handled = true;
     }
     KeyCode::Down => {
       if key.modifiers == KeyModifiers::CONTROL {
@@ -234,14 +252,17 @@ fn handle_edit_pattern_event(
         state.to_next_pattern_row();
         viewport_sync = ViewportSync::Pattern;
       }
+      handled = true;
     }
     KeyCode::PageUp => {
       state.page_up_pattern();
       viewport_sync = ViewportSync::Pattern;
+      handled = true;
     }
     KeyCode::PageDown => {
       state.page_down_pattern();
       viewport_sync = ViewportSync::Pattern;
+      handled = true;
     }
     KeyCode::Home => {
       if key.modifiers == KeyModifiers::CONTROL {
@@ -250,6 +271,7 @@ fn handle_edit_pattern_event(
         state.to_first_pattern_column();
       }
       viewport_sync = ViewportSync::Pattern;
+      handled = true;
     }
     KeyCode::End => {
       if key.modifiers == KeyModifiers::CONTROL {
@@ -258,14 +280,17 @@ fn handle_edit_pattern_event(
         state.to_last_pattern_column();
       }
       viewport_sync = ViewportSync::Pattern;
+      handled = true;
     }
     KeyCode::BackTab | KeyCode::Tab if key.modifiers.contains(KeyModifiers::SHIFT) => {
       state.to_previous_pattern_track();
       viewport_sync = ViewportSync::Pattern;
+      handled = true;
     }
     KeyCode::Tab => {
       state.to_next_pattern_track();
       viewport_sync = ViewportSync::Pattern;
+      handled = true;
     }
     KeyCode::Left => {
       if key.modifiers == KeyModifiers::CONTROL {
@@ -274,6 +299,7 @@ fn handle_edit_pattern_event(
         state.to_previous_pattern_field();
         viewport_sync = ViewportSync::Pattern;
       }
+      handled = true;
     }
     KeyCode::Right => {
       if key.modifiers == KeyModifiers::CONTROL {
@@ -282,36 +308,46 @@ fn handle_edit_pattern_event(
         state.to_next_pattern_field();
         viewport_sync = ViewportSync::Pattern;
       }
+      handled = true;
     }
     KeyCode::F(2) => {
       dialog = Some(pattern_title_dialog(state));
+      handled = true;
     }
     KeyCode::F(3) => {
       new_mode = Some(UIMode::EditSequence);
+      handled = true;
     }
     KeyCode::Delete => {
       state.remove_focused_note();
+      handled = true;
     }
     KeyCode::Enter => {
       new_mode = Some(UIMode::EditPatternElement);
+      handled = true;
     }
     KeyCode::Char('z') => {
       new_mode = Some(UIMode::EditSetting(EditorSettingFocus::Octave));
+      handled = true;
     }
     KeyCode::Char('x') => {
       new_mode = Some(UIMode::EditSetting(EditorSettingFocus::Velocity));
+      handled = true;
     }
     KeyCode::Char('c') => {
       new_mode = Some(UIMode::EditSetting(EditorSettingFocus::Step));
+      handled = true;
     }
     KeyCode::Char('v') => {
       new_mode = Some(UIMode::EditSetting(EditorSettingFocus::Instrument));
+      handled = true;
     }
     KeyCode::Char(ch)
       if state.focus.track_column == TrackColumn::Instrument && can_type_note(key.modifiers) =>
     {
       if let Some(digit) = ch.to_digit(10) {
         state.set_focused_note_instrument_digit(digit as u8, Instant::now());
+        handled = true;
       }
     }
     KeyCode::Char(ch)
@@ -319,6 +355,7 @@ fn handle_edit_pattern_event(
     {
       if let Some(digit) = ch.to_digit(10) {
         state.set_focused_note_velocity_digit(digit as u8, Instant::now());
+        handled = true;
       }
     }
     KeyCode::Char(ch)
@@ -329,12 +366,14 @@ fn handle_edit_pattern_event(
         player.emit_note_on(&note, midi)?;
         state.set_focused_note(note);
         state.step_rows();
+        handled = true;
       }
     }
     _ => {}
   }
 
   Ok(HandleEventResult {
+    handled,
     quit: false,
     new_mode,
     banner: None,
@@ -474,7 +513,7 @@ mod tests {
       KeyEvent::from(KeyCode::Char('c')),
       KeyEvent::from(KeyCode::Char('v')),
     ] {
-      handle_edit_pattern_event(
+      let result = handle_edit_pattern_event(
         &mut state,
         &mut pattern_scroll_state,
         &player,
@@ -482,7 +521,18 @@ mod tests {
         key,
       )
       .unwrap();
+      assert!(result.handled, "pattern key {key:?} was not handled");
     }
+
+    let result = handle_edit_pattern_event(
+      &mut state,
+      &mut pattern_scroll_state,
+      &player,
+      &mut midi,
+      KeyEvent::from(KeyCode::Char('?')),
+    )
+    .unwrap();
+    assert!(!result.handled);
 
     for key in [
       KeyEvent::from(KeyCode::Up),
@@ -494,10 +544,15 @@ mod tests {
       KeyEvent::new(KeyCode::Up, KeyModifiers::CONTROL),
       KeyEvent::new(KeyCode::Down, KeyModifiers::CONTROL),
       KeyEvent::from(KeyCode::F(2)),
+      KeyEvent::from(KeyCode::Char('d')),
+      KeyEvent::new(KeyCode::Char('d'), KeyModifiers::CONTROL),
+      KeyEvent::from(KeyCode::Insert),
+      KeyEvent::from(KeyCode::Delete),
       KeyEvent::from(KeyCode::F(4)),
       KeyEvent::from(KeyCode::Enter),
     ] {
-      handle_edit_sequence_event(&mut state, viewports, key);
+      let result = handle_edit_sequence_event(&mut state, viewports, key);
+      assert!(result.handled, "sequence key {key:?} was not handled");
     }
   }
 
@@ -678,19 +733,42 @@ mod tests {
 
 fn handle_edit_pattern_element_event(state: &mut AppState, key: KeyEvent) -> HandleEventResult {
   let mut new_mode: Option<UIMode> = None;
+  let mut handled = false;
 
   match key.code {
-    KeyCode::Up => state.adjust_focused_note(true, true),
-    KeyCode::Down => state.adjust_focused_note(false, true),
-    KeyCode::PageUp => state.adjust_focused_note(true, false),
-    KeyCode::PageDown => state.adjust_focused_note(false, false),
-    KeyCode::Home => state.set_focused_note_to_bound(false),
-    KeyCode::End => state.set_focused_note_to_bound(true),
-    KeyCode::Enter | KeyCode::Esc => new_mode = Some(UIMode::EditPattern),
+    KeyCode::Up => {
+      state.adjust_focused_note(true, true);
+      handled = true;
+    }
+    KeyCode::Down => {
+      state.adjust_focused_note(false, true);
+      handled = true;
+    }
+    KeyCode::PageUp => {
+      state.adjust_focused_note(true, false);
+      handled = true;
+    }
+    KeyCode::PageDown => {
+      state.adjust_focused_note(false, false);
+      handled = true;
+    }
+    KeyCode::Home => {
+      state.set_focused_note_to_bound(false);
+      handled = true;
+    }
+    KeyCode::End => {
+      state.set_focused_note_to_bound(true);
+      handled = true;
+    }
+    KeyCode::Enter | KeyCode::Esc => {
+      new_mode = Some(UIMode::EditPattern);
+      handled = true;
+    }
     _ => {}
   }
 
   HandleEventResult {
+    handled,
     quit: false,
     new_mode,
     banner: None,
@@ -705,6 +783,7 @@ fn handle_edit_settings_event(
   current_setting: EditorSettingFocus,
 ) -> HandleEventResult {
   let mut new_mode: Option<UIMode> = None;
+  let mut handled = false;
 
   let max_instrument = state.instruments.max_index().unwrap_or(InstrumentIndex(0));
 
@@ -713,43 +792,69 @@ fn handle_edit_settings_event(
       state
         .editor_settings
         .increase(current_setting, true, max_instrument);
+      handled = true;
     }
     KeyCode::Down => {
       state
         .editor_settings
         .decrease(current_setting, true, max_instrument);
+      handled = true;
     }
     KeyCode::PageUp => {
       state
         .editor_settings
         .increase(current_setting, false, max_instrument);
+      handled = true;
     }
     KeyCode::PageDown => {
       state
         .editor_settings
         .decrease(current_setting, false, max_instrument);
+      handled = true;
     }
     KeyCode::Home => {
       state.editor_settings.set_to_minimum(current_setting);
+      handled = true;
     }
     KeyCode::End => {
       state
         .editor_settings
         .set_to_maximum(current_setting, max_instrument);
+      handled = true;
     }
-    KeyCode::Char('z') => new_mode = Some(UIMode::EditSetting(EditorSettingFocus::Octave)),
-    KeyCode::Char('x') => new_mode = Some(UIMode::EditSetting(EditorSettingFocus::Velocity)),
-    KeyCode::Char('c') => new_mode = Some(UIMode::EditSetting(EditorSettingFocus::Step)),
-    KeyCode::Char('v') => new_mode = Some(UIMode::EditSetting(EditorSettingFocus::Instrument)),
-    KeyCode::Left => new_mode = Some(UIMode::EditSetting(current_setting.previous())),
-    KeyCode::Right => new_mode = Some(UIMode::EditSetting(current_setting.next())),
+    KeyCode::Char('z') => {
+      new_mode = Some(UIMode::EditSetting(EditorSettingFocus::Octave));
+      handled = true;
+    }
+    KeyCode::Char('x') => {
+      new_mode = Some(UIMode::EditSetting(EditorSettingFocus::Velocity));
+      handled = true;
+    }
+    KeyCode::Char('c') => {
+      new_mode = Some(UIMode::EditSetting(EditorSettingFocus::Step));
+      handled = true;
+    }
+    KeyCode::Char('v') => {
+      new_mode = Some(UIMode::EditSetting(EditorSettingFocus::Instrument));
+      handled = true;
+    }
+    KeyCode::Left => {
+      new_mode = Some(UIMode::EditSetting(current_setting.previous()));
+      handled = true;
+    }
+    KeyCode::Right => {
+      new_mode = Some(UIMode::EditSetting(current_setting.next()));
+      handled = true;
+    }
     KeyCode::Enter | KeyCode::Esc => {
       new_mode = Some(UIMode::EditPattern);
+      handled = true;
     }
     _ => {}
   }
 
   HandleEventResult {
+    handled,
     quit: false,
     new_mode,
     banner: None,
@@ -764,11 +869,14 @@ fn handle_event(
   state: &mut AppState,
   context: &mut EventContext<'_>,
 ) -> Result<HandleEventResult> {
+  let handled = matches!(event, Event::Key(_));
+
   if let Some(dialog) = context.optional_dialog.as_mut() {
     if let ComponentAction::Close = dialog.handle_event(event, state)? {
       *context.optional_dialog = None;
     }
     return Ok(HandleEventResult {
+      handled,
       quit: false,
       new_mode: None,
       banner: None,
@@ -779,6 +887,7 @@ fn handle_event(
 
   let Event::Key(key) = event else {
     return Ok(HandleEventResult {
+      handled: false,
       quit: false,
       new_mode: None,
       banner: None,
@@ -791,6 +900,7 @@ fn handle_event(
     if let UIMode::Player { previous_mode } = mode {
       context.player.stop(context.midi)?;
       return Ok(HandleEventResult {
+        handled: true,
         quit: false,
         new_mode: Some((**previous_mode).clone()),
         banner: None,
@@ -801,6 +911,7 @@ fn handle_event(
 
     context.player.start(state, context.midi, Instant::now())?;
     return Ok(HandleEventResult {
+      handled: true,
       quit: false,
       new_mode: Some(UIMode::Player {
         previous_mode: Box::new(mode.clone()),
@@ -813,6 +924,7 @@ fn handle_event(
 
   if matches!(mode, UIMode::Player { .. }) {
     return Ok(HandleEventResult {
+      handled: false,
       quit: false,
       new_mode: None,
       banner: None,
@@ -839,6 +951,7 @@ fn handle_event(
       ),
     };
     return Ok(HandleEventResult {
+      handled: true,
       quit: false,
       new_mode: None,
       banner: Some(banner),
@@ -849,6 +962,7 @@ fn handle_event(
 
   if key.code == KeyCode::Char('q') && key.modifiers == KeyModifiers::CONTROL {
     return Ok(HandleEventResult {
+      handled: true,
       quit: true,
       new_mode: None,
       banner: None,
@@ -875,6 +989,7 @@ fn handle_event(
       Ok(result)
     }
     UIMode::Player { .. } => Ok(HandleEventResult {
+      handled: false,
       quit: false,
       new_mode: None,
       banner: None,
@@ -1005,6 +1120,11 @@ pub fn run_app(
         break;
       }
 
+      let viewport_sync = if result.handled {
+        result.viewport_sync
+      } else {
+        ViewportSync::None
+      };
       let mode_changed = result.new_mode.is_some();
       if let Some(new_mode) = result.new_mode {
         mode = new_mode;
@@ -1023,7 +1143,7 @@ pub fn run_app(
       }
 
       sync_viewport(
-        result.viewport_sync,
+        viewport_sync,
         &mut state,
         &player,
         &mut sequence_scroll_state,
