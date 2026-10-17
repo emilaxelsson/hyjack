@@ -17,7 +17,6 @@
       "title": "Intro A",
       "tracks": [
         {
-          "name": "Track 1",
           "notes": [
             null,
             null,
@@ -37,7 +36,6 @@
       "title": "Intro B",
       "tracks": [
         {
-          "name": "Hat/ride",
           "notes": [
             {
               "octave": 2,
@@ -64,7 +62,6 @@
           ]
         },
         {
-          "name": "Kick",
           "notes": [
             null,
             null,
@@ -85,7 +82,6 @@
           ]
         },
         {
-          "name": "Snare",
           "notes": [
             null,
             null,
@@ -112,7 +108,6 @@
           ]
         },
         {
-          "name": "Cymbals",
           "notes": [
             null,
             null,
@@ -140,7 +135,6 @@
       "title": "Verse 1 A",
       "tracks": [
         {
-          "name": "Track 1",
           "notes": [
             null,
             null,
@@ -160,7 +154,6 @@
       "title": "Verse 1 B",
       "tracks": [
         {
-          "name": "Track 1",
           "notes": [
             null,
             null,
@@ -180,7 +173,6 @@
       "title": "Verse 1 C",
       "tracks": [
         {
-          "name": "Track 1",
           "notes": [
             null,
             null,
@@ -200,7 +192,6 @@
       "title": "Verse 1 D",
       "tracks": [
         {
-          "name": "Track 1",
           "notes": [
             null,
             null,
@@ -220,7 +211,6 @@
       "title": "Bridge A",
       "tracks": [
         {
-          "name": "Track 1",
           "notes": [
             null,
             null,
@@ -240,7 +230,6 @@
       "title": "Bridge B",
       "tracks": [
         {
-          "name": "Track 1",
           "notes": [
             null,
             null,

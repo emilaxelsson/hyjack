@@ -107,7 +107,6 @@ impl Adjustable for Note {
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Track {
-  pub name: String,
   pub notes: NonEmpty<Option<Note>>,
 }
 
@@ -215,15 +214,11 @@ impl PatternDefaults {
       notes.push(None);
     }
 
-    let mut track_titles = track_titles.iter();
-    let first_track_title = track_titles.next().unwrap();
     let mut tracks = NonEmpty::new(Track {
-      name: first_track_title.clone(),
       notes: notes.clone(),
     });
-    for track_title in track_titles {
+    for _ in 1..track_titles.len() {
       tracks.push(Track {
-        name: track_title.clone(),
         notes: notes.clone(),
       });
     }
@@ -387,12 +382,10 @@ mod focus_tests {
     }
 
     let mut tracks = NonEmpty::new(Track {
-      name: "Track 1".to_owned(),
       notes: notes.clone(),
     });
-    for track_index in 1..num_tracks {
+    for _ in 1..num_tracks {
       tracks.push(Track {
-        name: format!("Track {}", track_index + 1),
         notes: notes.clone(),
       });
     }

@@ -1,3 +1,4 @@
+use nonempty::NonEmpty;
 use ratatui::Frame;
 use ratatui::layout::{Offset, Position, Rect, Size};
 use ratatui::widgets::{Block, Paragraph};
@@ -127,6 +128,7 @@ pub fn draw_track_names(
   tracks_area: Rect,
   horizontal_scroll_offset: u16,
   current_pattern: &Pattern,
+  track_titles: &NonEmpty<String>,
   content_width: u16,
 ) {
   let mut scroll_view =
@@ -142,9 +144,9 @@ pub fn draw_track_names(
     width: TRACK_COLUMN_WIDTH,
     height: 1,
   };
-  for track in current_pattern.tracks.iter() {
+  for (title, _) in track_titles.iter().zip(current_pattern.tracks.iter()) {
     scroll_view.render_widget(
-      Paragraph::new(track.name.clone()).style(SUB_TITLE_STYLE),
+      Paragraph::new(title.clone()).style(SUB_TITLE_STYLE),
       current_track_area,
     );
     current_track_area = current_track_area.offset(offset);

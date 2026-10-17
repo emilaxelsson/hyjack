@@ -65,6 +65,15 @@ impl AppState {
   pub fn load_from_file(path: &Path) -> Result<Self> {
     let json = std::fs::read_to_string(path)?;
     let mut state: Self = serde_json::from_str(&json)?;
+    for pattern in &state.patterns {
+      anyhow::ensure!(
+        pattern.tracks.len() <= state.track_titles.len(),
+        "Pattern '{}' has {} tracks but only {} track titles are configured",
+        pattern.title,
+        pattern.tracks.len(),
+        state.track_titles.len()
+      );
+    }
     state.dracker_version = env!("CARGO_PKG_VERSION").to_owned();
     Ok(state)
   }
@@ -431,7 +440,6 @@ mod tests {
       patterns: NonEmpty::new(Pattern {
         title: "Pattern".to_owned(),
         tracks: NonEmpty::new(Track {
-          name: "Track".to_owned(),
           notes: NonEmpty::new(Some(Note {
             octave: crate::state::pattern::Octave(3),
             semitone: crate::state::pattern::Semitone(0),
@@ -483,6 +491,45 @@ mod tests {
     assert_eq!(file_state["dracker_version"], "old-version");
   }
 
+  #[test]
+  fn loading_song_rejects_more_tracks_than_track_titles_but_allows_fewer() {
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let path = std::env::temp_dir().join(format!(
+      "dracker-load-track-titles-{}-{timestamp}.json",
+      std::process::id()
+    ));
+    let mut serialized_state = serde_json::to_value(test_state()).unwrap();
+    serialized_state["track_titles"] = serde_json::json!(["Track 1", "Track 2"]);
+    std::fs::write(&path, serde_json::to_vec(&serialized_state).unwrap()).unwrap();
+
+    let state = AppState::load_from_file(&path).unwrap();
+    assert_eq!(state.get_current_pattern().tracks.len(), 1);
+
+    let first_track = serialized_state["patterns"][0]["tracks"][0].clone();
+    serialized_state["patterns"][0]["tracks"]
+      .as_array_mut()
+      .unwrap()
+      .push(first_track);
+    let second_track = serialized_state["patterns"][0]["tracks"][0].clone();
+    serialized_state["patterns"][0]["tracks"]
+      .as_array_mut()
+      .unwrap()
+      .push(second_track);
+    std::fs::write(&path, serde_json::to_vec(&serialized_state).unwrap()).unwrap();
+
+    let error = AppState::load_from_file(&path).err().unwrap();
+    std::fs::remove_file(path).unwrap();
+
+    assert!(
+      error
+        .to_string()
+        .contains("only 2 track titles are configured")
+    );
+  }
+
   fn focused_instrument(state: &AppState) -> InstrumentIndex {
     state
       .get_current_pattern()
@@ -524,7 +571,6 @@ mod tests {
     state.patterns.push(Pattern {
       title: "Pattern copy".to_owned(),
       tracks: NonEmpty::new(Track {
-        name: "Other track".to_owned(),
         notes: NonEmpty::new(None),
       }),
       num_rows: NonZero::new(1).unwrap(),
@@ -546,7 +592,7 @@ mod tests {
     assert_eq!(state.sequence.end_of_song, 2);
     assert_eq!(state.patterns.len(), 3);
     assert_eq!(state.get_current_pattern().title, "Pattern copy1");
-    assert_eq!(state.get_current_pattern().tracks[0].name, "Track");
+    assert_eq!(state.track_titles[0], "Track 1");
 
     state.duplicate_focused_pattern();
 
@@ -601,8 +647,8 @@ mod tests {
     assert_eq!(pattern.num_rows.get(), 8);
     assert_eq!(pattern.rows_per_beat.get(), 2);
     assert_eq!(pattern.tracks.len(), 2);
-    assert_eq!(pattern.tracks[0].name, "Drums");
-    assert_eq!(pattern.tracks[1].name, "Bass");
+    assert_eq!(state.track_titles[0], "Drums");
+    assert_eq!(state.track_titles[1], "Bass");
   }
 
   #[test]
@@ -622,8 +668,8 @@ mod tests {
     assert_eq!(pattern.num_rows.get(), 8);
     assert_eq!(pattern.rows_per_beat.get(), 2);
     assert_eq!(pattern.tracks.len(), 2);
-    assert_eq!(pattern.tracks[0].name, "Drums");
-    assert_eq!(pattern.tracks[1].name, "Bass");
+    assert_eq!(state.track_titles[0], "Drums");
+    assert_eq!(state.track_titles[1], "Bass");
     assert!(
       pattern
         .tracks
@@ -639,7 +685,6 @@ mod tests {
     state.patterns.push(Pattern {
       title: "Second pattern".to_owned(),
       tracks: NonEmpty::new(Track {
-        name: "Track".to_owned(),
         notes: NonEmpty::new(None),
       }),
       num_rows: NonZero::new(2).unwrap(),
@@ -687,7 +732,6 @@ mod tests {
     state.patterns.push(Pattern {
       title: "Second pattern".to_owned(),
       tracks: NonEmpty::new(Track {
-        name: "Track".to_owned(),
         notes: NonEmpty::new(None),
       }),
       num_rows: NonZero::new(2).unwrap(),
@@ -736,7 +780,6 @@ mod tests {
     state.patterns.push(Pattern {
       title: "Second pattern".to_owned(),
       tracks: NonEmpty::new(Track {
-        name: "Track".to_owned(),
         notes: NonEmpty::new(None),
       }),
       num_rows: NonZero::new(2).unwrap(),

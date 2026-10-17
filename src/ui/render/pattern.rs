@@ -272,6 +272,7 @@ pub fn draw_pattern_panel(
     track_names_area,
     scroll_offset.x,
     current_pattern,
+    &state.track_titles,
     content_width,
   );
 
