@@ -63,7 +63,8 @@ fn enter_digit(entry: &mut Option<DigitEntry>, digit: u8, now: Instant) -> u8 {
 impl AppState {
   pub fn load_from_file(path: &Path) -> Result<Self> {
     let json = std::fs::read_to_string(path)?;
-    let state = serde_json::from_str(&json)?;
+    let mut state: Self = serde_json::from_str(&json)?;
+    state.dracker_version = env!("CARGO_PKG_VERSION").to_owned();
     Ok(state)
   }
 
@@ -453,6 +454,29 @@ mod tests {
       instrument_digit_entry: None,
       velocity_digit_entry: None,
     }
+  }
+
+  #[test]
+  fn loading_song_updates_version() {
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let path = std::env::temp_dir().join(format!(
+      "dracker-load-version-{}-{timestamp}.json",
+      std::process::id()
+    ));
+    let mut serialized_state = serde_json::to_value(test_state()).unwrap();
+    serialized_state["dracker_version"] = "old-version".into();
+    std::fs::write(&path, serde_json::to_vec(&serialized_state).unwrap()).unwrap();
+
+    let state = AppState::load_from_file(&path).unwrap();
+    let file_state: serde_json::Value =
+      serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    std::fs::remove_file(path).unwrap();
+
+    assert_eq!(state.dracker_version, env!("CARGO_PKG_VERSION"));
+    assert_eq!(file_state["dracker_version"], "old-version");
   }
 
   fn focused_instrument(state: &AppState) -> InstrumentIndex {

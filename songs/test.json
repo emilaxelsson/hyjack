@@ -1,5 +1,5 @@
 {
-  "dracker_version": "0.2",
+  "dracker_version": "0.1.0",
   "song_title": "My song",
   "initial_bpm": 120,
   "pattern_defaults": {
