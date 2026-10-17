@@ -343,7 +343,9 @@ fn handle_edit_pattern_event(
       handled = true;
     }
     KeyCode::Char(ch)
-      if state.focus.track_column == TrackColumn::Instrument && can_type_note(key.modifiers) =>
+      if state.focus.track_column == TrackColumn::Instrument
+        && ch.is_ascii_digit()
+        && can_type_note(key.modifiers) =>
     {
       if let Some(digit) = ch.to_digit(10) {
         state.set_focused_note_instrument_digit(digit as u8, Instant::now());
@@ -351,16 +353,16 @@ fn handle_edit_pattern_event(
       }
     }
     KeyCode::Char(ch)
-      if state.focus.track_column == TrackColumn::Velocity && can_type_note(key.modifiers) =>
+      if state.focus.track_column == TrackColumn::Velocity
+        && ch.is_ascii_digit()
+        && can_type_note(key.modifiers) =>
     {
       if let Some(digit) = ch.to_digit(10) {
         state.set_focused_note_velocity_digit(digit as u8, Instant::now());
         handled = true;
       }
     }
-    KeyCode::Char(ch)
-      if state.focus.track_column == TrackColumn::Note && can_type_note(key.modifiers) =>
-    {
+    KeyCode::Char(ch) if can_type_note(key.modifiers) => {
       if let Some(semitone) = note_key_to_semitone(ch) {
         let note = state.editor_settings.make_note(semitone);
         player.emit_note_on(&note, midi)?;
@@ -679,6 +681,38 @@ mod tests {
     assert_eq!(inserted_note.semitone, note.semitone);
     assert_eq!(inserted_note.instrument, note.instrument);
     assert_eq!(inserted_note.velocity, note.velocity);
+  }
+
+  #[test]
+  fn inserting_a_note_works_from_any_column() {
+    for track_column in [
+      TrackColumn::Note,
+      TrackColumn::Instrument,
+      TrackColumn::Velocity,
+      TrackColumn::Effect,
+    ] {
+      let mut state = test_state();
+      state.focus.track_column = track_column;
+      let row_index = state.focus.row_index;
+      let track_index = state.focus.track_index;
+
+      handle_edit_pattern_event(
+        &mut state,
+        &mut ScrollViewState::default(),
+        &Player::default(),
+        &mut SilentMidiSink,
+        KeyEvent::from(KeyCode::Char('a')),
+      )
+      .unwrap();
+
+      assert!(
+        state
+          .get_current_pattern()
+          .get_note(row_index, track_index)
+          .is_some(),
+        "note was not inserted with {track_column:?} focused"
+      );
+    }
   }
 
   #[test]
