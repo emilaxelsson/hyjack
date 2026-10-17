@@ -1,6 +1,7 @@
 {
   "dracker_version": "0.2",
   "song_title": "My song",
+  "initial_bpm": 120,
   "pattern_defaults": {
     "num_rows": 16,
     "track_titles": [

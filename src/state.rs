@@ -4,6 +4,7 @@ pub mod name;
 pub mod pattern;
 pub mod sequence;
 
+use std::num::NonZeroU8;
 use std::path::Path;
 use std::time::{Duration, Instant};
 
@@ -24,6 +25,7 @@ use crate::utils::{Adjustable, fresh_name};
 pub struct AppState {
   pub dracker_version: String,
   pub song_title: String,
+  pub initial_bpm: NonZeroU8,
   pub pattern_defaults: PatternDefaults,
   pub patterns: NonEmpty<Pattern>,
   pub sequence: Sequence,
@@ -419,6 +421,7 @@ mod tests {
     AppState {
       dracker_version: "test".to_owned(),
       song_title: "Test song".to_owned(),
+      initial_bpm: NonZeroU8::new(120).unwrap(),
       pattern_defaults: PatternDefaults::default(),
       patterns: NonEmpty::new(Pattern {
         title: "Pattern".to_owned(),

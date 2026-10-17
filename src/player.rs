@@ -8,7 +8,6 @@ use midir::{MidiOutput, MidiOutputConnection};
 use crate::state::AppState;
 use crate::state::pattern::{Effect, Note, Pattern, midi_pitch_from_octave};
 
-pub const BPM: u8 = 120;
 const MIDI_CHANNEL: u8 = 0;
 pub const MIDI_PROGRAM_CHANGE: u8 = 0xc0;
 pub const MIDI_NOTE_ON: u8 = 0x90;
@@ -253,7 +252,7 @@ impl Timeline {
       .sequence
       .end_of_song
       .min(song.sequence.titles.len() - 1);
-    let mut bpm = NonZeroU8::new(BPM).expect("BPM must be nonzero");
+    let mut bpm = song.initial_bpm;
     let mut start_time = Duration::ZERO;
     let mut rows = Vec::with_capacity(last_song_index + 1);
 
