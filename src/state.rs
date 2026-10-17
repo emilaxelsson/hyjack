@@ -552,8 +552,8 @@ mod tests {
         title: "Pattern".to_owned(),
         tracks: vec![Track {
           notes: vec![Some(Note {
-            octave: crate::state::pattern::Octave(3),
-            semitone: crate::state::pattern::Semitone(0),
+            octave: Octave(3),
+            semitone: Semitone(0),
             instrument: InstrumentIndex(0),
             velocity: Velocity(50),
             effect: None,
@@ -571,7 +571,7 @@ mod tests {
       focus: Focus {
         row_index: 0,
         track_index: 0,
-        track_column: crate::state::pattern::TrackColumn::Instrument,
+        track_column: TrackColumn::Instrument,
       },
       editor_settings: EditorSettings::default(),
       instrument_digit_entry: None,
@@ -1038,7 +1038,7 @@ mod tests {
         .collect(),
     );
 
-    state.focus.track_column = crate::state::pattern::TrackColumn::Note;
+    state.focus.track_column = TrackColumn::Note;
     state.adjust_focused_note(true, true);
     assert_eq!(focused_semitone(&state), Semitone(1));
     state.adjust_focused_note(false, true);
@@ -1064,13 +1064,13 @@ mod tests {
     state.adjust_focused_note(false, false);
     assert_eq!(focused_octave(&state), Octave(4));
 
-    state.focus.track_column = crate::state::pattern::TrackColumn::Instrument;
+    state.focus.track_column = TrackColumn::Instrument;
     state.adjust_focused_note(true, false);
     assert_eq!(focused_instrument(&state), InstrumentIndex(8));
     state.adjust_focused_note(true, false);
     assert_eq!(focused_instrument(&state), InstrumentIndex(10));
 
-    state.focus.track_column = crate::state::pattern::TrackColumn::Velocity;
+    state.focus.track_column = TrackColumn::Velocity;
     state.adjust_focused_note(true, false);
     assert_eq!(focused_velocity(&state), Velocity(60));
     state.adjust_focused_note(false, true);
