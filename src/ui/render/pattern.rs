@@ -222,12 +222,7 @@ pub fn draw_pattern_panel(
 
   let num_tracks = current_pattern.tracks.len();
   let content_width = track_start_offset(num_tracks).saturating_sub(1) as u16;
-  let content_height = current_pattern
-    .tracks
-    .iter()
-    .map(|track| track.notes.len() as u16)
-    .max()
-    .unwrap_or(0);
+  let content_height = current_pattern.num_rows.get() as u16;
   let content_size = Size::new(content_width, content_height);
   let viewport_size = scrollable_viewport_size(notes_area, content_size);
   let mut scroll_view =

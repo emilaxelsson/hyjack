@@ -73,6 +73,15 @@ impl AppState {
         pattern.tracks.len(),
         state.track_titles.len()
       );
+      for track in &pattern.tracks {
+        anyhow::ensure!(
+          track.notes.len() <= pattern.num_rows.get(),
+          "Pattern '{}' has a track with {} notes but only {} rows",
+          pattern.title,
+          track.notes.len(),
+          pattern.num_rows
+        );
+      }
     }
     state.dracker_version = env!("CARGO_PKG_VERSION").to_owned();
     Ok(state)
@@ -528,6 +537,37 @@ mod tests {
         .to_string()
         .contains("only 2 track titles are configured")
     );
+  }
+
+  #[test]
+  fn loading_song_rejects_more_notes_than_pattern_rows_but_allows_fewer() {
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let path = std::env::temp_dir().join(format!(
+      "dracker-load-track-notes-{}-{timestamp}.json",
+      std::process::id()
+    ));
+    let mut serialized_state = serde_json::to_value(test_state()).unwrap();
+    serialized_state["patterns"][0]["num_rows"] = 2.into();
+    std::fs::write(&path, serde_json::to_vec(&serialized_state).unwrap()).unwrap();
+
+    let state = AppState::load_from_file(&path).unwrap();
+    assert_eq!(state.get_current_pattern().num_rows.get(), 2);
+    assert_eq!(state.get_current_pattern().tracks[0].notes.len(), 1);
+
+    let note = serialized_state["patterns"][0]["tracks"][0]["notes"][0].clone();
+    serialized_state["patterns"][0]["tracks"][0]["notes"]
+      .as_array_mut()
+      .unwrap()
+      .extend([note.clone(), note]);
+    std::fs::write(&path, serde_json::to_vec(&serialized_state).unwrap()).unwrap();
+
+    let error = AppState::load_from_file(&path).err().unwrap();
+    std::fs::remove_file(path).unwrap();
+
+    assert!(error.to_string().contains("3 notes but only 2 rows"));
   }
 
   fn focused_instrument(state: &AppState) -> InstrumentIndex {

@@ -66,6 +66,7 @@ fn draw_track(
   activity: TrackActivity,
   track_index: usize,
   track: &Track,
+  num_rows: usize,
 ) {
   let current_track_area = Rect {
     x: track_start_offset(track_index) as u16,
@@ -85,8 +86,8 @@ fn draw_track(
     focused_row_track_area,
   );
 
-  for row_idx in 0..track.notes.len() {
-    let note = &track.notes[row_idx];
+  for row_idx in 0..num_rows {
+    let note = track.notes.get(row_idx).unwrap_or(&None);
     let cell_text = note_cell_text(note);
     let cell_area = Rect {
       x: current_track_area.x,
@@ -119,6 +120,7 @@ pub fn draw_tracks(
       track_activity,
       track_index,
       track,
+      current_pattern.num_rows.get(),
     );
   }
 }

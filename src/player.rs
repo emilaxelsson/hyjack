@@ -195,7 +195,7 @@ impl Playback {
     let notes: Vec<_> = current_pattern(song, player)?
       .tracks
       .iter()
-      .filter_map(|track| track.notes[player.row_index].as_ref())
+      .filter_map(|track| track.notes.get(player.row_index).and_then(Option::as_ref))
       .collect();
 
     for note in notes {
@@ -262,8 +262,11 @@ impl Timeline {
 
       for row_index in 0..pattern.num_rows.get() {
         for track in &pattern.tracks {
-          if let Some(Effect::SetTempo(new_bpm)) =
-            track.notes[row_index].as_ref().and_then(|note| note.effect)
+          if let Some(Effect::SetTempo(new_bpm)) = track
+            .notes
+            .get(row_index)
+            .and_then(Option::as_ref)
+            .and_then(|note| note.effect)
           {
             bpm = new_bpm;
           }
@@ -361,6 +364,23 @@ mod tests {
       midi.0,
       vec![vec![MIDI_PROGRAM_CHANGE, 2], vec![MIDI_NOTE_ON, 36, 20]]
     );
+  }
+
+  #[test]
+  fn plays_missing_notes_in_declared_rows_as_empty() {
+    let mut serialized_state: serde_json::Value =
+      serde_json::from_str(include_str!("../songs/test.json")).unwrap();
+    serialized_state["patterns"][0]["tracks"][0]["notes"] = serde_json::json!([null]);
+    let state: AppState = serde_json::from_value(serialized_state).unwrap();
+    let mut player_state = PlayerState {
+      row_index: 7,
+      ..Default::default()
+    };
+    let mut midi = RecordingMidiSink(Vec::new());
+
+    Playback::start(&state, &mut player_state, &mut midi, Instant::now()).unwrap();
+
+    assert!(midi.0.is_empty());
   }
 
   #[test]

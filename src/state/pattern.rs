@@ -178,7 +178,7 @@ impl Pattern {
       return None;
     }
     let track = &self.tracks[track_index];
-    track.notes[row_index].clone()
+    track.notes.get(row_index).cloned().flatten()
   }
 
   pub fn set_note(&mut self, row_index: usize, track_index: usize, note: Note) {
@@ -186,6 +186,9 @@ impl Pattern {
       return;
     }
     let track = &mut self.tracks[track_index];
+    while track.notes.len() <= row_index {
+      track.notes.push(None);
+    }
     track.notes[row_index] = Some(note);
   }
 
@@ -194,7 +197,9 @@ impl Pattern {
       return;
     }
     let track = &mut self.tracks[track_index];
-    track.notes[row_index] = None;
+    if let Some(note) = track.notes.get_mut(row_index) {
+      *note = None;
+    }
   }
 }
 
