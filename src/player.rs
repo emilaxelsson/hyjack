@@ -338,6 +338,7 @@ fn advance_position(song: &AppState, player: &mut PlayerState) -> Result<()> {
 mod tests {
   use super::*;
   use crate::state::instruments::InstrumentIndex;
+  use crate::state::minimal_song;
   use crate::state::pattern::{Effect, Note, Octave, Semitone, Velocity};
 
   struct RecordingMidiSink(Vec<Vec<u8>>);
@@ -414,6 +415,43 @@ mod tests {
 
     assert!(player.next_deadline().is_none());
     assert_eq!(midi.0.last(), Some(&vec![0x80, 36, 0]));
+  }
+
+  #[test]
+  fn minimal_one_track_one_note_song_plays_loops_and_stops() {
+    let state = minimal_song();
+    let now = Instant::now();
+    let mut midi = RecordingMidiSink(Vec::new());
+    let mut player = Player::default();
+
+    player.start(&state, &mut midi, now).unwrap();
+
+    assert_eq!(player.state().sequence_index, 0);
+    assert_eq!(player.state().row_index, 0);
+    assert_eq!(player.state().time, Duration::ZERO);
+    assert_eq!(
+      midi.0,
+      vec![vec![MIDI_PROGRAM_CHANGE, 0], vec![MIDI_NOTE_ON, 52, 80]]
+    );
+    assert_eq!(
+      player.next_deadline(),
+      Some(now + Duration::from_millis(125))
+    );
+
+    player
+      .tick(&state, &mut midi, now + Duration::from_millis(125))
+      .unwrap();
+
+    assert_eq!(player.state().sequence_index, 0);
+    assert_eq!(player.state().row_index, 0);
+    assert_eq!(
+      &midi.0[2..],
+      [vec![0x80, 52, 0], vec![MIDI_NOTE_ON, 52, 80]]
+    );
+
+    player.stop(&mut midi).unwrap();
+    assert!(player.next_deadline().is_none());
+    assert_eq!(midi.0.last(), Some(&vec![0x80, 52, 0]));
   }
 
   #[test]

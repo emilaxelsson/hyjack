@@ -345,8 +345,11 @@ fn handle_edit_pattern_event(
 
 #[cfg(test)]
 mod tests {
+  use ratatui::backend::TestBackend;
+
   use super::*;
   use crate::player::{MIDI_NOTE_ON, MIDI_PROGRAM_CHANGE, SilentMidiSink};
+  use crate::state::minimal_song;
   use crate::state::pattern::{Note, TrackColumn};
 
   struct RecordingMidiSink(Vec<Vec<u8>>);
@@ -434,6 +437,93 @@ mod tests {
 
     let result = handle_edit_sequence_event(&mut state, viewports, KeyEvent::from(KeyCode::Down));
     assert_eq!(result.viewport_sync, ViewportSync::Sequence);
+  }
+
+  #[test]
+  fn minimal_song_navigation_smoke_test() {
+    let mut state = minimal_song();
+    let mut pattern_scroll_state = ScrollViewState::default();
+    let player = Player::default();
+    let mut midi = SilentMidiSink;
+    let viewports = Viewports {
+      sequence_height: 1,
+      pattern_size: Size::new(1, 1),
+    };
+
+    for key in [
+      KeyEvent::from(KeyCode::Up),
+      KeyEvent::from(KeyCode::Down),
+      KeyEvent::from(KeyCode::Left),
+      KeyEvent::from(KeyCode::Right),
+      KeyEvent::new(KeyCode::Up, KeyModifiers::CONTROL),
+      KeyEvent::new(KeyCode::Down, KeyModifiers::CONTROL),
+      KeyEvent::new(KeyCode::Left, KeyModifiers::CONTROL),
+      KeyEvent::new(KeyCode::Right, KeyModifiers::CONTROL),
+      KeyEvent::from(KeyCode::Tab),
+      KeyEvent::new(KeyCode::Tab, KeyModifiers::SHIFT),
+      KeyEvent::from(KeyCode::PageUp),
+      KeyEvent::from(KeyCode::PageDown),
+      KeyEvent::from(KeyCode::Home),
+      KeyEvent::from(KeyCode::End),
+      KeyEvent::new(KeyCode::Home, KeyModifiers::CONTROL),
+      KeyEvent::new(KeyCode::End, KeyModifiers::CONTROL),
+      KeyEvent::from(KeyCode::F(2)),
+      KeyEvent::from(KeyCode::F(3)),
+      KeyEvent::from(KeyCode::Char('z')),
+      KeyEvent::from(KeyCode::Char('x')),
+      KeyEvent::from(KeyCode::Char('c')),
+      KeyEvent::from(KeyCode::Char('v')),
+    ] {
+      handle_edit_pattern_event(
+        &mut state,
+        &mut pattern_scroll_state,
+        &player,
+        &mut midi,
+        key,
+      )
+      .unwrap();
+    }
+
+    for key in [
+      KeyEvent::from(KeyCode::Up),
+      KeyEvent::from(KeyCode::Down),
+      KeyEvent::from(KeyCode::PageUp),
+      KeyEvent::from(KeyCode::PageDown),
+      KeyEvent::from(KeyCode::Home),
+      KeyEvent::from(KeyCode::End),
+      KeyEvent::new(KeyCode::Up, KeyModifiers::CONTROL),
+      KeyEvent::new(KeyCode::Down, KeyModifiers::CONTROL),
+      KeyEvent::from(KeyCode::F(2)),
+      KeyEvent::from(KeyCode::F(4)),
+      KeyEvent::from(KeyCode::Enter),
+    ] {
+      handle_edit_sequence_event(&mut state, viewports, key);
+    }
+  }
+
+  #[test]
+  fn minimal_song_rendering_smoke_test() {
+    let state = minimal_song();
+    let mut sequence_scroll_state = ScrollViewState::default();
+    let mut pattern_scroll_state = ScrollViewState::default();
+    let player = Player::default();
+    let mut terminal = Terminal::new(TestBackend::new(80, 24)).unwrap();
+    terminal
+      .draw(|frame| {
+        draw_ui(
+          frame,
+          DrawState {
+            app: &state,
+            player: &player,
+            mode: &UIMode::EditPattern,
+          },
+          &mut sequence_scroll_state,
+          &mut pattern_scroll_state,
+          None,
+          None,
+        );
+      })
+      .unwrap();
   }
 
   #[test]
