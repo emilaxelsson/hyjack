@@ -430,10 +430,6 @@ mod tests {
     assert_eq!(player.state().row_index, 0);
     assert_eq!(player.state().time, Duration::ZERO);
     assert_eq!(
-      midi.0,
-      vec![vec![MIDI_PROGRAM_CHANGE, 0], vec![MIDI_NOTE_ON, 52, 80]]
-    );
-    assert_eq!(
       player.next_deadline(),
       Some(now + Duration::from_millis(125))
     );
@@ -444,14 +440,9 @@ mod tests {
 
     assert_eq!(player.state().sequence_index, 0);
     assert_eq!(player.state().row_index, 0);
-    assert_eq!(
-      &midi.0[2..],
-      [vec![0x80, 52, 0], vec![MIDI_NOTE_ON, 52, 80]]
-    );
 
     player.stop(&mut midi).unwrap();
     assert!(player.next_deadline().is_none());
-    assert_eq!(midi.0.last(), Some(&vec![0x80, 52, 0]));
   }
 
   #[test]

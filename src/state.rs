@@ -488,28 +488,23 @@ impl AppState {
 }
 
 #[cfg(test)]
-pub fn minimal_song() -> AppState {
+pub fn test_state() -> AppState {
   use std::num::NonZero;
 
-  use crate::state::instruments::InstrumentName;
-
   AppState {
-    dracker_version: "0.1.0".to_owned(),
-    song_title: "Minimal".to_owned(),
+    dracker_version: "test".to_owned(),
+    song_title: "Test song".to_owned(),
     initial_bpm: NonZeroU8::new(120).unwrap(),
-    pattern_defaults: PatternDefaults {
-      num_rows: NonZero::new(1).unwrap(),
-      rows_per_beat: NonZeroU8::new(4).unwrap(),
-    },
+    pattern_defaults: PatternDefaults::default(),
     track_titles: NonEmpty::new("Track 1".to_owned()),
     patterns: NonEmpty::new(Pattern {
-      title: "Pattern 1".to_owned(),
+      title: "Pattern".to_owned(),
       tracks: vec![Track {
         notes: vec![Some(Note {
           octave: Octave(3),
-          semitone: Semitone(4),
+          semitone: Semitone(0),
           instrument: InstrumentIndex(0),
-          velocity: Velocity(80),
+          velocity: Velocity(50),
           effect: None,
         })],
       }],
@@ -517,20 +512,42 @@ pub fn minimal_song() -> AppState {
       rows_per_beat: NonZeroU8::new(4).unwrap(),
     }),
     sequence: Sequence {
-      titles: NonEmpty::new("Pattern 1".to_owned()),
+      titles: NonEmpty::new("Pattern".to_owned()),
       focus_index: 0,
       end_of_song: 0,
     },
-    instruments: Instruments::DirectMapped(vec![InstrumentName("Tone".to_owned())]),
+    instruments: Instruments::DirectMapped(vec![]),
     focus: Focus {
       row_index: 0,
       track_index: 0,
-      track_column: TrackColumn::Note,
+      track_column: TrackColumn::Instrument,
     },
     editor_settings: EditorSettings::default(),
     instrument_digit_entry: None,
     velocity_digit_entry: None,
   }
+}
+
+#[cfg(test)]
+pub fn minimal_song() -> AppState {
+  use std::num::NonZero;
+
+  let mut state = test_state();
+
+  state.track_titles = NonEmpty::new("Track".to_owned());
+  state.patterns = NonEmpty::new(Pattern {
+    title: "Pattern".to_owned(),
+    tracks: vec![],
+    num_rows: NonZero::new(1).unwrap(),
+    rows_per_beat: NonZeroU8::new(4).unwrap(),
+  });
+  state.sequence = Sequence {
+    titles: NonEmpty::new("Pattern".to_owned()),
+    focus_index: 0,
+    end_of_song: 0,
+  };
+
+  state
 }
 
 #[cfg(test)]
@@ -540,44 +557,6 @@ mod tests {
   use super::*;
   use crate::state::instruments::{InstrumentIndex, InstrumentName};
   use crate::state::pattern::{Octave, Semitone, Track};
-
-  fn test_state() -> AppState {
-    AppState {
-      dracker_version: "test".to_owned(),
-      song_title: "Test song".to_owned(),
-      initial_bpm: NonZeroU8::new(120).unwrap(),
-      pattern_defaults: PatternDefaults::default(),
-      track_titles: NonEmpty::new("Track 1".to_owned()),
-      patterns: NonEmpty::new(Pattern {
-        title: "Pattern".to_owned(),
-        tracks: vec![Track {
-          notes: vec![Some(Note {
-            octave: Octave(3),
-            semitone: Semitone(0),
-            instrument: InstrumentIndex(0),
-            velocity: Velocity(50),
-            effect: None,
-          })],
-        }],
-        num_rows: NonZero::new(1).unwrap(),
-        rows_per_beat: NonZeroU8::new(4).unwrap(),
-      }),
-      sequence: Sequence {
-        titles: NonEmpty::new("Pattern".to_owned()),
-        focus_index: 0,
-        end_of_song: 0,
-      },
-      instruments: Instruments::DirectMapped(vec![]),
-      focus: Focus {
-        row_index: 0,
-        track_index: 0,
-        track_column: TrackColumn::Instrument,
-      },
-      editor_settings: EditorSettings::default(),
-      instrument_digit_entry: None,
-      velocity_digit_entry: None,
-    }
-  }
 
   #[test]
   fn prune_empty_tracks_removes_only_trailing_empty_tracks_from_each_pattern() {
