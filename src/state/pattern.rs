@@ -1,10 +1,9 @@
 use std::num::{NonZero, NonZeroU8};
 
-use nonempty::NonEmpty;
 use serde::{Deserialize, Serialize};
 
 use crate::state::instruments::InstrumentIndex;
-use crate::utils::{Adjustable, nonzero_len, sub_one};
+use crate::utils::{Adjustable, sub_one};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
@@ -107,13 +106,13 @@ impl Adjustable for Note {
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Track {
-  pub notes: NonEmpty<Option<Note>>,
+  pub notes: Vec<Option<Note>>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Pattern {
   pub title: String,
-  pub tracks: NonEmpty<Track>,
+  pub tracks: Vec<Track>,
   pub num_rows: NonZero<usize>,
   pub rows_per_beat: NonZeroU8,
 }
@@ -166,13 +165,6 @@ pub struct Focus {
 }
 
 impl Pattern {
-  pub fn bounds(&self) -> PatternBounds {
-    PatternBounds {
-      num_rows: self.num_rows,
-      num_tracks: nonzero_len(&self.tracks),
-    }
-  }
-
   pub fn get_note(&self, row_index: usize, track_index: usize) -> Option<Note> {
     if row_index >= self.num_rows.get() || track_index >= self.tracks.len() {
       return None;
@@ -213,24 +205,10 @@ impl Default for PatternDefaults {
 }
 
 impl PatternDefaults {
-  pub fn make_pattern(&self, title: String, track_titles: &NonEmpty<String>) -> Pattern {
-    let mut notes = NonEmpty::new(None);
-    for _ in 1..self.num_rows.get() {
-      notes.push(None);
-    }
-
-    let mut tracks = NonEmpty::new(Track {
-      notes: notes.clone(),
-    });
-    for _ in 1..track_titles.len() {
-      tracks.push(Track {
-        notes: notes.clone(),
-      });
-    }
-
+  pub fn make_pattern(&self, title: String) -> Pattern {
     Pattern {
       title,
-      tracks,
+      tracks: vec![],
       num_rows: self.num_rows,
       rows_per_beat: self.rows_per_beat,
     }
@@ -381,19 +359,11 @@ mod focus_tests {
   }
 
   fn empty_pattern(num_rows: usize, num_tracks: usize) -> Pattern {
-    let mut notes = NonEmpty::new(None);
-    for _ in 1..num_rows {
-      notes.push(None);
-    }
-
-    let mut tracks = NonEmpty::new(Track {
-      notes: notes.clone(),
-    });
-    for _ in 1..num_tracks {
-      tracks.push(Track {
-        notes: notes.clone(),
-      });
-    }
+    let tracks = (0..num_tracks)
+      .map(|_| Track {
+        notes: vec![None; num_rows],
+      })
+      .collect();
 
     Pattern {
       title: "Pattern".to_owned(),

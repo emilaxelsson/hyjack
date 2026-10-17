@@ -16,7 +16,7 @@ use crate::state::editor_settings::EditorSettings;
 use crate::state::instruments::{InstrumentIndex, Instruments};
 use crate::state::name::normalize_and_validate_name;
 use crate::state::pattern::{
-  Focus, Note, Octave, Pattern, PatternBounds, PatternDefaults, Semitone, TrackColumn, Velocity,
+  Focus, Note, Octave, Pattern, PatternBounds, PatternDefaults, Semitone, Track, TrackColumn, Velocity,
 };
 use crate::state::sequence::Sequence;
 use crate::utils::{Adjustable, fresh_name, nonzero_len};
@@ -230,7 +230,7 @@ impl AppState {
 
   /// Navigate to the last row of the current pattern.
   pub fn to_last_pattern_row(&mut self) {
-    self.focus.row_index = self.get_current_pattern().bounds().num_rows.get() - 1;
+    self.focus.row_index = self.current_pattern_bounds().num_rows.get() - 1;
   }
 
   /// Navigate to the first row of the song.
@@ -247,7 +247,7 @@ impl AppState {
     } else {
       self.sequence.end_of_song
     };
-    self.focus.row_index = self.get_current_pattern().bounds().num_rows.get() - 1;
+    self.focus.row_index = self.current_pattern_bounds().num_rows.get() - 1;
     self.refocus_pattern();
   }
 
@@ -262,7 +262,7 @@ impl AppState {
 
   /// Navigate to the last row, or the next pattern when already on the last row.
   pub fn page_down_pattern(&mut self) {
-    if self.focus.row_index + 1 == self.get_current_pattern().bounds().num_rows.get() {
+    if self.focus.row_index + 1 == self.current_pattern_bounds().num_rows.get() {
       self.to_next_pattern();
     } else {
       self.to_last_pattern_row();
@@ -330,9 +330,7 @@ impl AppState {
     } else {
       "New pattern".to_owned()
     };
-    let pattern = self
-      .pattern_defaults
-      .make_pattern(title.clone(), &self.track_titles);
+    let pattern = self.pattern_defaults.make_pattern(title.clone());
 
     let focused_last_song_title = self.sequence.focus_index == self.sequence.end_of_song;
     self.sequence.insert_title_at_focus(title);
@@ -354,9 +352,9 @@ impl AppState {
       return;
     };
     while pattern.tracks.len() <= self.focus.track_index {
-      pattern.tracks.push(crate::state::pattern::Track {
-        notes: NonEmpty::new(None),
-      });
+      pattern
+        .tracks
+        .push(Track { notes: vec![] });
     }
     pattern.set_note(self.focus.row_index, self.focus.track_index, note);
   }
@@ -483,15 +481,15 @@ mod tests {
       track_titles: NonEmpty::new("Track 1".to_owned()),
       patterns: NonEmpty::new(Pattern {
         title: "Pattern".to_owned(),
-        tracks: NonEmpty::new(Track {
-          notes: NonEmpty::new(Some(Note {
+        tracks: vec![Track {
+          notes: vec![Some(Note {
             octave: crate::state::pattern::Octave(3),
             semitone: crate::state::pattern::Semitone(0),
             instrument: InstrumentIndex(0),
             velocity: Velocity(50),
             effect: None,
-          })),
-        }),
+          })],
+        }],
         num_rows: NonZero::new(1).unwrap(),
         rows_per_beat: NonZeroU8::new(4).unwrap(),
       }),
@@ -645,9 +643,7 @@ mod tests {
     state.sequence.focus_index = 0;
     state.patterns.push(Pattern {
       title: "Pattern copy".to_owned(),
-      tracks: NonEmpty::new(Track {
-        notes: NonEmpty::new(None),
-      }),
+      tracks: vec![Track { notes: vec![] }],
       num_rows: NonZero::new(1).unwrap(),
       rows_per_beat: NonZeroU8::new(4).unwrap(),
     });
@@ -721,7 +717,7 @@ mod tests {
     let pattern = state.get_current_pattern();
     assert_eq!(pattern.num_rows.get(), 8);
     assert_eq!(pattern.rows_per_beat.get(), 2);
-    assert_eq!(pattern.tracks.len(), 2);
+    assert!(pattern.tracks.is_empty());
     assert_eq!(state.track_titles[0], "Drums");
     assert_eq!(state.track_titles[1], "Bass");
   }
@@ -737,20 +733,14 @@ mod tests {
 
     let pattern = state
       .pattern_defaults
-      .make_pattern("New pattern".to_owned(), &state.track_titles);
+      .make_pattern("New pattern".to_owned());
 
     assert_eq!(pattern.title, "New pattern");
     assert_eq!(pattern.num_rows.get(), 8);
     assert_eq!(pattern.rows_per_beat.get(), 2);
-    assert_eq!(pattern.tracks.len(), 2);
+    assert!(pattern.tracks.is_empty());
     assert_eq!(state.track_titles[0], "Drums");
     assert_eq!(state.track_titles[1], "Bass");
-    assert!(
-      pattern
-        .tracks
-        .iter()
-        .all(|track| { track.notes.len() == 8 && track.notes.iter().all(Option::is_none) })
-    );
   }
 
   #[test]
@@ -758,6 +748,7 @@ mod tests {
     let mut state = test_state();
     state.track_titles = NonEmpty::from_vec(vec!["Drums".to_owned(), "Bass".to_owned()]).unwrap();
     state.patterns.get_mut(0).unwrap().num_rows = NonZero::new(3).unwrap();
+    state.patterns.get_mut(0).unwrap().tracks.clear();
     state.focus.track_index = 1;
     state.focus.row_index = 2;
     let note = state.editor_settings.make_note(Semitone(0));
@@ -766,7 +757,7 @@ mod tests {
 
     let pattern = state.get_current_pattern();
     assert_eq!(pattern.tracks.len(), 2);
-    assert_eq!(pattern.tracks[0].notes.len(), 1);
+    assert!(pattern.tracks[0].notes.is_empty());
     assert_eq!(pattern.tracks[1].notes.len(), 3);
     assert_eq!(pattern.get_note(2, 1).unwrap().semitone, Semitone(0));
   }
@@ -777,9 +768,7 @@ mod tests {
     state.patterns.get_mut(0).unwrap().num_rows = NonZero::new(3).unwrap();
     state.patterns.push(Pattern {
       title: "Second pattern".to_owned(),
-      tracks: NonEmpty::new(Track {
-        notes: NonEmpty::new(None),
-      }),
+      tracks: vec![Track { notes: vec![] }],
       num_rows: NonZero::new(2).unwrap(),
       rows_per_beat: NonZeroU8::new(4).unwrap(),
     });
@@ -824,9 +813,7 @@ mod tests {
     state.patterns.get_mut(0).unwrap().num_rows = NonZero::new(3).unwrap();
     state.patterns.push(Pattern {
       title: "Second pattern".to_owned(),
-      tracks: NonEmpty::new(Track {
-        notes: NonEmpty::new(None),
-      }),
+      tracks: vec![Track { notes: vec![] }],
       num_rows: NonZero::new(2).unwrap(),
       rows_per_beat: NonZeroU8::new(4).unwrap(),
     });
@@ -872,9 +859,7 @@ mod tests {
     state.patterns.get_mut(0).unwrap().num_rows = NonZero::new(3).unwrap();
     state.patterns.push(Pattern {
       title: "Second pattern".to_owned(),
-      tracks: NonEmpty::new(Track {
-        notes: NonEmpty::new(None),
-      }),
+      tracks: vec![Track { notes: vec![] }],
       num_rows: NonZero::new(2).unwrap(),
       rows_per_beat: NonZeroU8::new(4).unwrap(),
     });
