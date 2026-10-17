@@ -122,7 +122,6 @@ pub struct Pattern {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct PatternDefaults {
   pub num_rows: NonZero<usize>,
-  pub track_titles: NonEmpty<String>,
   pub rows_per_beat: NonZeroU8,
 }
 
@@ -204,20 +203,19 @@ impl Default for PatternDefaults {
   fn default() -> Self {
     Self {
       num_rows: NonZero::new(16).unwrap(),
-      track_titles: NonEmpty::new("Track 1".to_owned()),
       rows_per_beat: NonZeroU8::new(4).unwrap(),
     }
   }
 }
 
 impl PatternDefaults {
-  pub fn make_pattern(&self, title: String) -> Pattern {
+  pub fn make_pattern(&self, title: String, track_titles: &NonEmpty<String>) -> Pattern {
     let mut notes = NonEmpty::new(None);
     for _ in 1..self.num_rows.get() {
       notes.push(None);
     }
 
-    let mut track_titles = self.track_titles.iter();
+    let mut track_titles = track_titles.iter();
     let first_track_title = track_titles.next().unwrap();
     let mut tracks = NonEmpty::new(Track {
       name: first_track_title.clone(),

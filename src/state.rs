@@ -27,6 +27,7 @@ pub struct AppState {
   pub song_title: String,
   pub initial_bpm: NonZeroU8,
   pub pattern_defaults: PatternDefaults,
+  pub track_titles: NonEmpty<String>,
   pub patterns: NonEmpty<Pattern>,
   pub sequence: Sequence,
   pub instruments: Instruments,
@@ -283,7 +284,9 @@ impl AppState {
     } else {
       "New pattern".to_owned()
     };
-    let pattern = self.pattern_defaults.make_pattern(title.clone());
+    let pattern = self
+      .pattern_defaults
+      .make_pattern(title.clone(), &self.track_titles);
 
     let focused_last_song_title = self.sequence.focus_index == self.sequence.end_of_song;
     self.sequence.insert_title_at_focus(title);
@@ -424,6 +427,7 @@ mod tests {
       song_title: "Test song".to_owned(),
       initial_bpm: NonZeroU8::new(120).unwrap(),
       pattern_defaults: PatternDefaults::default(),
+      track_titles: NonEmpty::new("Track 1".to_owned()),
       patterns: NonEmpty::new(Pattern {
         title: "Pattern".to_owned(),
         tracks: NonEmpty::new(Track {
@@ -579,9 +583,9 @@ mod tests {
     let mut state = test_state();
     state.pattern_defaults = PatternDefaults {
       num_rows: NonZero::new(8).unwrap(),
-      track_titles: NonEmpty::from_vec(vec!["Drums".to_owned(), "Bass".to_owned()]).unwrap(),
       rows_per_beat: NonZeroU8::new(2).unwrap(),
     };
+    state.track_titles = NonEmpty::from_vec(vec!["Drums".to_owned(), "Bass".to_owned()]).unwrap();
 
     state.insert_new_pattern();
 
@@ -606,13 +610,13 @@ mod tests {
     let mut state = test_state();
     state.pattern_defaults = PatternDefaults {
       num_rows: NonZero::new(8).unwrap(),
-      track_titles: NonEmpty::from_vec(vec!["Drums".to_owned(), "Bass".to_owned()]).unwrap(),
       rows_per_beat: NonZeroU8::new(2).unwrap(),
     };
+    state.track_titles = NonEmpty::from_vec(vec!["Drums".to_owned(), "Bass".to_owned()]).unwrap();
 
     let pattern = state
       .pattern_defaults
-      .make_pattern("New pattern".to_owned());
+      .make_pattern("New pattern".to_owned(), &state.track_titles);
 
     assert_eq!(pattern.title, "New pattern");
     assert_eq!(pattern.num_rows.get(), 8);

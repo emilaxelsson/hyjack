@@ -2,14 +2,14 @@
   "dracker_version": "0.1.0",
   "song_title": "My song",
   "initial_bpm": 120,
+  "track_titles": [
+    "Hat/ride",
+    "Kick",
+    "Snare",
+    "Cymbals"
+  ],
   "pattern_defaults": {
     "num_rows": 16,
-    "track_titles": [
-      "Hat/ride",
-      "Kick",
-      "Snare",
-      "Cymbals"
-    ],
     "rows_per_beat": 4
   },
   "patterns": [
