@@ -94,6 +94,18 @@ impl AppState {
     Ok(())
   }
 
+  pub fn prune_empty_tracks(&mut self) {
+    for pattern in self.patterns.iter_mut() {
+      while pattern
+        .tracks
+        .last()
+        .is_some_and(|track| track.notes.iter().all(Option::is_none))
+      {
+        pattern.tracks.pop();
+      }
+    }
+  }
+
   pub fn rename_song(&mut self, new_title: String) -> Result<()> {
     let normalized = normalize_and_validate_name("Song title", &new_title)?;
     self.song_title = normalized;
@@ -553,6 +565,39 @@ mod tests {
       instrument_digit_entry: None,
       velocity_digit_entry: None,
     }
+  }
+
+  #[test]
+  fn prune_empty_tracks_removes_only_trailing_empty_tracks_from_each_pattern() {
+    let mut state = test_state();
+    state.patterns[0].tracks.push(Track { notes: vec![None] });
+    state.patterns[0].tracks.push(Track { notes: vec![] });
+
+    state.patterns.push(Pattern {
+      title: "Second pattern".to_owned(),
+      tracks: vec![
+        Track { notes: vec![] },
+        state.patterns[0].tracks[0].clone(),
+        Track { notes: vec![None] },
+        Track { notes: vec![] },
+      ],
+      num_rows: NonZero::new(1).unwrap(),
+      rows_per_beat: NonZeroU8::new(4).unwrap(),
+    });
+    state.patterns.push(Pattern {
+      title: "Empty pattern".to_owned(),
+      tracks: vec![Track { notes: vec![] }, Track { notes: vec![None] }],
+      num_rows: NonZero::new(1).unwrap(),
+      rows_per_beat: NonZeroU8::new(4).unwrap(),
+    });
+
+    state.prune_empty_tracks();
+
+    assert_eq!(state.patterns[0].tracks.len(), 1);
+    assert_eq!(state.patterns[1].tracks.len(), 2);
+    assert!(state.patterns[1].tracks[0].notes.is_empty());
+    assert!(state.patterns[1].tracks[1].notes[0].is_some());
+    assert!(state.patterns[2].tracks.is_empty());
   }
 
   #[test]
