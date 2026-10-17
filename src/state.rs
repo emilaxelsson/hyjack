@@ -88,7 +88,9 @@ impl AppState {
     Ok(state)
   }
 
-  pub fn save_to_file(&self, path: &Path) -> Result<()> {
+  pub fn save_to_file(&mut self, path: &Path) -> Result<()> {
+    self.prune_empty_tracks();
+    self.prune_empty_notes();
     let json = serde_json::to_string_pretty(self)?;
     std::fs::write(path, json)?;
     Ok(())
