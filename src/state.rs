@@ -350,11 +350,13 @@ impl AppState {
       .iter()
       .map(|pattern| pattern.title.as_str())
       .collect();
-    let title = if existing_titles.contains(&"New pattern") {
-      fresh_name("New pattern", existing_titles)
-    } else {
-      "New pattern".to_owned()
-    };
+    let title = (0..)
+      .map(|number| match number {
+        0 => "New pattern".to_owned(),
+        number => format!("New pattern {number}"),
+      })
+      .find(|title| !existing_titles.contains(&title.as_str()))
+      .unwrap();
     let pattern = self.pattern_defaults.make_pattern(title.clone());
 
     let focused_last_song_title = self.sequence.focus_index == self.sequence.end_of_song;
@@ -832,6 +834,22 @@ mod tests {
     assert!(pattern.tracks.is_empty());
     assert_eq!(state.track_titles[0], "Drums");
     assert_eq!(state.track_titles[1], "Bass");
+
+    state.insert_new_pattern();
+    assert_eq!(state.get_current_pattern().title, "New pattern 1");
+
+    state.insert_new_pattern();
+    assert_eq!(state.get_current_pattern().title, "New pattern 2");
+    assert_eq!(
+      state.sequence.titles,
+      NonEmpty::from_vec(vec![
+        "Pattern".to_owned(),
+        "New pattern".to_owned(),
+        "New pattern 1".to_owned(),
+        "New pattern 2".to_owned(),
+      ])
+      .unwrap()
+    );
   }
 
   #[test]
