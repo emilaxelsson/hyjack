@@ -16,10 +16,10 @@ use crate::state::editor_settings::EditorSettings;
 use crate::state::instruments::{InstrumentIndex, Instruments};
 use crate::state::name::normalize_and_validate_name;
 use crate::state::pattern::{
-  Focus, Note, Octave, Pattern, PatternDefaults, Semitone, TrackColumn, Velocity,
+  Focus, Note, Octave, Pattern, PatternBounds, PatternDefaults, Semitone, TrackColumn, Velocity,
 };
 use crate::state::sequence::Sequence;
-use crate::utils::{Adjustable, fresh_name};
+use crate::utils::{Adjustable, fresh_name, nonzero_len};
 
 #[derive(Serialize, Deserialize)]
 pub struct AppState {
@@ -121,10 +121,16 @@ impl AppState {
     self.patterns.get(self.get_current_pattern_index()).unwrap()
   }
 
+  fn current_pattern_bounds(&self) -> PatternBounds {
+    PatternBounds {
+      num_rows: self.get_current_pattern().num_rows,
+      num_tracks: nonzero_len(&self.track_titles),
+    }
+  }
+
   /// Ensure that the pattern focus is within the bounds of the current pattern.
   pub fn refocus_pattern(&mut self) {
-    let current_pattern = self.get_current_pattern();
-    self.focus.refocus(&current_pattern.bounds());
+    self.focus.refocus(&self.current_pattern_bounds());
   }
 
   /// Navigate to the previous pattern row, crossing to the preceding sequence entry at row zero.
@@ -140,14 +146,14 @@ impl AppState {
     }
 
     self.sequence.focus_index = previous_sequence_index;
-    let bounds = self.get_current_pattern().bounds();
+    let bounds = self.current_pattern_bounds();
     self.focus.row_index = bounds.num_rows.get() - 1;
     self.focus.refocus(&bounds);
   }
 
   /// Navigate to the next pattern row, crossing to the following sequence entry at the last row.
   pub fn to_next_pattern_row(&mut self) {
-    let bounds = self.get_current_pattern().bounds();
+    let bounds = self.current_pattern_bounds();
     if self.focus.row_index + 1 < bounds.num_rows.get() {
       self.focus.to_next_row(bounds);
       return;
@@ -191,8 +197,30 @@ impl AppState {
 
   /// Navigate to the last pattern column in the current row.
   pub fn to_last_pattern_column(&mut self) {
-    self.focus.track_index = self.get_current_pattern().bounds().num_tracks.get() - 1;
+    self.focus.track_index = self.current_pattern_bounds().num_tracks.get() - 1;
     self.focus.track_column = TrackColumn::Effect;
+  }
+
+  /// Navigate to the previous track while retaining the focused column.
+  pub fn to_previous_pattern_track(&mut self) {
+    self.focus.to_previous_track();
+  }
+
+  /// Navigate to the next track while retaining the focused column.
+  pub fn to_next_pattern_track(&mut self) {
+    self.focus.to_next_track(self.current_pattern_bounds());
+  }
+
+  /// Navigate to the previous editable field in the current pattern row.
+  pub fn to_previous_pattern_field(&mut self) {
+    self.focus.to_previous_track_field();
+  }
+
+  /// Navigate to the next editable field in the current pattern row.
+  pub fn to_next_pattern_field(&mut self) {
+    self
+      .focus
+      .to_next_track_field(self.current_pattern_bounds());
   }
 
   /// Navigate to the first row of the current pattern.
@@ -318,10 +346,18 @@ impl AppState {
 
   /// Set the note at the current pattern focus.
   pub fn set_focused_note(&mut self, note: Note) {
+    if self.focus.track_index >= self.track_titles.len() {
+      return;
+    }
     let pattern_index = self.get_current_pattern_index();
     let Some(pattern) = self.patterns.get_mut(pattern_index) else {
       return;
     };
+    while pattern.tracks.len() <= self.focus.track_index {
+      pattern.tracks.push(crate::state::pattern::Track {
+        notes: NonEmpty::new(None),
+      });
+    }
     pattern.set_note(self.focus.row_index, self.focus.track_index, note);
   }
 
@@ -425,9 +461,8 @@ impl AppState {
   }
 
   pub fn step_rows(&mut self) {
-    let current_pattern = self.get_current_pattern();
     let step = self.editor_settings.step;
-    self.focus.jump_rows(step, current_pattern.bounds());
+    self.focus.jump_rows(step, self.current_pattern_bounds());
   }
 }
 
@@ -716,6 +751,24 @@ mod tests {
         .iter()
         .all(|track| { track.notes.len() == 8 && track.notes.iter().all(Option::is_none) })
     );
+  }
+
+  #[test]
+  fn inserting_note_materializes_only_required_implicit_tracks_and_rows() {
+    let mut state = test_state();
+    state.track_titles = NonEmpty::from_vec(vec!["Drums".to_owned(), "Bass".to_owned()]).unwrap();
+    state.patterns.get_mut(0).unwrap().num_rows = NonZero::new(3).unwrap();
+    state.focus.track_index = 1;
+    state.focus.row_index = 2;
+    let note = state.editor_settings.make_note(Semitone(0));
+
+    state.set_focused_note(note);
+
+    let pattern = state.get_current_pattern();
+    assert_eq!(pattern.tracks.len(), 2);
+    assert_eq!(pattern.tracks[0].notes.len(), 1);
+    assert_eq!(pattern.tracks[1].notes.len(), 3);
+    assert_eq!(pattern.get_note(2, 1).unwrap().semitone, Semitone(0));
   }
 
   #[test]

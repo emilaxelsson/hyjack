@@ -214,7 +214,6 @@ fn handle_edit_pattern_event(
   midi: &mut dyn MidiSink,
   key: event::KeyEvent,
 ) -> Result<HandleEventResult> {
-  let bounds = state.get_current_pattern().bounds();
   let mut new_mode: Option<UIMode> = None;
   let mut dialog: Option<InputDialog<AppState>> = None;
   let mut viewport_sync = ViewportSync::None;
@@ -261,18 +260,18 @@ fn handle_edit_pattern_event(
       viewport_sync = ViewportSync::Pattern;
     }
     KeyCode::BackTab | KeyCode::Tab if key.modifiers.contains(KeyModifiers::SHIFT) => {
-      state.focus.to_previous_track();
+      state.to_previous_pattern_track();
       viewport_sync = ViewportSync::Pattern;
     }
     KeyCode::Tab => {
-      state.focus.to_next_track(bounds);
+      state.to_next_pattern_track();
       viewport_sync = ViewportSync::Pattern;
     }
     KeyCode::Left => {
       if key.modifiers == KeyModifiers::CONTROL {
         pattern_scroll_state.scroll_left();
       } else {
-        state.focus.to_previous_track_field();
+        state.to_previous_pattern_field();
         viewport_sync = ViewportSync::Pattern;
       }
     }
@@ -280,7 +279,7 @@ fn handle_edit_pattern_event(
       if key.modifiers == KeyModifiers::CONTROL {
         pattern_scroll_state.scroll_right();
       } else {
-        state.focus.to_next_track_field(bounds);
+        state.to_next_pattern_field();
         viewport_sync = ViewportSync::Pattern;
       }
     }
@@ -348,7 +347,7 @@ fn handle_edit_pattern_event(
 mod tests {
   use super::*;
   use crate::player::{MIDI_NOTE_ON, MIDI_PROGRAM_CHANGE, SilentMidiSink};
-  use crate::state::pattern::Note;
+  use crate::state::pattern::{Note, TrackColumn};
 
   struct RecordingMidiSink(Vec<Vec<u8>>);
 
@@ -435,6 +434,44 @@ mod tests {
 
     let result = handle_edit_sequence_event(&mut state, viewports, KeyEvent::from(KeyCode::Down));
     assert_eq!(result.viewport_sync, ViewportSync::Sequence);
+  }
+
+  #[test]
+  fn horizontal_navigation_enters_virtual_tracks() {
+    let mut state = test_state();
+    let stored_tracks = state.get_current_pattern().tracks.len();
+    state.track_titles.push("Virtual".to_owned());
+    state.focus.track_index = stored_tracks - 1;
+    state.focus.track_column = TrackColumn::Note;
+    let mut pattern_scroll_state = ScrollViewState::default();
+    let player = Player::default();
+    let mut midi = SilentMidiSink;
+
+    handle_edit_pattern_event(
+      &mut state,
+      &mut pattern_scroll_state,
+      &player,
+      &mut midi,
+      KeyEvent::from(KeyCode::Tab),
+    )
+    .unwrap();
+
+    assert_eq!(state.focus.track_index, stored_tracks);
+    assert_eq!(state.focus.track_column, TrackColumn::Note);
+
+    state.focus.track_index = stored_tracks - 1;
+    state.focus.track_column = TrackColumn::Effect;
+    handle_edit_pattern_event(
+      &mut state,
+      &mut pattern_scroll_state,
+      &player,
+      &mut midi,
+      KeyEvent::from(KeyCode::Right),
+    )
+    .unwrap();
+
+    assert_eq!(state.focus.track_index, stored_tracks);
+    assert_eq!(state.focus.track_column, TrackColumn::Note);
   }
 
   #[test]

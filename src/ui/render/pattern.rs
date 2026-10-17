@@ -220,7 +220,7 @@ pub fn draw_pattern_panel(
 
   frame.render_widget(panel_block, pattern_area);
 
-  let num_tracks = current_pattern.tracks.len();
+  let num_tracks = state.track_titles.len();
   let content_width = track_start_offset(num_tracks).saturating_sub(1) as u16;
   let content_height = current_pattern.num_rows.get() as u16;
   let content_size = Size::new(content_width, content_height);
@@ -252,6 +252,7 @@ pub fn draw_pattern_panel(
     matches!(mode, UIMode::EditPatternElement).then_some(state.focus.track_index);
   draw_tracks(
     current_pattern,
+    &state.track_titles,
     content_height,
     &mut scroll_view,
     focused_row_area,
@@ -266,7 +267,6 @@ pub fn draw_pattern_panel(
     frame,
     track_names_area,
     scroll_offset.x,
-    current_pattern,
     &state.track_titles,
     content_width,
   );

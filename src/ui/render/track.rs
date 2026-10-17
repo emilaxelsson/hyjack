@@ -65,7 +65,7 @@ fn draw_track(
   content_height: u16,
   activity: TrackActivity,
   track_index: usize,
-  track: &Track,
+  track: Option<&Track>,
   num_rows: usize,
 ) {
   let current_track_area = Rect {
@@ -87,7 +87,9 @@ fn draw_track(
   );
 
   for row_idx in 0..num_rows {
-    let note = track.notes.get(row_idx).unwrap_or(&None);
+    let note = track
+      .and_then(|track| track.notes.get(row_idx))
+      .unwrap_or(&None);
     let cell_text = note_cell_text(note);
     let cell_area = Rect {
       x: current_track_area.x,
@@ -101,13 +103,14 @@ fn draw_track(
 
 pub fn draw_tracks(
   current_pattern: &Pattern,
+  track_titles: &NonEmpty<String>,
   content_height: u16,
   scroll_view: &mut ScrollView,
   focused_row_area: Rect,
   activity: TrackActivity,
   editing_track_index: Option<usize>,
 ) {
-  for (track_index, track) in current_pattern.tracks.iter().enumerate() {
+  for track_index in 0..track_titles.len() {
     let track_activity = if editing_track_index == Some(track_index) {
       TrackActivity::ElementEditing
     } else {
@@ -119,7 +122,7 @@ pub fn draw_tracks(
       content_height,
       track_activity,
       track_index,
-      track,
+      current_pattern.tracks.get(track_index),
       current_pattern.num_rows.get(),
     );
   }
@@ -129,7 +132,6 @@ pub fn draw_track_names(
   frame: &mut Frame,
   tracks_area: Rect,
   horizontal_scroll_offset: u16,
-  current_pattern: &Pattern,
   track_titles: &NonEmpty<String>,
   content_width: u16,
 ) {
@@ -146,7 +148,7 @@ pub fn draw_track_names(
     width: TRACK_COLUMN_WIDTH,
     height: 1,
   };
-  for (title, _) in track_titles.iter().zip(current_pattern.tracks.iter()) {
+  for title in track_titles {
     scroll_view.render_widget(
       Paragraph::new(title.clone()).style(SUB_TITLE_STYLE),
       current_track_area,
