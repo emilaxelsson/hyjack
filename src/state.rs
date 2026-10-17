@@ -16,7 +16,8 @@ use crate::state::editor_settings::EditorSettings;
 use crate::state::instruments::{InstrumentIndex, Instruments};
 use crate::state::name::normalize_and_validate_name;
 use crate::state::pattern::{
-  Focus, Note, Octave, Pattern, PatternBounds, PatternDefaults, Semitone, Track, TrackColumn, Velocity,
+  Focus, Note, Octave, Pattern, PatternBounds, PatternDefaults, Semitone, Track, TrackColumn,
+  Velocity,
 };
 use crate::state::sequence::Sequence;
 use crate::utils::{Adjustable, fresh_name, nonzero_len};
@@ -352,9 +353,7 @@ impl AppState {
       return;
     };
     while pattern.tracks.len() <= self.focus.track_index {
-      pattern
-        .tracks
-        .push(Track { notes: vec![] });
+      pattern.tracks.push(Track { notes: vec![] });
     }
     pattern.set_note(self.focus.row_index, self.focus.track_index, note);
   }
