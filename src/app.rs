@@ -210,8 +210,10 @@ fn handle_edit_sequence_event(
 fn handle_edit_pattern_event(
   state: &mut AppState,
   pattern_scroll_state: &mut ScrollViewState,
+  player: &Player,
+  midi: &mut dyn MidiSink,
   key: event::KeyEvent,
-) -> HandleEventResult {
+) -> Result<HandleEventResult> {
   let bounds = state.get_current_pattern().bounds();
   let mut new_mode: Option<UIMode> = None;
   let mut dialog: Option<InputDialog<AppState>> = None;
@@ -325,6 +327,7 @@ fn handle_edit_pattern_event(
     {
       if let Some(semitone) = note_key_to_semitone(ch) {
         let note = state.editor_settings.make_note(semitone);
+        player.emit_note_on(&note, midi)?;
         state.set_focused_note(note);
         state.step_rows();
       }
@@ -332,20 +335,29 @@ fn handle_edit_pattern_event(
     _ => {}
   }
 
-  HandleEventResult {
+  Ok(HandleEventResult {
     quit: false,
     new_mode,
     banner: None,
     dialog,
     viewport_sync,
-  }
+  })
 }
 
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::player::SilentMidiSink;
+  use crate::player::{MIDI_NOTE_ON, MIDI_PROGRAM_CHANGE, SilentMidiSink};
   use crate::state::pattern::Note;
+
+  struct RecordingMidiSink(Vec<Vec<u8>>);
+
+  impl MidiSink for RecordingMidiSink {
+    fn send(&mut self, message: &[u8]) -> Result<()> {
+      self.0.push(message.to_vec());
+      Ok(())
+    }
+  }
 
   fn test_state() -> AppState {
     serde_json::from_str(include_str!("../songs/test.json")).unwrap()
@@ -404,6 +416,8 @@ mod tests {
   fn navigation_handlers_request_their_viewport_to_sync() {
     let mut state = test_state();
     let mut pattern_scroll_state = ScrollViewState::default();
+    let player = Player::default();
+    let mut midi = SilentMidiSink;
     let viewports = Viewports {
       sequence_height: 1,
       pattern_size: Size::new(1, 1),
@@ -412,8 +426,11 @@ mod tests {
     let result = handle_edit_pattern_event(
       &mut state,
       &mut pattern_scroll_state,
+      &player,
+      &mut midi,
       KeyEvent::from(KeyCode::Down),
-    );
+    )
+    .unwrap();
     assert_eq!(result.viewport_sync, ViewportSync::Pattern);
 
     let result = handle_edit_sequence_event(&mut state, viewports, KeyEvent::from(KeyCode::Down));
@@ -424,14 +441,19 @@ mod tests {
   fn delete_removes_the_focused_note() {
     let mut state = test_state();
     let mut pattern_scroll_state = ScrollViewState::default();
+    let player = Player::default();
+    let mut midi = SilentMidiSink;
     let note = state.editor_settings.make_note(Semitone(0));
     state.set_focused_note(note);
 
     handle_edit_pattern_event(
       &mut state,
       &mut pattern_scroll_state,
+      &player,
+      &mut midi,
       KeyEvent::from(KeyCode::Delete),
-    );
+    )
+    .unwrap();
 
     let pattern = state.get_current_pattern();
     assert!(
@@ -439,6 +461,42 @@ mod tests {
         .get_note(state.focus.row_index, state.focus.track_index)
         .is_none()
     );
+  }
+
+  #[test]
+  fn inserting_a_note_emits_its_midi_note_on() {
+    let mut state = test_state();
+    let mut pattern_scroll_state = ScrollViewState::default();
+    let player = Player::default();
+    let mut midi = RecordingMidiSink(Vec::new());
+    let row_index = state.focus.row_index;
+    let track_index = state.focus.track_index;
+    let note = state.editor_settings.make_note(Semitone(0));
+
+    handle_edit_pattern_event(
+      &mut state,
+      &mut pattern_scroll_state,
+      &player,
+      &mut midi,
+      KeyEvent::from(KeyCode::Char('a')),
+    )
+    .unwrap();
+
+    assert_eq!(
+      midi.0,
+      vec![
+        vec![MIDI_PROGRAM_CHANGE, note.instrument.0],
+        vec![MIDI_NOTE_ON, 48, note.velocity.0],
+      ]
+    );
+    let inserted_note = state
+      .get_current_pattern()
+      .get_note(row_index, track_index)
+      .unwrap();
+    assert_eq!(inserted_note.octave, note.octave);
+    assert_eq!(inserted_note.semitone, note.semitone);
+    assert_eq!(inserted_note.instrument, note.instrument);
+    assert_eq!(inserted_note.velocity, note.velocity);
   }
 
   #[test]
@@ -673,10 +731,13 @@ fn handle_event(
   }
 
   match mode {
-    UIMode::EditPattern => {
-      let result = handle_edit_pattern_event(state, context.pattern_scroll_state, key);
-      Ok(result)
-    }
+    UIMode::EditPattern => handle_edit_pattern_event(
+      state,
+      context.pattern_scroll_state,
+      context.player,
+      context.midi,
+      key,
+    ),
     UIMode::EditPatternElement => Ok(handle_edit_pattern_element_event(state, key)),
     UIMode::EditSequence => {
       let result = handle_edit_sequence_event(state, context.viewports, key);
