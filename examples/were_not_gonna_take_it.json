@@ -1,0 +1,370 @@
+{
+  "dracker_version": "0.1.0",
+  "song_title": "We're not gonna take it",
+  "initial_bpm": 140,
+  "pattern_defaults": {
+    "num_rows": 16,
+    "rows_per_beat": 4
+  },
+  "track_titles": [
+    "Hat/ride",
+    "Kick",
+    "Snare",
+    "Toms",
+    "Cymbals"
+  ],
+  "patterns": [
+    {
+      "title": "Fill",
+      "tracks": [
+        {
+          "notes": []
+        },
+        {
+          "notes": []
+        },
+        {
+          "notes": []
+        },
+        {
+          "notes": [
+            {
+              "octave": 2,
+              "semitone": 0,
+              "instrument": 5,
+              "velocity": 87,
+              "effect": null
+            },
+            {
+              "octave": 2,
+              "semitone": 0,
+              "instrument": 5,
+              "velocity": 60,
+              "effect": null
+            }
+          ]
+        }
+      ],
+      "num_rows": 2,
+      "rows_per_beat": 4
+    },
+    {
+      "title": "Intro 1",
+      "tracks": [
+        {
+          "notes": [
+            {
+              "octave": 2,
+              "semitone": 0,
+              "instrument": 11,
+              "velocity": 99,
+              "effect": null
+            },
+            null,
+            {
+              "octave": 2,
+              "semitone": 0,
+              "instrument": 11,
+              "velocity": 99,
+              "effect": null
+            },
+            null,
+            {
+              "octave": 2,
+              "semitone": 0,
+              "instrument": 11,
+              "velocity": 99,
+              "effect": null
+            },
+            null,
+            {
+              "octave": 2,
+              "semitone": 0,
+              "instrument": 11,
+              "velocity": 99,
+              "effect": null
+            }
+          ]
+        },
+        {
+          "notes": [
+            {
+              "octave": 2,
+              "semitone": 0,
+              "instrument": 0,
+              "velocity": 99,
+              "effect": null
+            },
+            null,
+            null,
+            null,
+            {
+              "octave": 2,
+              "semitone": 0,
+              "instrument": 0,
+              "velocity": 99,
+              "effect": null
+            },
+            null,
+            null,
+            {
+              "octave": 2,
+              "semitone": 0,
+              "instrument": 0,
+              "velocity": 75,
+              "effect": null
+            }
+          ]
+        },
+        {
+          "notes": [
+            null,
+            null,
+            {
+              "octave": 2,
+              "semitone": 0,
+              "instrument": 2,
+              "velocity": 99,
+              "effect": null
+            },
+            null,
+            null,
+            null,
+            {
+              "octave": 2,
+              "semitone": 0,
+              "instrument": 2,
+              "velocity": 99,
+              "effect": null
+            }
+          ]
+        },
+        {
+          "notes": [
+            {
+              "octave": 2,
+              "semitone": 0,
+              "instrument": 5,
+              "velocity": 99,
+              "effect": null
+            }
+          ]
+        }
+      ],
+      "num_rows": 8,
+      "rows_per_beat": 2
+    },
+    {
+      "title": "Intro 2",
+      "tracks": [
+        {
+          "notes": [
+            {
+              "octave": 2,
+              "semitone": 0,
+              "instrument": 11,
+              "velocity": 99,
+              "effect": null
+            },
+            null,
+            null,
+            null,
+            {
+              "octave": 2,
+              "semitone": 0,
+              "instrument": 11,
+              "velocity": 99,
+              "effect": null
+            },
+            null,
+            null,
+            null,
+            {
+              "octave": 2,
+              "semitone": 0,
+              "instrument": 11,
+              "velocity": 99,
+              "effect": null
+            },
+            null,
+            null,
+            null,
+            {
+              "octave": 2,
+              "semitone": 0,
+              "instrument": 11,
+              "velocity": 99,
+              "effect": null
+            }
+          ]
+        },
+        {
+          "notes": [
+            null,
+            null,
+            {
+              "octave": 2,
+              "semitone": 0,
+              "instrument": 0,
+              "velocity": 99,
+              "effect": null
+            },
+            null,
+            null,
+            null,
+            null,
+            null,
+            {
+              "octave": 2,
+              "semitone": 0,
+              "instrument": 0,
+              "velocity": 75,
+              "effect": null
+            },
+            null,
+            {
+              "octave": 2,
+              "semitone": 0,
+              "instrument": 0,
+              "velocity": 99,
+              "effect": null
+            }
+          ]
+        },
+        {
+          "notes": [
+            null,
+            null,
+            null,
+            null,
+            {
+              "octave": 2,
+              "semitone": 0,
+              "instrument": 2,
+              "velocity": 99,
+              "effect": null
+            },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            {
+              "octave": 2,
+              "semitone": 0,
+              "instrument": 2,
+              "velocity": 99,
+              "effect": null
+            }
+          ]
+        },
+        {
+          "notes": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            {
+              "octave": 2,
+              "semitone": 0,
+              "instrument": 5,
+              "velocity": 87,
+              "effect": null
+            },
+            {
+              "octave": 2,
+              "semitone": 0,
+              "instrument": 5,
+              "velocity": 60,
+              "effect": null
+            }
+          ]
+        }
+      ],
+      "num_rows": 16,
+      "rows_per_beat": 4
+    },
+    {
+      "title": "Stop",
+      "tracks": [
+        {
+          "notes": []
+        },
+        {
+          "notes": []
+        },
+        {
+          "notes": []
+        },
+        {
+          "notes": [
+            {
+              "octave": 2,
+              "semitone": 0,
+              "instrument": 5,
+              "velocity": 99,
+              "effect": null
+            }
+          ]
+        }
+      ],
+      "num_rows": 4,
+      "rows_per_beat": 1
+    }
+  ],
+  "sequence": {
+    "titles": [
+      "Fill",
+      "Intro 1",
+      "Intro 2",
+      "Intro 1",
+      "Intro 2",
+      "Intro 1",
+      "Intro 2",
+      "Intro 1",
+      "Intro 2",
+      "Stop"
+    ],
+    "focus_index": 5,
+    "end_of_song": 9
+  },
+  "instruments": {
+    "DirectMapped": [
+      "Kick",
+      "Stick",
+      "Snare",
+      "Hand Clap",
+      "Snare Rimshot",
+      "Floor Tom",
+      "Hat Closed",
+      "Tom 2",
+      "Hat Pedal",
+      "Tom 1",
+      "Hat Open",
+      "Cowbell",
+      "Ride",
+      "Crash",
+      "Ride 2",
+      "Splash",
+      "Hat Semi-Open",
+      "Bell"
+    ]
+  },
+  "focus": {
+    "row_index": 7,
+    "track_index": 3,
+    "track_column": "Velocity"
+  }
+}

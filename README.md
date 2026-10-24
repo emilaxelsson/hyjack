@@ -1,3 +1,79 @@
+# Dracker
+
+![](./images/screenshot.png)
+
+Dracker is a program for creating and playing music. It runs in the terminal and is operated entirely using the keyboard.
+
+The UI is inspired by traditional [music trackers](https://en.wikipedia.org/wiki/Music_tracker), although it is not really a tracker under the surface. Playback relies on an external software synthesizer controlled via MIDI.
+
+**NOTE:** *Dracker is currently a work in progress, and many features needed for a complete editing workflow are not yet implemented.*
+
+
+
+## A front end for Hydrogen
+
+The motivation behind Dracker is quite specific: to provide an efficient, keyboard-centric interface to the [Hydrogen drum machine](http://www.hydrogen-music.org/). I really like Hydrogen as an open-source, high-quality drum machine, but I prefer the editing experience of tracker programs.
+
+My intended workflow is as follows:
+
+  1. Edit drum (and bass) patterns in Dracker.
+  2. Enjoy live playback in Hydrogen via MIDI.
+  3. When done: Convert the song to a Hydrogen song file and render an audio file in Hydrogen.
+
+(Step (3) is still future work.)
+
+
+
+## Hydrogen setup
+
+This section explains how to set up Hydrogen for use with Dracker.
+
+Start by opening up Hydrogen's MIDI settings and check that a suitable input port is selected. The following settings have been tested to work well on Hydrogen 1.2.4 and 1.2.6 (Ubuntu 24.04).
+
+![](./images/h2_midi_settings.png)
+
+You also need to ensure that the Input Mode is set to "Instrument". This setting is found in the Options menu.
+
+![](./images/h2_input_mode.png)
+
+Next, create a new song and load a drum kit. Adjust mixer settings as needed.
+
+
+
+## Example
+
+Start Hydrogen and load the file [GMRockKit_template.h2song](./examples/GMRockKit_template.h2song). This is an empty song with the drum kit GMRockKit loaded.
+
+Next, start Dracker with the file [were_not_gonna_take_it.json](./examples/were_not_gonna_take_it.json):
+
+```bash
+dracker ./examples/were_not_gonna_take_it.json
+```
+
+You should now see a prompt that looks something like this:
+
+```
+MIDI output:
+  0: Silent playback
+  1: Midi Through:Midi Through Port-0 14:0
+  2: Hydrogen:Hydrogen Midi-In 128:0
+Select output:
+█
+```
+
+Select the Hydrogen MIDI input option.
+
+The Dracker UI starts up, and you can press `Space` to start playing.
+
+Alternatively, you can start with an empty song and create your own patterns. To do this, copy [GMRockKit_template.json](./examples/GMRockKit_template.json) (an empty song congigured for the GMRockKit drum kit) and start Dracker with the copied file:
+
+```bash
+cp ./examples/GMRockKit_template.json my_song.json
+dracker my_song.json
+```
+
+
+
 ## Keyboard controls
 
 ### Universal

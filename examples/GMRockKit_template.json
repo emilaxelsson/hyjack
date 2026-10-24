@@ -1,0 +1,58 @@
+{
+  "dracker_version": "0.1.0",
+  "song_title": "GMRockKit template",
+  "initial_bpm": 120,
+  "pattern_defaults": {
+    "num_rows": 16,
+    "rows_per_beat": 4
+  },
+  "track_titles": [
+    "Hat/ride",
+    "Kick",
+    "Snare",
+    "Toms",
+    "Cymbals"
+  ],
+  "patterns": [
+    {
+      "title": "Pattern 1",
+      "tracks": [],
+      "num_rows": 16,
+      "rows_per_beat": 4
+    }
+  ],
+  "sequence": {
+    "titles": [
+      "Pattern 1"
+    ],
+    "focus_index": 0,
+    "end_of_song": 0
+  },
+  "instruments": {
+    "DirectMapped": [
+      "Kick",
+      "Stick",
+      "Snare",
+      "Hand Clap",
+      "Snare Rimshot",
+      "Floor Tom",
+      "Hat Closed",
+      "Tom 2",
+      "Hat Pedal",
+      "Tom 1",
+      "Hat Open",
+      "Cowbell",
+      "Ride",
+      "Crash",
+      "Ride 2",
+      "Splash",
+      "Hat Semi-Open",
+      "Bell"
+    ]
+  },
+  "focus": {
+    "row_index": 0,
+    "track_index": 0,
+    "track_column": "Note"
+  }
+}
