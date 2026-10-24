@@ -109,7 +109,7 @@ impl Player {
   pub fn emit_note_on(&self, note: &Note, midi: &mut dyn MidiSink) -> Result<()> {
     let pitch = midi_pitch_from_octave(note.octave, note.semitone);
     midi.send(&[MIDI_PROGRAM_CHANGE | MIDI_CHANNEL, note.instrument.0])?;
-    midi.send(&[MIDI_NOTE_ON | MIDI_CHANNEL, pitch, note.velocity.0])
+    midi.send(&[MIDI_NOTE_ON | MIDI_CHANNEL, pitch, note.midi_velocity()])
   }
 
   pub fn start(&mut self, song: &AppState, midi: &mut dyn MidiSink, now: Instant) -> Result<()> {
@@ -206,7 +206,7 @@ impl Playback {
       }
 
       let pitch = crate::state::pattern::midi_pitch_from_octave(note.octave, note.semitone);
-      midi.send(&[MIDI_NOTE_ON | MIDI_CHANNEL, pitch, note.velocity.0])?;
+      midi.send(&[MIDI_NOTE_ON | MIDI_CHANNEL, pitch, note.midi_velocity()])?;
       self.active_notes.push(pitch);
     }
     Ok(())
