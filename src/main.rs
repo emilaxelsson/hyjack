@@ -9,8 +9,8 @@ use crossterm::execute;
 use crossterm::terminal::{
   EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode,
 };
-use dracker::app::run_app;
-use dracker::player::select_midi_sink;
+use hyjack::app::run_app;
+use hyjack::player::select_midi_sink;
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 
@@ -75,7 +75,7 @@ fn main() -> Result<()> {
   let program_name = args
     .next()
     .and_then(|name| name.into_string().ok())
-    .unwrap_or_else(|| "dracker".to_string());
+    .unwrap_or_else(|| "hyjack".to_string());
   let song_file_path = match args.next() {
     Some(path) => PathBuf::from(path),
     None => {

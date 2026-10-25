@@ -5,7 +5,7 @@ use anyhow::Result;
 /// # Examples
 ///
 /// ```rust
-/// use dracker::state::name::normalize_and_validate_name;
+/// use hyjack::state::name::normalize_and_validate_name;
 ///
 /// assert_eq!(
 ///   normalize_and_validate_name("Pattern title", "  Verse 1 A  ").unwrap(),

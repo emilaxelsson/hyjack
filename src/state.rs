@@ -24,7 +24,7 @@ use crate::utils::{Adjustable, fresh_name, nonzero_len};
 
 #[derive(Serialize, Deserialize)]
 pub struct AppState {
-  pub dracker_version: String,
+  pub hyjack_version: String,
   pub song_title: String,
   pub initial_bpm: NonZeroU8,
   pub pattern_defaults: PatternDefaults,
@@ -84,7 +84,7 @@ impl AppState {
         );
       }
     }
-    state.dracker_version = env!("CARGO_PKG_VERSION").to_owned();
+    state.hyjack_version = env!("CARGO_PKG_VERSION").to_owned();
     Ok(state)
   }
 
@@ -494,7 +494,7 @@ pub fn test_state() -> AppState {
   use std::num::NonZero;
 
   AppState {
-    dracker_version: "test".to_owned(),
+    hyjack_version: "test".to_owned(),
     song_title: "Test song".to_owned(),
     initial_bpm: NonZeroU8::new(120).unwrap(),
     pattern_defaults: PatternDefaults::default(),
@@ -631,11 +631,11 @@ mod tests {
       .unwrap()
       .as_nanos();
     let path = std::env::temp_dir().join(format!(
-      "dracker-load-version-{}-{timestamp}.json",
+      "hyjack-load-version-{}-{timestamp}.json",
       std::process::id()
     ));
     let mut serialized_state = serde_json::to_value(test_state()).unwrap();
-    serialized_state["dracker_version"] = "old-version".into();
+    serialized_state["hyjack_version"] = "old-version".into();
     std::fs::write(&path, serde_json::to_vec(&serialized_state).unwrap()).unwrap();
 
     let state = AppState::load_from_file(&path).unwrap();
@@ -643,8 +643,8 @@ mod tests {
       serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
     std::fs::remove_file(path).unwrap();
 
-    assert_eq!(state.dracker_version, env!("CARGO_PKG_VERSION"));
-    assert_eq!(file_state["dracker_version"], "old-version");
+    assert_eq!(state.hyjack_version, env!("CARGO_PKG_VERSION"));
+    assert_eq!(file_state["hyjack_version"], "old-version");
   }
 
   #[test]
@@ -654,7 +654,7 @@ mod tests {
       .unwrap()
       .as_nanos();
     let path = std::env::temp_dir().join(format!(
-      "dracker-load-track-titles-{}-{timestamp}.json",
+      "hyjack-load-track-titles-{}-{timestamp}.json",
       std::process::id()
     ));
     let mut serialized_state = serde_json::to_value(test_state()).unwrap();
@@ -693,7 +693,7 @@ mod tests {
       .unwrap()
       .as_nanos();
     let path = std::env::temp_dir().join(format!(
-      "dracker-load-track-notes-{}-{timestamp}.json",
+      "hyjack-load-track-notes-{}-{timestamp}.json",
       std::process::id()
     ));
     let mut serialized_state = serde_json::to_value(test_state()).unwrap();

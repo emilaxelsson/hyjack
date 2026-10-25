@@ -458,22 +458,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dracker"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "crossterm 0.28.1",
- "midir",
- "nonempty",
- "proptest",
- "ratatui",
- "serde",
- "serde_json",
- "tui-popup",
- "tui-scrollview",
-]
-
-[[package]]
 name = "either"
 version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -645,6 +629,22 @@ name = "hex"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
+
+[[package]]
+name = "hyjack"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "crossterm 0.28.1",
+ "midir",
+ "nonempty",
+ "proptest",
+ "ratatui",
+ "serde",
+ "serde_json",
+ "tui-popup",
+ "tui-scrollview",
+]
 
 [[package]]
 name = "ident_case"

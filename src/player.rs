@@ -41,7 +41,7 @@ impl MidiSink for SystemMidiSink {
 }
 
 pub fn select_midi_sink() -> Result<Box<dyn MidiSink>> {
-  let midi_output = MidiOutput::new("Dracker")?;
+  let midi_output = MidiOutput::new("Hyjack")?;
   let ports = midi_output.ports();
   if ports.is_empty() {
     println!("No MIDI output ports found. Playback will be silent.");
@@ -63,7 +63,7 @@ pub fn select_midi_sink() -> Result<Box<dyn MidiSink>> {
       Ok(0) => return Ok(Box::new(SilentMidiSink)),
       Ok(index) if index <= ports.len() => {
         let connection = midi_output
-          .connect(&ports[index - 1], "Dracker output")
+          .connect(&ports[index - 1], "Hyjack output")
           .map_err(|_| anyhow::anyhow!("Could not connect to MIDI output"))?;
         return Ok(Box::new(SystemMidiSink(connection)));
       }

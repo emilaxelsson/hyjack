@@ -11,8 +11,8 @@ pub fn draw_head(frame: &mut Frame, state: &AppState, player: &Player, area: Rec
   let player_state = player.state();
   let time = player_state.time;
   let player_line = format!(
-    "Dracker {}    {:02}:{:02}:{:02}.{:03} | {} - {}",
-    state.dracker_version,
+    "Hyjack {}     {:02}:{:02}:{:02}.{:03} | {} - {}",
+    state.hyjack_version,
     time.as_secs() / 3_600,
     (time.as_secs() / 60) % 60,
     time.as_secs() % 60,
