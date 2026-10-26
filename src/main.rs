@@ -5,9 +5,13 @@ use std::{env, io};
 
 use anyhow::Result;
 use crossterm::cursor::Show;
+use crossterm::event::{
+  KeyboardEnhancementFlags, PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags,
+};
 use crossterm::execute;
 use crossterm::terminal::{
   EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode,
+  supports_keyboard_enhancement,
 };
 use hyjack::app::run_app;
 use hyjack::player::select_midi_sink;
@@ -16,14 +20,22 @@ use ratatui::backend::CrosstermBackend;
 
 struct TerminalCleanup {
   restored: bool,
+  keyboard_enhancement_enabled: bool,
 }
 
 impl TerminalCleanup {
   fn new() -> Self {
-    Self { restored: false }
+    Self {
+      restored: false,
+      keyboard_enhancement_enabled: false,
+    }
   }
 
   fn restore(&mut self, terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Result<()> {
+    if self.keyboard_enhancement_enabled {
+      execute!(terminal.backend_mut(), PopKeyboardEnhancementFlags)?;
+      self.keyboard_enhancement_enabled = false;
+    }
     disable_raw_mode()?;
     execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
     terminal.show_cursor()?;
@@ -36,8 +48,12 @@ impl TerminalCleanup {
       return;
     }
 
-    let _ = disable_raw_mode();
     let mut stdout = io::stdout();
+    if self.keyboard_enhancement_enabled {
+      let _ = execute!(stdout, PopKeyboardEnhancementFlags);
+      self.keyboard_enhancement_enabled = false;
+    }
+    let _ = disable_raw_mode();
     let _ = execute!(stdout, LeaveAlternateScreen, Show);
     self.restored = true;
   }
@@ -90,9 +106,29 @@ fn main() -> Result<()> {
   let mut midi = select_midi_sink()?;
   install_panic_hook();
   enable_raw_mode()?;
+  let mut cleanup = TerminalCleanup::new();
+  let keyboard_enhancement_supported = match supports_keyboard_enhancement() {
+    Ok(true) => true,
+    Ok(false) => {
+      eprintln!(
+        "Warning: terminal does not support enhanced keyboard input; some shortcuts may not work"
+      );
+      false
+    }
+    Err(error) => {
+      eprintln!("Warning: could not detect terminal keyboard enhancement support: {error}");
+      false
+    }
+  };
   let mut stdout = io::stdout();
   execute!(stdout, EnterAlternateScreen)?;
-  let mut cleanup = TerminalCleanup::new();
+  if keyboard_enhancement_supported {
+    execute!(
+      stdout,
+      PushKeyboardEnhancementFlags(KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES)
+    )?;
+    cleanup.keyboard_enhancement_enabled = true;
+  }
   let backend = CrosstermBackend::new(stdout);
   let mut terminal = Terminal::new(backend)?;
 
