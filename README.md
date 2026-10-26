@@ -104,6 +104,7 @@ Editing:
       - `Up`/`Down` – Increase/decrease value of the focused element
       - `PgUp`/`PgDown` – Increase/decrease value by a larger amount
       - `Enter`/`Esc` – Exit edit mode
+      - `Ctrl+Enter` – Copy this note's attributes (octave, velocity and instrument) to the editor settings
 
 Navigation:
 

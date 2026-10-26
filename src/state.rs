@@ -384,6 +384,20 @@ impl AppState {
     pattern.set_note(self.focus.row_index, self.focus.track_index, note);
   }
 
+  /// Copy the focused note's octave, velocity, and instrument to the editor settings.
+  pub fn copy_focused_note_attributes_to_editor_settings(&mut self) {
+    let Some(note) = self
+      .get_current_pattern()
+      .get_note(self.focus.row_index, self.focus.track_index)
+    else {
+      return;
+    };
+
+    self.editor_settings.octave = note.octave;
+    self.editor_settings.velocity = note.velocity;
+    self.editor_settings.instrument = note.instrument;
+  }
+
   /// Remove the note at the current pattern focus.
   pub fn remove_focused_note(&mut self) {
     let pattern_index = self.get_current_pattern_index();

@@ -397,7 +397,7 @@ mod tests {
   use super::*;
   use crate::player::{MIDI_NOTE_ON, MIDI_PROGRAM_CHANGE, SilentMidiSink};
   use crate::state::minimal_song;
-  use crate::state::pattern::{Note, TrackColumn};
+  use crate::state::pattern::{Note, Octave, TrackColumn, Velocity};
 
   struct RecordingMidiSink(Vec<Vec<u8>>);
 
@@ -742,6 +742,52 @@ mod tests {
   }
 
   #[test]
+  fn ctrl_enter_copies_focused_note_attributes_to_editor_settings() {
+    let mut state = test_state();
+    state.set_focused_note(Note {
+      octave: Octave(5),
+      semitone: Semitone(7),
+      instrument: InstrumentIndex(2),
+      velocity: Velocity(81),
+      effect: None,
+    });
+    state.editor_settings.step = 9;
+
+    let result = handle_edit_pattern_element_event(
+      &mut state,
+      KeyEvent::new(KeyCode::Enter, KeyModifiers::CONTROL),
+    );
+
+    assert!(result.handled);
+    assert!(result.new_mode.is_none());
+    assert_eq!(state.editor_settings.octave, Octave(5));
+    assert_eq!(state.editor_settings.velocity, Velocity(81));
+    assert_eq!(state.editor_settings.instrument, InstrumentIndex(2));
+    assert_eq!(state.editor_settings.step, 9);
+  }
+
+  #[test]
+  fn ctrl_enter_without_a_focused_note_leaves_editor_settings_unchanged() {
+    let mut state = test_state();
+    let initial_settings = state.editor_settings;
+
+    let result = handle_edit_pattern_element_event(
+      &mut state,
+      KeyEvent::new(KeyCode::Enter, KeyModifiers::CONTROL),
+    );
+
+    assert!(result.handled);
+    assert!(result.new_mode.is_none());
+    assert_eq!(state.editor_settings.octave, initial_settings.octave);
+    assert_eq!(state.editor_settings.velocity, initial_settings.velocity);
+    assert_eq!(
+      state.editor_settings.instrument,
+      initial_settings.instrument
+    );
+    assert_eq!(state.editor_settings.step, initial_settings.step);
+  }
+
+  #[test]
   fn dialog_and_player_modes_capture_global_shortcuts() {
     let mut state = test_state();
     let mut pattern_scroll_state = ScrollViewState::default();
@@ -818,6 +864,11 @@ fn handle_edit_pattern_element_event(state: &mut AppState, key: KeyEvent) -> Han
     }
     KeyCode::End => {
       state.set_focused_note_to_bound(true);
+      handled = true;
+    }
+    KeyCode::Enter if key.modifiers == KeyModifiers::CONTROL => {
+      state.copy_focused_note_attributes_to_editor_settings();
+      new_mode = Some(UIMode::EditPattern);
       handled = true;
     }
     KeyCode::Enter | KeyCode::Esc => {
