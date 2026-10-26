@@ -42,6 +42,7 @@ enum ViewportSync {
   None,
   Pattern,
   Sequence,
+  PatternAndSequence,
   PlayerPosition,
 }
 
@@ -318,6 +319,11 @@ fn handle_edit_pattern_event(
       new_mode = Some(UIMode::EditSequence);
       handled = true;
     }
+    KeyCode::Insert => {
+      state.insert_new_pattern();
+      viewport_sync = ViewportSync::PatternAndSequence;
+      handled = true;
+    }
     KeyCode::Delete => {
       state.remove_focused_note();
       handled = true;
@@ -478,6 +484,26 @@ mod tests {
 
     let result = handle_edit_sequence_event(&mut state, viewports, KeyEvent::from(KeyCode::Down));
     assert_eq!(result.viewport_sync, ViewportSync::Sequence);
+  }
+
+  #[test]
+  fn insert_creates_pattern_from_pattern_panel() {
+    let mut state = test_state();
+    let initial_pattern_count = state.patterns.len();
+    let mut pattern_scroll_state = ScrollViewState::default();
+    let result = handle_edit_pattern_event(
+      &mut state,
+      &mut pattern_scroll_state,
+      &Player::default(),
+      &mut SilentMidiSink,
+      KeyEvent::from(KeyCode::Insert),
+    )
+    .unwrap();
+
+    assert!(result.handled);
+    assert_eq!(result.viewport_sync, ViewportSync::PatternAndSequence);
+    assert_eq!(state.patterns.len(), initial_pattern_count + 1);
+    assert_eq!(state.get_current_pattern().title, "New pattern");
   }
 
   #[test]
@@ -1066,6 +1092,14 @@ fn sync_viewport(
       scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
     }
     ViewportSync::Sequence => {
+      scroll_focused_sequence_into_view(
+        &state.sequence,
+        sequence_scroll_state,
+        viewports.sequence_height,
+      );
+    }
+    ViewportSync::PatternAndSequence => {
+      scroll_cursor_into_view(state, pattern_scroll_state, viewports.pattern_size);
       scroll_focused_sequence_into_view(
         &state.sequence,
         sequence_scroll_state,
