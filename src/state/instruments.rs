@@ -33,29 +33,78 @@ impl Adjustable for InstrumentIndex {
   }
 }
 
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct InstrumentMetadata {
+  /// Used for display purposes only.
+  pub name: InstrumentName,
+
+  /// Velocity boundaries for the instrument's layers. The boundaries must be in the range
+  /// (0.0, 1.0) and in ascending order.
+  ///
+  /// Some instruments may have a rather course velocity resolution. For example, a snare
+  /// drum may be recorded with five distinct velocity layers. Assuming these velocities
+  /// are evenly distributed, the boundaries would be `[0.2, 0.4, 0.6, 0.8]`.
+  ///
+  /// An empty vector indicates that the instrument has full velocity resolution.
+  pub velocity_boundaries: Vec<f64>,
+}
+
 #[derive(Serialize, Deserialize)]
 pub enum Instruments {
-  DirectMapped(Vec<InstrumentName>),
+  /// Instruments ordered according to their index. The same index is used both in the
+  /// Hyjack editor and in the MIDI program mapping.
+  DirectMapped(Vec<InstrumentMetadata>),
 }
 
 impl Instruments {
   pub fn get_name(&self, index: InstrumentIndex) -> Option<InstrumentName> {
     match self {
-      Instruments::DirectMapped(names) => names.get(index.0 as usize).cloned(),
+      Instruments::DirectMapped(instruments) => instruments
+        .get(index.0 as usize)
+        .map(|instrument| instrument.name.clone()),
     }
   }
 
   pub fn max_index(&self) -> Option<InstrumentIndex> {
     match self {
-      Instruments::DirectMapped(names) => {
-        if names.is_empty() {
+      Instruments::DirectMapped(instruments) => {
+        if instruments.is_empty() {
           None
         } else {
           Some(InstrumentIndex(
-            (names.len() - 1).min(u8::MAX as usize) as u8
+            (instruments.len() - 1).min(u8::MAX as usize) as u8,
           ))
         }
       }
     }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn direct_mapped_instruments_return_metadata_names() {
+    let instruments = Instruments::DirectMapped(vec![
+      InstrumentMetadata {
+        name: InstrumentName("Snare".to_owned()),
+        velocity_boundaries: vec![],
+      },
+      InstrumentMetadata {
+        name: InstrumentName("Kick".to_owned()),
+        velocity_boundaries: vec![],
+      },
+    ]);
+
+    assert_eq!(
+      instruments.get_name(InstrumentIndex(0)),
+      Some(InstrumentName("Snare".to_owned()))
+    );
+    assert_eq!(
+      instruments.get_name(InstrumentIndex(1)),
+      Some(InstrumentName("Kick".to_owned()))
+    );
+    assert_eq!(instruments.get_name(InstrumentIndex(2)), None);
   }
 }

@@ -571,7 +571,7 @@ mod tests {
   use std::num::{NonZero, NonZeroU8};
 
   use super::*;
-  use crate::state::instruments::{InstrumentIndex, InstrumentName};
+  use crate::state::instruments::{InstrumentIndex, InstrumentMetadata, InstrumentName};
   use crate::state::pattern::{Octave, Semitone, Track};
 
   #[test]
@@ -1045,7 +1045,10 @@ mod tests {
     let mut state = test_state();
     state.instruments = Instruments::DirectMapped(
       (0..=10)
-        .map(|index| InstrumentName(index.to_string()))
+        .map(|index| InstrumentMetadata {
+          name: InstrumentName(index.to_string()),
+          velocity_boundaries: vec![],
+        })
         .collect(),
     );
 
@@ -1093,7 +1096,10 @@ mod tests {
     let mut state = test_state();
     state.instruments = Instruments::DirectMapped(
       (0..=10)
-        .map(|index| InstrumentName(index.to_string()))
+        .map(|index| InstrumentMetadata {
+          name: InstrumentName(index.to_string()),
+          velocity_boundaries: vec![],
+        })
         .collect(),
     );
 

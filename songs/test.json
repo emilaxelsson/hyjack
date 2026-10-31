@@ -262,11 +262,11 @@
   },
   "instruments": {
     "DirectMapped": [
-      "Hihat",
-      "Ride",
-      "Kick",
-      "Snare",
-      "Crash"
+      {"name": "Hihat", "velocity_boundaries": []},
+      {"name": "Ride", "velocity_boundaries": []},
+      {"name": "Kick", "velocity_boundaries": []},
+      {"name": "Snare", "velocity_boundaries": []},
+      {"name": "Crash", "velocity_boundaries": []}
     ]
   },
   "focus": {
