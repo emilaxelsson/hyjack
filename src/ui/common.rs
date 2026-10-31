@@ -11,7 +11,7 @@ pub enum ComponentAction {
   Close,
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum UIMode {
   EditPattern,
   EditPatternElement,

@@ -25,7 +25,7 @@ impl Default for EditorSettings {
   }
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum EditorSettingFocus {
   Octave,
   Velocity,

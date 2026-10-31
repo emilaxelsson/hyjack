@@ -496,7 +496,7 @@ mod tests {
       &mut pattern_scroll_state,
       &Player::default(),
       &mut SilentMidiSink,
-      KeyEvent::from(KeyCode::Insert),
+      KeyEvent::new(KeyCode::Insert, KeyModifiers::CONTROL),
     )
     .unwrap();
 
@@ -574,7 +574,7 @@ mod tests {
       KeyEvent::from(KeyCode::F(2)),
       KeyEvent::from(KeyCode::Char('d')),
       KeyEvent::new(KeyCode::Char('d'), KeyModifiers::CONTROL),
-      KeyEvent::from(KeyCode::Insert),
+      KeyEvent::new(KeyCode::Insert, KeyModifiers::CONTROL),
       KeyEvent::from(KeyCode::Delete),
       KeyEvent::from(KeyCode::F(4)),
       KeyEvent::from(KeyCode::Enter),
@@ -696,7 +696,7 @@ mod tests {
       midi.0,
       vec![
         vec![MIDI_PROGRAM_CHANGE, note.instrument.0],
-        vec![MIDI_NOTE_ON, 48, note.velocity.0],
+        vec![MIDI_NOTE_ON, 48, note.midi_velocity()],
       ]
     );
     let inserted_note = state
@@ -759,7 +759,7 @@ mod tests {
     );
 
     assert!(result.handled);
-    assert!(result.new_mode.is_none());
+    assert_eq!(result.new_mode, Some(UIMode::EditPattern));
     assert_eq!(state.editor_settings.octave, Octave(5));
     assert_eq!(state.editor_settings.velocity, Velocity(81));
     assert_eq!(state.editor_settings.instrument, InstrumentIndex(2));
@@ -777,7 +777,7 @@ mod tests {
     );
 
     assert!(result.handled);
-    assert!(result.new_mode.is_none());
+    assert_eq!(result.new_mode, Some(UIMode::EditPattern));
     assert_eq!(state.editor_settings.octave, initial_settings.octave);
     assert_eq!(state.editor_settings.velocity, initial_settings.velocity);
     assert_eq!(
