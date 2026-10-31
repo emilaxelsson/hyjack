@@ -409,7 +409,7 @@ mod tests {
   }
 
   fn test_state() -> AppState {
-    serde_json::from_str(include_str!("../songs/test.json")).unwrap()
+    serde_json::from_str(include_str!("../examples/test.json")).unwrap()
   }
 
   #[test]

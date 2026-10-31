@@ -352,7 +352,7 @@ mod tests {
 
   #[test]
   fn starts_with_program_changes_and_notes_in_track_order() {
-    let state: AppState = serde_json::from_str(include_str!("../songs/test.json")).unwrap();
+    let state: AppState = serde_json::from_str(include_str!("../examples/test.json")).unwrap();
     let mut player_state = PlayerState {
       sequence_index: 1,
       ..Default::default()
@@ -370,7 +370,7 @@ mod tests {
   #[test]
   fn plays_missing_notes_in_declared_rows_as_empty() {
     let mut serialized_state: serde_json::Value =
-      serde_json::from_str(include_str!("../songs/test.json")).unwrap();
+      serde_json::from_str(include_str!("../examples/test.json")).unwrap();
     serialized_state["patterns"][0]["tracks"][0]["notes"] = serde_json::json!([null]);
     let state: AppState = serde_json::from_value(serialized_state).unwrap();
     let mut player_state = PlayerState {
@@ -386,7 +386,7 @@ mod tests {
 
   #[test]
   fn fails_to_start_when_a_song_pattern_is_missing() {
-    let mut state: AppState = serde_json::from_str(include_str!("../songs/test.json")).unwrap();
+    let mut state: AppState = serde_json::from_str(include_str!("../examples/test.json")).unwrap();
     state.sequence.titles[1] = "Missing pattern".to_owned();
     let mut player_state = PlayerState {
       sequence_index: 1,
@@ -403,7 +403,7 @@ mod tests {
 
   #[test]
   fn player_start_and_stop_manage_the_active_playback() {
-    let state: AppState = serde_json::from_str(include_str!("../songs/test.json")).unwrap();
+    let state: AppState = serde_json::from_str(include_str!("../examples/test.json")).unwrap();
     let mut midi = RecordingMidiSink(Vec::new());
     let mut player = Player::default();
     player.state_mut().sequence_index = 1;
@@ -467,7 +467,7 @@ mod tests {
 
   #[test]
   fn linearizes_simultaneous_notes_with_program_changes() {
-    let mut state: AppState = serde_json::from_str(include_str!("../songs/test.json")).unwrap();
+    let mut state: AppState = serde_json::from_str(include_str!("../examples/test.json")).unwrap();
     let mut player_state = PlayerState {
       sequence_index: 1,
       ..Default::default()
@@ -511,7 +511,7 @@ mod tests {
 
   #[test]
   fn derives_row_time_and_schedule_from_left_to_right_tempo_effects() {
-    let mut state: AppState = serde_json::from_str(include_str!("../songs/test.json")).unwrap();
+    let mut state: AppState = serde_json::from_str(include_str!("../examples/test.json")).unwrap();
     let pattern = state
       .patterns
       .iter_mut()
@@ -553,7 +553,7 @@ mod tests {
 
   #[test]
   fn loops_after_the_last_song_pattern() {
-    let mut state: AppState = serde_json::from_str(include_str!("../songs/test.json")).unwrap();
+    let mut state: AppState = serde_json::from_str(include_str!("../examples/test.json")).unwrap();
     state.sequence.end_of_song = 0;
     let mut player_state = PlayerState {
       row_index: 7,
