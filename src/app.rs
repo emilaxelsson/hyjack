@@ -507,15 +507,11 @@ mod tests {
   }
 
   #[test]
-  fn minimal_song_navigation_smoke_test() {
+  fn pattern_panel_smoke_test() {
     let mut state = minimal_song();
     let mut pattern_scroll_state = ScrollViewState::default();
     let player = Player::default();
     let mut midi = SilentMidiSink;
-    let viewports = Viewports {
-      sequence_height: 1,
-      pattern_size: Size::new(1, 1),
-    };
 
     for key in [
       KeyEvent::from(KeyCode::Up),
@@ -536,10 +532,25 @@ mod tests {
       KeyEvent::new(KeyCode::End, KeyModifiers::CONTROL),
       KeyEvent::from(KeyCode::F(2)),
       KeyEvent::from(KeyCode::F(3)),
+      KeyEvent::new(KeyCode::Insert, KeyModifiers::CONTROL),
+      KeyEvent::from(KeyCode::Delete),
+      KeyEvent::from(KeyCode::Enter),
       KeyEvent::from(KeyCode::Char('z')),
       KeyEvent::from(KeyCode::Char('x')),
       KeyEvent::from(KeyCode::Char('c')),
       KeyEvent::from(KeyCode::Char('v')),
+      KeyEvent::from(KeyCode::Char('a')),
+      KeyEvent::from(KeyCode::Char('w')),
+      KeyEvent::from(KeyCode::Char('s')),
+      KeyEvent::from(KeyCode::Char('e')),
+      KeyEvent::from(KeyCode::Char('d')),
+      KeyEvent::from(KeyCode::Char('f')),
+      KeyEvent::from(KeyCode::Char('t')),
+      KeyEvent::from(KeyCode::Char('g')),
+      KeyEvent::from(KeyCode::Char('y')),
+      KeyEvent::from(KeyCode::Char('h')),
+      KeyEvent::from(KeyCode::Char('u')),
+      KeyEvent::from(KeyCode::Char('j')),
     ] {
       let result = handle_edit_pattern_event(
         &mut state,
@@ -551,6 +562,53 @@ mod tests {
       .unwrap();
       assert!(result.handled, "pattern key {key:?} was not handled");
     }
+
+    for column in [TrackColumn::Instrument, TrackColumn::Velocity] {
+      state.focus.track_column = column;
+      for digit in '0'..='9' {
+        let result = handle_edit_pattern_event(
+          &mut state,
+          &mut pattern_scroll_state,
+          &player,
+          &mut midi,
+          KeyEvent::from(KeyCode::Char(digit)),
+        )
+        .unwrap();
+        assert!(result.handled, "{column:?} digit {digit:?} was not handled");
+      }
+    }
+  }
+
+  #[test]
+  fn pattern_element_smoke_test() {
+    let mut state = minimal_song();
+
+    for key in [
+      KeyEvent::from(KeyCode::Up),
+      KeyEvent::from(KeyCode::Down),
+      KeyEvent::from(KeyCode::PageUp),
+      KeyEvent::from(KeyCode::PageDown),
+      KeyEvent::from(KeyCode::Home),
+      KeyEvent::from(KeyCode::End),
+      KeyEvent::new(KeyCode::Enter, KeyModifiers::CONTROL),
+      KeyEvent::from(KeyCode::Enter),
+      KeyEvent::from(KeyCode::Esc),
+    ] {
+      let result = handle_edit_pattern_element_event(&mut state, key);
+      assert!(
+        result.handled,
+        "pattern element key {key:?} was not handled"
+      );
+    }
+  }
+
+  #[test]
+  fn sequence_panel_smoke_test() {
+    let mut state = minimal_song();
+    let viewports = Viewports {
+      sequence_height: 1,
+      pattern_size: Size::new(1, 1),
+    };
 
     for key in [
       KeyEvent::from(KeyCode::Up),
@@ -575,7 +633,31 @@ mod tests {
   }
 
   #[test]
-  fn minimal_song_rendering_smoke_test() {
+  fn editor_settings_smoke_test() {
+    let mut state = minimal_song();
+    for key in [
+      KeyEvent::from(KeyCode::Up),
+      KeyEvent::from(KeyCode::Down),
+      KeyEvent::from(KeyCode::PageUp),
+      KeyEvent::from(KeyCode::PageDown),
+      KeyEvent::from(KeyCode::Left),
+      KeyEvent::from(KeyCode::Right),
+      KeyEvent::from(KeyCode::Home),
+      KeyEvent::from(KeyCode::End),
+      KeyEvent::from(KeyCode::Char('z')),
+      KeyEvent::from(KeyCode::Char('x')),
+      KeyEvent::from(KeyCode::Char('c')),
+      KeyEvent::from(KeyCode::Char('v')),
+      KeyEvent::from(KeyCode::Enter),
+      KeyEvent::from(KeyCode::Esc),
+    ] {
+      let result = handle_edit_settings_event(&mut state, key, EditorSettingFocus::Octave);
+      assert!(result.handled, "editor setting key {key:?} was not handled");
+    }
+  }
+
+  #[test]
+  fn rendering_smoke_test() {
     let state = minimal_song();
     let mut sequence_scroll_state = ScrollViewState::default();
     let mut pattern_scroll_state = ScrollViewState::default();
