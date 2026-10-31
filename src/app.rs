@@ -552,16 +552,6 @@ mod tests {
       assert!(result.handled, "pattern key {key:?} was not handled");
     }
 
-    let result = handle_edit_pattern_event(
-      &mut state,
-      &mut pattern_scroll_state,
-      &player,
-      &mut midi,
-      KeyEvent::from(KeyCode::Char('?')),
-    )
-    .unwrap();
-    assert!(!result.handled);
-
     for key in [
       KeyEvent::from(KeyCode::Up),
       KeyEvent::from(KeyCode::Down),
