@@ -185,7 +185,7 @@ fn handle_edit_sequence_event(
       state.duplicate_focused_pattern();
       viewport_sync = ViewportSync::Sequence;
     }
-    KeyCode::Insert => {
+    KeyCode::Insert if key.modifiers == KeyModifiers::CONTROL => {
       handled = true;
       state.insert_new_pattern();
       viewport_sync = ViewportSync::Sequence;
@@ -319,7 +319,7 @@ fn handle_edit_pattern_event(
       new_mode = Some(UIMode::EditSequence);
       handled = true;
     }
-    KeyCode::Insert => {
+    KeyCode::Insert if key.modifiers == KeyModifiers::CONTROL => {
       state.insert_new_pattern();
       viewport_sync = ViewportSync::PatternAndSequence;
       handled = true;

@@ -116,7 +116,7 @@ Navigation:
   * `Ctrl+Home`/`Ctrl+End` – Navigate to the first row of the song/last row of the song or pool
   * `F2` – Rename pattern
   * `F3` – Switch to sequence panel
-  * `Ins` – Insert a new pattern using the song's pattern defaults
+  * `Ctrl+Ins` – Insert a new pattern using the song's pattern defaults
   * `z`/`x`/`c`/`v` – Switch focus to editor's octave/velocity/step/instrument setting
 
 ### Sequence panel
@@ -127,7 +127,7 @@ Navigation:
   * `Ctrl+Up`/`Ctrl+Down` – Move current title up/down in the sequence list
   * `D` – Duplicate current title in the sequence list
   * `Ctrl+D` – Duplicate pattern
-  * `Ins` – Insert a new pattern using the song's pattern defaults
+  * `Ctrl+Ins` – Insert a new pattern using the song's pattern defaults
   * `Delete` – Remove current title (moves to pool if it is the only reference)
   * `F2` – Rename pattern
   * `F4`/`Enter` – Switch to pattern panel
