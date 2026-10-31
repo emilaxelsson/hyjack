@@ -205,7 +205,7 @@ impl Playback {
         self.last_program = Some(program);
       }
 
-      let pitch = crate::state::pattern::midi_pitch_from_octave(note.octave, note.semitone);
+      let pitch = midi_pitch_from_octave(note.octave, note.semitone);
       midi.send(&[MIDI_NOTE_ON | MIDI_CHANNEL, pitch, note.midi_velocity()])?;
       self.active_notes.push(pitch);
     }
