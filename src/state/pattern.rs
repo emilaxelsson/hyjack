@@ -24,6 +24,10 @@ impl Octave {
 impl Velocity {
   const LARGE_STEP: u8 = 10;
   pub const MAX: u8 = 99;
+
+  pub fn midi_velocity(self) -> u8 {
+    (self.0 as u16 * 127 / Self::MAX as u16).min(127) as u8
+  }
 }
 
 impl Adjustable for Octave {
@@ -74,7 +78,7 @@ impl Note {
   pub const MAX_SEMITONE: u8 = 11;
 
   pub fn midi_velocity(&self) -> u8 {
-    (self.velocity.0 as u16 * 127 / Velocity::MAX as u16).min(127) as u8
+    self.velocity.midi_velocity()
   }
 }
 
