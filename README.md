@@ -47,7 +47,7 @@ Start Hydrogen and load the file [GMRockKit_template.h2song](./examples/GMRockKi
 Next, start Hyjack with the file [were_not_gonna_take_it.json](./examples/were_not_gonna_take_it.json):
 
 ```bash
-hyjack ./examples/were_not_gonna_take_it.json
+cargo run --bin hyjack examples/were_not_gonna_take_it.json
 ```
 
 You should now see a prompt that looks something like this:
@@ -69,7 +69,7 @@ Alternatively, you can start with an empty song and create your own patterns. To
 
 ```bash
 cp ./examples/GMRockKit_template.json my_song.json
-hyjack my_song.json
+cargo run --bin hyjack my_song.json
 ```
 
 
