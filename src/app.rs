@@ -370,7 +370,10 @@ fn handle_edit_pattern_event(
     }
     KeyCode::Char(ch) if can_type_note(key.modifiers) => {
       if let Some(semitone) = note_key_to_semitone(ch) {
-        let note = state.editor_settings.make_note(semitone);
+        let mut note = state.editor_settings.make_note(semitone);
+        note.velocity = state
+          .instruments
+          .snap_velocity(note.instrument, note.velocity);
         player.emit_note_on(&note, midi)?;
         state.set_focused_note(note);
         state.step_rows();
@@ -779,6 +782,91 @@ mod tests {
     assert_eq!(inserted_note.semitone, note.semitone);
     assert_eq!(inserted_note.instrument, note.instrument);
     assert_eq!(inserted_note.velocity, note.velocity);
+  }
+
+  #[test]
+  fn inserting_a_note_snaps_velocity_before_preview_and_storage() {
+    use crate::state::instruments::{InstrumentMetadata, InstrumentName, Instruments};
+
+    let mut state = test_state();
+    state.instruments = Instruments::DirectMapped(vec![InstrumentMetadata {
+      name: InstrumentName("Layered".to_owned()),
+      velocity_boundaries: vec![0.2, 0.4, 0.8],
+    }]);
+    state.editor_settings.velocity = Velocity(70);
+    let mut midi = RecordingMidiSink(Vec::new());
+    let row_index = state.focus.row_index;
+    let track_index = state.focus.track_index;
+
+    handle_edit_pattern_event(
+      &mut state,
+      &mut ScrollViewState::default(),
+      &Player::default(),
+      &mut midi,
+      KeyEvent::from(KeyCode::Char('a')),
+    )
+    .unwrap();
+
+    let note = state
+      .get_current_pattern()
+      .get_note(row_index, track_index)
+      .unwrap();
+    assert_eq!(note.velocity, Velocity(60));
+    assert_eq!(state.editor_settings.velocity, Velocity(70));
+    assert_eq!(
+      midi.0,
+      vec![
+        vec![MIDI_PROGRAM_CHANGE, note.instrument.0],
+        vec![MIDI_NOTE_ON, 48, note.midi_velocity()],
+      ]
+    );
+  }
+
+  #[test]
+  fn pattern_element_velocity_keys_move_between_layers() {
+    use crate::state::instruments::{InstrumentMetadata, InstrumentName, Instruments};
+
+    let mut state = minimal_song();
+    state.instruments = Instruments::DirectMapped(vec![InstrumentMetadata {
+      name: InstrumentName("Layered".to_owned()),
+      velocity_boundaries: vec![0.2, 0.4, 0.8],
+    }]);
+    state.editor_settings.velocity = Velocity(80);
+    state.set_focused_note(state.editor_settings.make_note(Semitone(0)));
+    state.focus.track_column = TrackColumn::Velocity;
+
+    for (key, expected) in [
+      (KeyCode::Down, 60),
+      (KeyCode::PageDown, 30),
+      (KeyCode::Up, 60),
+      (KeyCode::PageUp, 90),
+    ] {
+      handle_edit_pattern_element_event(&mut state, KeyEvent::from(key));
+      assert_eq!(
+        state.get_current_pattern().get_note(0, 0).unwrap().velocity,
+        Velocity(expected)
+      );
+    }
+
+    for digit in ['5', '5'] {
+      handle_edit_pattern_event(
+        &mut state,
+        &mut ScrollViewState::default(),
+        &Player::default(),
+        &mut SilentMidiSink,
+        KeyEvent::from(KeyCode::Char(digit)),
+      )
+      .unwrap();
+    }
+    assert_eq!(
+      state.get_current_pattern().get_note(0, 0).unwrap().velocity,
+      Velocity(55)
+    );
+    handle_edit_pattern_element_event(&mut state, KeyEvent::from(KeyCode::Up));
+    assert_eq!(
+      state.get_current_pattern().get_note(0, 0).unwrap().velocity,
+      Velocity(60)
+    );
   }
 
   #[test]

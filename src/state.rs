@@ -426,7 +426,9 @@ impl AppState {
         note.instrument.adjust(max_instrument, increase, small_step);
       }
       TrackColumn::Velocity => {
-        note.velocity.adjust((), increase, small_step);
+        self
+          .instruments
+          .adjust_velocity(note.instrument, &mut note.velocity, increase, small_step);
       }
       TrackColumn::Effect => {}
     }
@@ -1089,6 +1091,49 @@ mod tests {
     assert_eq!(focused_velocity(&state), Velocity(60));
     state.adjust_focused_note(false, true);
     assert_eq!(focused_velocity(&state), Velocity(59));
+  }
+
+  #[test]
+  fn layered_velocity_adjustments_use_the_notes_instrument_and_preserve_digit_entry() {
+    let mut state = test_state();
+    state.instruments = Instruments::DirectMapped(vec![
+      InstrumentMetadata {
+        name: InstrumentName("Continuous".to_owned()),
+        velocity_boundaries: vec![],
+      },
+      InstrumentMetadata {
+        name: InstrumentName("Layered".to_owned()),
+        velocity_boundaries: vec![0.2, 0.4, 0.8],
+      },
+    ]);
+    state.focus.track_column = TrackColumn::Velocity;
+    state.set_focused_note(Note {
+      octave: Octave(3),
+      semitone: Semitone(0),
+      instrument: InstrumentIndex(1),
+      velocity: Velocity(80),
+      effect: None,
+    });
+
+    state.adjust_focused_note(false, true);
+    assert_eq!(focused_velocity(&state), Velocity(60));
+    state.adjust_focused_note(false, false);
+    assert_eq!(focused_velocity(&state), Velocity(30));
+    state.adjust_focused_note(true, false);
+    assert_eq!(focused_velocity(&state), Velocity(60));
+
+    let now = Instant::now();
+    state.set_focused_note_velocity_digit(7, now);
+    state.set_focused_note_velocity_digit(0, now);
+    assert_eq!(focused_velocity(&state), Velocity(70));
+    state.adjust_focused_note(true, true);
+    assert_eq!(focused_velocity(&state), Velocity(90));
+
+    state.set_focused_note_velocity_digit(5, now + Duration::from_secs(2));
+    state.set_focused_note_velocity_digit(5, now + Duration::from_secs(2));
+    assert_eq!(focused_velocity(&state), Velocity(55));
+    state.adjust_focused_note(true, true);
+    assert_eq!(focused_velocity(&state), Velocity(60));
   }
 
   #[test]
