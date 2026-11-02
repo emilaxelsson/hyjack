@@ -63,6 +63,35 @@ fn enter_digit(entry: &mut Option<DigitEntry>, digit: u8, now: Instant) -> u8 {
 }
 
 impl AppState {
+  /// Create an empty, editable song with the supplied metadata and instruments.
+  pub fn new_stub(song_title: String, initial_bpm: NonZeroU8, instruments: Instruments) -> Self {
+    let pattern_defaults = PatternDefaults::default();
+    let pattern_title = "Pattern 1".to_owned();
+
+    Self {
+      hyjack_version: env!("CARGO_PKG_VERSION").to_owned(),
+      song_title,
+      initial_bpm,
+      track_titles: NonEmpty::new("Track 1".to_owned()),
+      patterns: NonEmpty::new(pattern_defaults.make_pattern(pattern_title.clone())),
+      pattern_defaults,
+      sequence: Sequence {
+        titles: NonEmpty::new(pattern_title),
+        focus_index: 0,
+        end_of_song: 0,
+      },
+      instruments,
+      focus: Focus {
+        row_index: 0,
+        track_index: 0,
+        track_column: TrackColumn::Note,
+      },
+      editor_settings: EditorSettings::default(),
+      instrument_digit_entry: None,
+      velocity_digit_entry: None,
+    }
+  }
+
   pub fn load_from_file(path: &Path) -> Result<Self> {
     let json = std::fs::read_to_string(path)?;
     let mut state: Self = serde_json::from_str(&json)?;

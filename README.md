@@ -65,11 +65,44 @@ Select the Hydrogen MIDI input option.
 
 The Hyjack UI starts up, and you can press `Space` to start playing.
 
-Alternatively, you can start with an empty song and create your own patterns. To do this, copy [GMRockKit_template.json](./examples/GMRockKit_template.json) (an empty song configured for the GMRockKit drum kit) and start Hyjack with the copied file:
+
+
+## Creating a new song
+
+An easy way to start a new song with GMRockKit is to copy the template file and start Hyjack with it:
 
 ```bash
 cp ./examples/GMRockKit_template.json my_song.json
 cargo run --bin hyjack my_song.json
+```
+
+[GMRockKit_template.json](./examples/GMRockKit_template.json) is an empty song configured for the GMRockKit drum kit.
+
+You can also generate a new empty Hyjack song from any Hydrogen song:
+
+```bash
+cargo run --bin hydrogen-to-hyjack examples/GMRockKit_template.h2song > my_song.json
+cargo run --bin hyjack my_song.json
+```
+
+This creates an empty Hyjack song file with song name, BPM and instruments from the Hydrogen song. The generated file has a single track. You may want add tracks by changing
+
+```json
+  "track_titles": [
+    "Track 1"
+  ],
+```
+
+to something like this:
+
+```json
+  "track_titles": [
+    "Hat/ride",
+    "Kick",
+    "Snare",
+    "Toms",
+    "Cymbals"
+  ],
 ```
 
 
