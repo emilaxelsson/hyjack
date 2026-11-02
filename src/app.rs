@@ -329,7 +329,11 @@ fn handle_edit_pattern_event(
       handled = true;
     }
     KeyCode::Enter => {
-      new_mode = Some(UIMode::EditPatternElement);
+      if key.modifiers == KeyModifiers::CONTROL {
+        state.copy_focused_note_attributes_to_editor_settings();
+      } else {
+        new_mode = Some(UIMode::EditPatternElement);
+      }
       handled = true;
     }
     KeyCode::Char('z') => {
