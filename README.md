@@ -85,7 +85,7 @@ cargo run --bin hydrogen-to-hyjack examples/GMRockKit_template.h2song > my_song.
 cargo run --bin hyjack my_song.json
 ```
 
-This creates an empty Hyjack song file with song name, BPM and instruments from the Hydrogen song. The generated file has a single track. You may want add tracks by changing
+This creates an empty Hyjack song file with song name, BPM and instruments from the Hydrogen song (see [Layered velocity boundaries](#layered-velocity)). The generated file has a single track. You may want add tracks by changing
 
 ```json
   "track_titles": [
@@ -175,3 +175,61 @@ Navigation:
   * `Enter`/`Esc` – Exit editor settings
 
 ### Player
+
+
+
+## Layered velocity
+
+Hyjack represents note velocity using a number from 0 to 99. This number is converted to the range 0-127 in the MIDI back end.
+
+Hydrogen instruments use velocity layers to allow different sets of samples to be triggered depending on the velocity of the note. Additionally, each instrument has an "Apply velocity" toggle that determines whether the sample should be scaled down according to the note's velocity.
+
+When "Apply velocity" is enabled, the instrument can be seen as supporting the full range of note velocities. Then it makes sense to use the full range 0-99 in Hyjack as well.
+
+### Layer blindness
+
+However, when "Apply velocity" is disabled, the velocity range is effectively limited to the number of layers. Let's say we have an instrument with 4 layers (Hydrogen represents velocities as the range 0.0-1.0):
+
+  * Layer 1: 0.0 - 0.2
+  * Layer 2: 0.2 - 0.4
+  * Layer 3: 0.4 - 0.8
+  * Layer 4: 0.8 - 1.0
+
+It is possible to still use the 0-99 range in Hyjack and let Hydrogen do the mapping. However, there are two problems with this approach:
+
+  1. It is not obvious to the Hyjack user where the layer boundaries are. For example, the user may find that a note at velocity 70 is too loud and therefore change it to 50 to get a softer sound. However, this won't make any difference, because layer 3 stretches all the way from (roughly) 40 to 80.
+  2. Velocities near the boundaries may suffer from rounding errors due to the conversion from range 0-99 (Hyjack), to 0-127 (MIDI), to 0.0-1.0 (Hydrogen). This could lead to difference in sound between live playback and offline conversion to Hydrogen (the latter is not yet implemented).
+
+### Velocity boundaries in Hyjack
+
+To solve both problems, Hyjack can be configured to be aware of instrument layers. This is done using the `velocity_boundaries` field of each instrument. It can look as follows in Hyjack's JSON format:
+
+```json
+{
+  "instruments": {
+    "DirectMapped": [
+      ...,
+      {
+        "name": "Snare",
+        "velocity_boundaries": [0.2, 0.4, 0.8]
+      },
+      ...
+    ]
+  },
+  ...
+}
+```
+
+This says that the "Snare" instrument has velocity boundaries at 0.2, 0.4, and 0.8, which corresponds to the four layers in the earlier example.
+
+To disable layer awareness for an instrument, simply use `velocity_boundaries: []`.
+
+The `hydrogen-to-hyjack` utility (see [Creating a new song](#creating-a-new-song)) can automatically populate the `velocity_boundaries` from the instruments in a Hydrogen song.
+
+### Snapped editing
+
+When velocity boundaries are defined for an instrument, Hyjack tries to help you to jump between layers and stay away from the boundaries (solving both problems mentioned above). In particular:
+
+  * When inserting a new note, the editor's velocity will snap to the nearest layer midpoint. For example, if the editor is set to velocity 70, the above Snare instrument will snap it to the midpoint of layer 3, which is 60.
+  * When adjusting the velocity of an existing note using up/down or page up/page down, the velocity will snap to the nearest layer midpoint as well.
+  * However, exact velocities can still be set manually using digits on the keyboard.
