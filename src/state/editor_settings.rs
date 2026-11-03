@@ -18,8 +18,8 @@ impl Default for EditorSettings {
   fn default() -> Self {
     Self {
       octave: Octave(3),
-      velocity: Velocity(50),
-      step: 4,
+      velocity: Velocity(80),
+      step: 2,
       instrument: InstrumentIndex(0),
     }
   }

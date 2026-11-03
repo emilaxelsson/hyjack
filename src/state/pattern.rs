@@ -172,6 +172,16 @@ pub struct Focus {
   pub track_column: TrackColumn,
 }
 
+impl Default for Focus {
+  fn default() -> Self {
+    Self {
+      row_index: 0,
+      track_index: 0,
+      track_column: TrackColumn::Note,
+    }
+  }
+}
+
 impl Pattern {
   pub fn get_note(&self, row_index: usize, track_index: usize) -> Option<Note> {
     if row_index >= self.num_rows.get() || track_index >= self.tracks.len() {

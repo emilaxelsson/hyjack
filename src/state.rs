@@ -81,11 +81,7 @@ impl AppState {
         end_of_song: 0,
       },
       instruments,
-      focus: Focus {
-        row_index: 0,
-        track_index: 0,
-        track_column: TrackColumn::Note,
-      },
+      focus: Focus::default(),
       editor_settings: EditorSettings::default(),
       instrument_digit_entry: None,
       velocity_digit_entry: None,
