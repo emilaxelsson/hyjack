@@ -309,7 +309,7 @@ impl Focus {
 }
 
 pub fn midi_pitch_from_octave(octave: Octave, semitone: Semitone) -> u8 {
-  octave.0.saturating_add(1).saturating_mul(12) + semitone.0
+  octave.0.saturating_mul(12) + semitone.0
 }
 
 #[cfg(test)]
@@ -612,9 +612,9 @@ mod focus_tests {
 
   #[test]
   fn midi_pitch_from_octave_matches_tracker_conversion() {
-    assert_eq!(midi_pitch_from_octave(Octave(3), Semitone(0)), 48);
-    assert_eq!(midi_pitch_from_octave(Octave(3), Semitone(11)), 59);
-    assert_eq!(midi_pitch_from_octave(Octave(8), Semitone(11)), 119);
+    assert_eq!(midi_pitch_from_octave(Octave(3), Semitone(0)), 36);
+    assert_eq!(midi_pitch_from_octave(Octave(3), Semitone(11)), 47);
+    assert_eq!(midi_pitch_from_octave(Octave(8), Semitone(11)), 107);
   }
 
   #[test]

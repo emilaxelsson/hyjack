@@ -775,7 +775,7 @@ mod tests {
       midi.0,
       vec![
         vec![MIDI_PROGRAM_CHANGE, note.instrument.0],
-        vec![MIDI_NOTE_ON, 48, note.midi_velocity()],
+        vec![MIDI_NOTE_ON, 36, note.midi_velocity()],
       ]
     );
     let inserted_note = state
@@ -821,7 +821,7 @@ mod tests {
       midi.0,
       vec![
         vec![MIDI_PROGRAM_CHANGE, note.instrument.0],
-        vec![MIDI_NOTE_ON, 48, note.midi_velocity()],
+        vec![MIDI_NOTE_ON, 36, note.midi_velocity()],
       ]
     );
   }

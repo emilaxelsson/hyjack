@@ -461,7 +461,7 @@ mod tests {
 
     assert_eq!(
       midi.0,
-      vec![vec![MIDI_PROGRAM_CHANGE, 2], vec![MIDI_NOTE_ON, 52, 102]]
+      vec![vec![MIDI_PROGRAM_CHANGE, 2], vec![MIDI_NOTE_ON, 40, 102]]
     );
   }
 
@@ -494,7 +494,7 @@ mod tests {
         vec![MIDI_PROGRAM_CHANGE, 2],
         vec![MIDI_NOTE_ON, 36, 25],
         vec![MIDI_PROGRAM_CHANGE, 4],
-        vec![MIDI_NOTE_ON, 52, 102]
+        vec![MIDI_NOTE_ON, 40, 102]
       ]
     );
 
@@ -506,7 +506,7 @@ mod tests {
         now + Duration::from_millis(125),
       )
       .unwrap();
-    assert_eq!(midi.0[4..], [vec![0x80, 36, 0], vec![0x80, 52, 0]]);
+    assert_eq!(midi.0[4..], [vec![0x80, 36, 0], vec![0x80, 40, 0]]);
   }
 
   #[test]

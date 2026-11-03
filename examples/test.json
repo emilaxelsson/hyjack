@@ -38,7 +38,7 @@
         {
           "notes": [
             {
-              "octave": 2,
+              "octave": 3,
               "semitone": 0,
               "instrument": 2,
               "velocity": 20,
@@ -88,7 +88,7 @@
             null,
             null,
             {
-              "octave": 2,
+              "octave": 3,
               "semitone": 0,
               "instrument": 2,
               "velocity": 20,
