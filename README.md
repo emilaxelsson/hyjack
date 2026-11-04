@@ -109,6 +109,8 @@ to something like this:
 
 ## Keyboard controls
 
+Some of the keyboard shortcuts (e.g. `Ctrl+Enter`) only work with the [Kitty keyboard control](https://blessed.readthedocs.io/en/latest/keyboard_kitty.html), which some traditional terminal emulators may not support.
+
 ### Universal
 
   * `Space` – Start/stop playback
