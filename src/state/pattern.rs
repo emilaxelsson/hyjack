@@ -1,6 +1,6 @@
 use std::num::{NonZero, NonZeroU8};
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Serializer};
 
 use crate::state::instruments::InstrumentIndex;
 use crate::utils::{Adjustable, sub_one};
@@ -114,7 +114,20 @@ impl Adjustable for Note {
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Track {
+  #[serde(serialize_with = "serialize_notes")]
   pub notes: Vec<Option<Note>>,
+}
+
+fn serialize_notes<S>(notes: &[Option<Note>], serializer: S) -> Result<S::Ok, S::Error>
+where
+  S: Serializer,
+{
+  let notes = notes
+    .iter()
+    .map(serde_json::value::to_raw_value)
+    .collect::<Result<Vec<_>, _>>()
+    .map_err(serde::ser::Error::custom)?;
+  notes.serialize(serializer)
 }
 
 #[derive(Clone, Serialize, Deserialize)]

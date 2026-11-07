@@ -599,7 +599,49 @@ mod tests {
 
   use super::*;
   use crate::state::instruments::{InstrumentIndex, InstrumentMetadata, InstrumentName};
-  use crate::state::pattern::{Octave, Semitone, Track};
+  use crate::state::pattern::{Effect, Octave, Semitone, Track};
+
+  #[test]
+  fn saving_song_keeps_notes_on_one_line_and_round_trips() {
+    let timestamp = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .unwrap()
+      .as_nanos();
+    let path = std::env::temp_dir().join(format!(
+      "hyjack-save-compact-notes-{}-{timestamp}.json",
+      std::process::id()
+    ));
+    let mut state = test_state();
+    let mut note_with_effect = state.patterns[0].tracks[0].notes[0].clone().unwrap();
+    note_with_effect.effect = Some(Effect::SetTempo(NonZeroU8::new(240).unwrap()));
+    state.patterns[0].num_rows = NonZero::new(3).unwrap();
+    state.patterns[0].tracks[0]
+      .notes
+      .extend([None, Some(note_with_effect)]);
+
+    state.save_to_file(&path).unwrap();
+    let json = std::fs::read_to_string(&path).unwrap();
+    let loaded = AppState::load_from_file(&path).unwrap();
+    std::fs::remove_file(path).unwrap();
+
+    assert!(json.contains(
+      "\"notes\": [\n            {\"octave\":3,\"semitone\":0,\"instrument\":0,\"velocity\":50,\"effect\":null},\n            null,\n            {\"octave\":3,\"semitone\":0,\"instrument\":0,\"velocity\":50,\"effect\":{\"SetTempo\":240}}\n          ]"
+    ));
+    assert!(json.contains("\"pattern_defaults\": {\n"));
+    let expected = serde_json::json!([
+      {"octave": 3, "semitone": 0, "instrument": 0, "velocity": 50, "effect": null},
+      null,
+      {"octave": 3, "semitone": 0, "instrument": 0, "velocity": 50, "effect": {"SetTempo": 240}}
+    ]);
+    assert_eq!(
+      serde_json::to_value(&loaded.patterns[0].tracks[0].notes).unwrap(),
+      expected
+    );
+    assert_eq!(
+      serde_json::to_value(&state).unwrap()["patterns"][0]["tracks"][0]["notes"],
+      expected
+    );
+  }
 
   #[test]
   fn prune_empty_tracks_removes_only_trailing_empty_tracks_from_each_pattern() {
