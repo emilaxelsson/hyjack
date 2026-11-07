@@ -1,3 +1,5 @@
+use std::cmp::Reverse;
+use std::collections::BinaryHeap;
 use std::io::{self, Write};
 use std::num::NonZeroU8;
 use std::time::{Duration, Instant};
@@ -73,8 +75,15 @@ pub fn select_midi_sink() -> Result<Box<dyn MidiSink>> {
 }
 
 pub struct Playback {
+  start_at: Instant,
+  start_time: i128,
   next_row_at: Instant,
   timeline: Timeline,
+  /// Priority queue containing the next occurrence of each timeline note.
+  ///
+  /// `Reverse` puts the earliest event first, including early notes from a
+  /// subsequent loop. After dispatch, the next occurrence is inserted.
+  pending_notes: BinaryHeap<Reverse<ScheduledNote>>,
   last_program: Option<u8>,
 }
 
@@ -93,16 +102,26 @@ struct NoteEvent {
   track_index: usize,
 }
 
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+struct ScheduledNote {
+  time: i128,
+  track_index: usize,
+  /// Identifies the song traversal for this occurrence: zero is the initial
+  /// traversal, and each subsequent loop increments it. Used to schedule the
+  /// next occurrence without duplicating notes across loop boundaries.
+  cycle: u64,
+  sequence_index: usize,
+  row_index: usize,
+  event_index: usize,
+}
+
 /// Cached timing data for every row in each playable sequence entry.
 struct Timeline {
   /// Cached row timing data. The outer index is the sequence index and the inner index is
   /// the row index.
   rows: Vec<Vec<TimelineRow>>,
-  #[allow(
-    dead_code,
-    reason = "Note events will be dispatched in the next implementation step"
-  )]
   notes: Vec<NoteEvent>,
+  duration: Duration,
 }
 
 #[derive(Default)]
@@ -161,17 +180,31 @@ impl Playback {
     normalize_position(song, player);
     let timeline = Timeline::from_song(song)?;
     player.time = timeline.row(player)?.start_time;
+    let start_time = Timeline::duration_nanos(player.time);
     let mut playback = Self {
+      start_at: now,
+      start_time,
       next_row_at: now + timeline.row(player)?.duration,
       timeline,
+      pending_notes: BinaryHeap::new(),
       last_program: None,
     };
-    playback.play_row(song, player, midi)?;
+    for (event_index, event) in playback.timeline.notes.iter().enumerate() {
+      let initial =
+        (event.sequence_index, event.row_index) >= (player.sequence_index, player.row_index);
+      let cycle = if initial { 0 } else { 1 };
+      playback
+        .pending_notes
+        .push(Reverse(playback.schedule_note(event_index, cycle, initial)));
+    }
+    playback.tick(song, player, midi, now)?;
     Ok(playback)
   }
 
   pub fn next_deadline(&self) -> Instant {
-    self.next_row_at
+    self
+      .note_deadline()
+      .map_or(self.next_row_at, |note_at| self.next_row_at.min(note_at))
   }
 
   pub fn tick(
@@ -181,39 +214,81 @@ impl Playback {
     midi: &mut dyn MidiSink,
     now: Instant,
   ) -> Result<()> {
-    while now >= self.next_row_at {
-      advance_position(song, player)?;
-      let row = self.timeline.row(player)?;
-      player.time = row.start_time;
-      self.next_row_at += row.duration;
-      self.play_row(song, player, midi)?;
+    while now >= self.next_deadline() {
+      let note_at = self.note_deadline();
+      // Row boundaries take precedence over notes at the same instant.
+      if note_at.is_none_or(|note_at| self.next_row_at <= note_at) {
+        advance_position(song, player)?;
+        let row = self.timeline.row(player)?;
+        player.time = row.start_time;
+        self.next_row_at += row.duration;
+      } else {
+        let scheduled = &self
+          .pending_notes
+          .peek()
+          .expect("note deadline has an event")
+          .0;
+        let event = &self.timeline.notes[scheduled.event_index];
+        let note = pattern_at(song, event.sequence_index)?
+          .tracks
+          .get(event.track_index)
+          .and_then(|track| track.notes.get(event.row_index))
+          .and_then(Option::as_ref)
+          .ok_or_else(|| anyhow::anyhow!("Scheduled note is missing from the song"))?;
+        let event_index = scheduled.event_index;
+        let next_cycle = scheduled.cycle + 1;
+        self.play_note(note, midi)?;
+        self.pending_notes.pop();
+        self
+          .pending_notes
+          .push(Reverse(self.schedule_note(event_index, next_cycle, false)));
+      }
     }
     Ok(())
   }
 
-  fn play_row(
-    &mut self,
-    song: &AppState,
-    player: &PlayerState,
-    midi: &mut dyn MidiSink,
-  ) -> Result<()> {
-    let notes: Vec<_> = current_pattern(song, player)?
-      .tracks
-      .iter()
-      .filter_map(|track| track.notes.get(player.row_index).and_then(Option::as_ref))
-      .collect();
-
-    for note in notes {
-      let program = note.instrument.0;
-      if self.last_program != Some(program) {
-        midi.send(&[MIDI_PROGRAM_CHANGE | MIDI_CHANNEL, program])?;
-        self.last_program = Some(program);
+  fn schedule_note(&self, event_index: usize, mut cycle: u64, clamp: bool) -> ScheduledNote {
+    let event = &self.timeline.notes[event_index];
+    let loop_duration = Timeline::duration_nanos(self.timeline.duration);
+    let mut time = event.time + i128::from(cycle) * loop_duration;
+    if clamp {
+      time = time.max(self.start_time);
+    } else {
+      while time < self.start_time {
+        cycle += 1;
+        time += loop_duration;
       }
-
-      let pitch = midi_pitch_from_octave(note.octave, note.semitone);
-      midi.send(&[MIDI_NOTE_ON | MIDI_CHANNEL, pitch, note.midi_velocity()])?;
     }
-    Ok(())
+    ScheduledNote {
+      time,
+      track_index: event.track_index,
+      cycle,
+      sequence_index: event.sequence_index,
+      row_index: event.row_index,
+      event_index,
+    }
+  }
+
+  fn note_deadline(&self) -> Option<Instant> {
+    self.pending_notes.peek().map(|scheduled| {
+      let nanos = scheduled.0.time - self.start_time;
+      let seconds = u64::try_from(nanos / 1_000_000_000)
+        .expect("scheduled note deadline must fit in a duration");
+      let subsec_nanos = u32::try_from(nanos % 1_000_000_000)
+        .expect("scheduled note deadline must not precede playback start");
+      self.start_at + Duration::new(seconds, subsec_nanos)
+    })
+  }
+
+  fn play_note(&mut self, note: &Note, midi: &mut dyn MidiSink) -> Result<()> {
+    let program = note.instrument.0;
+    if self.last_program != Some(program) {
+      midi.send(&[MIDI_PROGRAM_CHANGE | MIDI_CHANNEL, program])?;
+      self.last_program = Some(program);
+    }
+
+    let pitch = midi_pitch_from_octave(note.octave, note.semitone);
+    midi.send(&[MIDI_NOTE_ON | MIDI_CHANNEL, pitch, note.midi_velocity()])
   }
 }
 
@@ -305,7 +380,11 @@ impl Timeline {
       )
     });
 
-    Ok(Self { rows, notes })
+    Ok(Self {
+      rows,
+      notes,
+      duration: start_time,
+    })
   }
 
   fn duration_nanos(duration: Duration) -> i128 {
@@ -384,6 +463,317 @@ mod tests {
       velocity: Velocity(50),
       effect,
     }
+  }
+
+  fn pitched_note(semitone: u8, instrument: u8, delay: Option<i8>) -> Note {
+    let mut note = test_note(delay.map(|value| Effect::Delay(Delay::new(value).unwrap())));
+    note.semitone = Semitone(semitone);
+    note.instrument = InstrumentIndex(instrument);
+    note
+  }
+
+  #[test]
+  fn playback_dispatches_notes_at_deadlines_without_advancing_the_row() {
+    let mut state = minimal_song();
+    state.patterns[0].num_rows = std::num::NonZero::new(2).unwrap();
+    state.patterns[0].tracks = vec![
+      Track {
+        notes: vec![
+          Some(pitched_note(0, 1, None)),
+          Some(pitched_note(1, 1, Some(3))),
+        ],
+      },
+      Track {
+        notes: vec![None, Some(pitched_note(2, 2, Some(-9)))],
+      },
+      Track {
+        notes: vec![
+          Some(pitched_note(3, 3, Some(9))),
+          Some(pitched_note(4, 3, Some(0))),
+        ],
+      },
+    ];
+    let now = Instant::now();
+    let mut player = Player::default();
+    let mut midi = RecordingMidiSink(Vec::new());
+    player.start(&state, &mut midi, now).unwrap();
+    assert_eq!(
+      midi.0,
+      vec![vec![MIDI_PROGRAM_CHANGE, 1], vec![MIDI_NOTE_ON, 36, 64]]
+    );
+    assert_eq!(
+      player.next_deadline(),
+      Some(now + Duration::from_micros(12_500))
+    );
+
+    player
+      .tick(&state, &mut midi, now + Duration::from_micros(12_499))
+      .unwrap();
+    assert_eq!(midi.0.len(), 2);
+    player
+      .tick(&state, &mut midi, now + Duration::from_micros(12_500))
+      .unwrap();
+    assert_eq!(player.state().row_index, 0);
+    assert_eq!(player.state().time, Duration::ZERO);
+    assert_eq!(
+      &midi.0[2..],
+      &[vec![MIDI_PROGRAM_CHANGE, 2], vec![MIDI_NOTE_ON, 38, 64]]
+    );
+    assert_eq!(
+      player.next_deadline(),
+      Some(now + Duration::from_micros(112_500))
+    );
+
+    player
+      .tick(&state, &mut midi, now + Duration::from_micros(112_500))
+      .unwrap();
+    assert_eq!(
+      &midi.0[4..],
+      &[vec![MIDI_PROGRAM_CHANGE, 3], vec![MIDI_NOTE_ON, 39, 64]]
+    );
+    assert_eq!(player.state().row_index, 0);
+    assert_eq!(
+      player.next_deadline(),
+      Some(now + Duration::from_millis(125))
+    );
+
+    player
+      .tick(&state, &mut midi, now + Duration::from_millis(125))
+      .unwrap();
+    assert_eq!(player.state().row_index, 1);
+    assert_eq!(player.state().time, Duration::from_millis(125));
+    assert_eq!(&midi.0[6..], &[vec![MIDI_NOTE_ON, 40, 64]]);
+    assert_eq!(
+      player.next_deadline(),
+      Some(now + Duration::from_micros(162_500))
+    );
+
+    player
+      .tick(&state, &mut midi, now + Duration::from_micros(162_500))
+      .unwrap();
+    assert_eq!(
+      &midi.0[7..],
+      &[vec![MIDI_PROGRAM_CHANGE, 1], vec![MIDI_NOTE_ON, 37, 64]]
+    );
+  }
+
+  #[test]
+  fn late_ticks_process_all_events_in_time_and_track_order() {
+    let mut state = minimal_song();
+    state.patterns[0].num_rows = std::num::NonZero::new(2).unwrap();
+    state.patterns[0].tracks = vec![
+      Track {
+        notes: vec![
+          Some(pitched_note(0, 1, Some(3))),
+          Some(pitched_note(1, 1, None)),
+        ],
+      },
+      Track {
+        notes: vec![
+          Some(pitched_note(2, 2, Some(3))),
+          Some(pitched_note(3, 2, None)),
+        ],
+      },
+      Track {
+        notes: vec![Some(pitched_note(4, 2, Some(1)))],
+      },
+    ];
+    let now = Instant::now();
+    let mut player = Player::default();
+    let mut midi = RecordingMidiSink(Vec::new());
+    player.start(&state, &mut midi, now).unwrap();
+    assert!(midi.0.is_empty());
+
+    player
+      .tick(&state, &mut midi, now + Duration::from_millis(130))
+      .unwrap();
+    assert_eq!(player.state().row_index, 1);
+    assert_eq!(player.state().time, Duration::from_millis(125));
+    assert_eq!(
+      midi.0,
+      vec![
+        vec![MIDI_PROGRAM_CHANGE, 2],
+        vec![MIDI_NOTE_ON, 40, 64],
+        vec![MIDI_PROGRAM_CHANGE, 1],
+        vec![MIDI_NOTE_ON, 36, 64],
+        vec![MIDI_PROGRAM_CHANGE, 2],
+        vec![MIDI_NOTE_ON, 38, 64],
+        vec![MIDI_PROGRAM_CHANGE, 1],
+        vec![MIDI_NOTE_ON, 37, 64],
+        vec![MIDI_PROGRAM_CHANGE, 2],
+        vec![MIDI_NOTE_ON, 39, 64],
+      ]
+    );
+    assert_eq!(
+      player.next_deadline(),
+      Some(now + Duration::from_millis(250))
+    );
+  }
+
+  #[test]
+  fn early_first_row_note_repeats_before_one_row_loop_boundaries() {
+    let mut state = minimal_song();
+    state.patterns[0].tracks.push(Track {
+      notes: vec![Some(pitched_note(0, 1, Some(-9)))],
+    });
+    let now = Instant::now();
+    let mut player = Player::default();
+    let mut midi = RecordingMidiSink(Vec::new());
+    player.start(&state, &mut midi, now).unwrap();
+    assert_eq!(midi.0.len(), 2);
+    assert_eq!(
+      player.next_deadline(),
+      Some(now + Duration::from_micros(12_500))
+    );
+    player
+      .tick(&state, &mut midi, now + Duration::from_micros(137_500))
+      .unwrap();
+    assert_eq!(
+      midi.0,
+      vec![
+        vec![MIDI_PROGRAM_CHANGE, 1],
+        vec![MIDI_NOTE_ON, 36, 64],
+        vec![MIDI_NOTE_ON, 36, 64],
+        vec![MIDI_NOTE_ON, 36, 64],
+      ]
+    );
+    assert_eq!(player.state().row_index, 0);
+    assert_eq!(
+      player.next_deadline(),
+      Some(now + Duration::from_millis(250))
+    );
+  }
+
+  #[test]
+  fn starting_mid_song_clamps_future_rows_without_replaying_earlier_rows() {
+    let mut state = minimal_song();
+    state.patterns[0].num_rows = std::num::NonZero::new(3).unwrap();
+    state.patterns[0].tracks = vec![
+      Track {
+        notes: vec![
+          Some(pitched_note(0, 1, None)),
+          Some(pitched_note(1, 1, Some(-9))),
+        ],
+      },
+      Track {
+        notes: vec![
+          None,
+          Some(pitched_note(2, 2, Some(9))),
+          Some(pitched_note(3, 2, Some(-9))),
+        ],
+      },
+    ];
+    let now = Instant::now();
+    let mut player = Player::default();
+    player.state_mut().row_index = 1;
+    let mut midi = RecordingMidiSink(Vec::new());
+    player.start(&state, &mut midi, now).unwrap();
+    assert_eq!(
+      midi.0,
+      vec![vec![MIDI_PROGRAM_CHANGE, 1], vec![MIDI_NOTE_ON, 37, 64]]
+    );
+    assert_eq!(
+      player.next_deadline(),
+      Some(now + Duration::from_micros(12_500))
+    );
+    player
+      .tick(&state, &mut midi, now + Duration::from_micros(112_500))
+      .unwrap();
+    assert_eq!(
+      &midi.0[2..],
+      &[
+        vec![MIDI_PROGRAM_CHANGE, 2],
+        vec![MIDI_NOTE_ON, 39, 64],
+        vec![MIDI_NOTE_ON, 38, 64],
+      ]
+    );
+    assert_eq!(player.state().row_index, 1);
+    player.stop();
+    assert!(player.next_deadline().is_none());
+  }
+
+  #[test]
+  fn early_note_can_cross_multiple_rows_and_a_pattern_boundary() {
+    let mut state = minimal_song();
+    state.patterns[0].num_rows = std::num::NonZero::new(20).unwrap();
+    state.patterns[0].rows_per_beat = NonZeroU8::new(16).unwrap();
+    let mut long_pattern = state.patterns[0].clone();
+    long_pattern.title = "Long".to_owned();
+    long_pattern.num_rows = std::num::NonZero::new(1).unwrap();
+    long_pattern.rows_per_beat = NonZeroU8::new(1).unwrap();
+    long_pattern.tracks.push(Track {
+      notes: vec![Some(pitched_note(4, 1, Some(-9)))],
+    });
+    state.patterns.push(long_pattern);
+    state.sequence.titles.push("Long".to_owned());
+    state.sequence.end_of_song = 1;
+
+    let now = Instant::now();
+    let mut player = Player::default();
+    let mut midi = RecordingMidiSink(Vec::new());
+    player.start(&state, &mut midi, now).unwrap();
+    player
+      .tick(&state, &mut midi, now + Duration::from_micros(174_999))
+      .unwrap();
+    assert!(midi.0.is_empty());
+    assert_eq!(player.state().row_index, 5);
+    assert_eq!(
+      player.next_deadline(),
+      Some(now + Duration::from_millis(175))
+    );
+    player
+      .tick(&state, &mut midi, now + Duration::from_millis(175))
+      .unwrap();
+    assert_eq!(
+      midi.0,
+      vec![vec![MIDI_PROGRAM_CHANGE, 1], vec![MIDI_NOTE_ON, 40, 64]]
+    );
+    assert_eq!(player.state().sequence_index, 0);
+    assert_eq!(player.state().row_index, 5);
+    player
+      .tick(&state, &mut midi, now + Duration::from_millis(625))
+      .unwrap();
+    assert_eq!(player.state().sequence_index, 1);
+    assert_eq!(midi.0.len(), 2);
+    player
+      .tick(&state, &mut midi, now + Duration::from_millis(1_300))
+      .unwrap();
+    assert_eq!(midi.0.len(), 3);
+    assert_eq!(midi.0[2], vec![MIDI_NOTE_ON, 40, 64]);
+  }
+
+  #[test]
+  fn starting_mid_song_clamps_a_later_pattern_note_that_is_already_due() {
+    let mut state = minimal_song();
+    state.patterns[0].num_rows = std::num::NonZero::new(20).unwrap();
+    state.patterns[0].rows_per_beat = NonZeroU8::new(16).unwrap();
+    state.patterns[0].tracks.push(Track {
+      notes: vec![Some(pitched_note(0, 1, None))],
+    });
+    let mut long_pattern = state.patterns[0].clone();
+    long_pattern.title = "Long".to_owned();
+    long_pattern.num_rows = std::num::NonZero::new(1).unwrap();
+    long_pattern.rows_per_beat = NonZeroU8::new(1).unwrap();
+    long_pattern.tracks[0].notes = vec![Some(pitched_note(4, 2, Some(-9)))];
+    state.patterns.push(long_pattern);
+    state.sequence.titles.push("Long".to_owned());
+    state.sequence.end_of_song = 1;
+
+    let now = Instant::now();
+    let mut player = Player::default();
+    player.state_mut().row_index = 19;
+    let mut midi = RecordingMidiSink(Vec::new());
+    player.start(&state, &mut midi, now).unwrap();
+    assert_eq!(
+      midi.0,
+      vec![vec![MIDI_PROGRAM_CHANGE, 2], vec![MIDI_NOTE_ON, 40, 64]]
+    );
+    assert_eq!(player.state().sequence_index, 0);
+    assert_eq!(player.state().row_index, 19);
+    assert_eq!(
+      player.next_deadline(),
+      Some(now + Duration::from_micros(31_250))
+    );
   }
 
   #[test]

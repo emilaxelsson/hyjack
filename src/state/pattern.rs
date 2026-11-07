@@ -109,7 +109,7 @@ pub enum Effect {
   ///
   /// Negative values specify early playback, positive values late playback, and
   /// zero the row boundary. The row duration is calculated after tempo effects
-  /// on that row. Playback scheduling for this effect is not yet implemented.
+  /// on that row.
   Delay(Delay),
 }
 
