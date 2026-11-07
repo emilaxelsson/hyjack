@@ -34,12 +34,12 @@
       "tracks": [
         {
           "notes": [
-            {"octave":3, "semitone":0, "instrument":2, "velocity":20, "effect":{"SetTempo":240}}
+            {"octave":3, "semitone":0, "instrument":2, "velocity":20, "effect":{"SetTempo":60}}
           ]
         },
         {
           "notes": [
-            {"octave":3, "semitone":4, "instrument":4, "velocity":80, "effect":{"SetTempo":60}}
+            {"octave":3, "semitone":4, "instrument":4, "velocity":80, "effect":{"SetTempo":240}}
           ]
         },
         {
