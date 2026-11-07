@@ -83,11 +83,26 @@ struct TimelineRow {
   duration: Duration,
 }
 
+#[derive(Debug, PartialEq, Eq)]
+struct NoteEvent {
+  /// Signed nanoseconds from the song start. An early note can have a negative
+  /// time when its delay places it before the first row boundary.
+  time: i128,
+  sequence_index: usize,
+  row_index: usize,
+  track_index: usize,
+}
+
 /// Cached timing data for every row in each playable sequence entry.
 struct Timeline {
   /// Cached row timing data. The outer index is the sequence index and the inner index is
   /// the row index.
   rows: Vec<Vec<TimelineRow>>,
+  #[allow(
+    dead_code,
+    reason = "Note events will be dispatched in the next implementation step"
+  )]
+  notes: Vec<NoteEvent>,
 }
 
 #[derive(Default)]
@@ -224,7 +239,7 @@ fn current_pattern<'a>(song: &'a AppState, player: &PlayerState) -> Result<&'a P
 }
 
 impl Timeline {
-  /// Builds the row start times and durations for every playable sequence entry.
+  /// Builds row boundaries and note events for every playable sequence entry.
   ///
   /// Effects are applied in track order before the affected row's duration is calculated, so
   /// later tracks override earlier effects in the same row. Returns an error if a playable
@@ -237,6 +252,7 @@ impl Timeline {
     let mut bpm = song.initial_bpm;
     let mut start_time = Duration::ZERO;
     let mut rows = Vec::with_capacity(last_song_index + 1);
+    let mut notes = Vec::new();
 
     for sequence_index in 0..=last_song_index {
       let pattern = pattern_at(song, sequence_index)?;
@@ -255,6 +271,21 @@ impl Timeline {
         }
 
         let duration = row_duration(bpm, pattern.rows_per_beat);
+        for (track_index, track) in pattern.tracks.iter().enumerate() {
+          if let Some(note) = track.notes.get(row_index).and_then(Option::as_ref) {
+            let delay = match note.effect {
+              Some(Effect::Delay(delay)) => delay.get(),
+              _ => 0,
+            };
+            notes.push(NoteEvent {
+              time: Self::duration_nanos(start_time)
+                + Self::duration_nanos(duration) * i128::from(delay) / 10,
+              sequence_index,
+              row_index,
+              track_index,
+            });
+          }
+        }
         pattern_rows.push(TimelineRow {
           start_time,
           duration,
@@ -265,7 +296,20 @@ impl Timeline {
       rows.push(pattern_rows);
     }
 
-    Ok(Self { rows })
+    notes.sort_by_key(|event| {
+      (
+        event.time,
+        event.sequence_index,
+        event.row_index,
+        event.track_index,
+      )
+    });
+
+    Ok(Self { rows, notes })
+  }
+
+  fn duration_nanos(duration: Duration) -> i128 {
+    i128::from(duration.as_secs()) * 1_000_000_000 + i128::from(duration.subsec_nanos())
   }
 
   fn row(&self, player: &PlayerState) -> Result<&TimelineRow> {
@@ -321,7 +365,7 @@ mod tests {
   use super::*;
   use crate::state::instruments::InstrumentIndex;
   use crate::state::minimal_song;
-  use crate::state::pattern::{Note, Octave, Semitone, Track, Velocity};
+  use crate::state::pattern::{Delay, Note, Octave, Semitone, Track, Velocity};
 
   struct RecordingMidiSink(Vec<Vec<u8>>);
 
@@ -330,6 +374,113 @@ mod tests {
       self.0.push(message.to_vec());
       Ok(())
     }
+  }
+
+  fn test_note(effect: Option<Effect>) -> Note {
+    Note {
+      octave: Octave(3),
+      semitone: Semitone(0),
+      instrument: InstrumentIndex(0),
+      velocity: Velocity(50),
+      effect,
+    }
+  }
+
+  #[test]
+  fn timeline_schedules_delays_after_all_row_tempo_effects() {
+    let mut state = minimal_song();
+    let effects = [
+      Some(Effect::Delay(Delay::new(-9).unwrap())),
+      None,
+      Some(Effect::Delay(Delay::new(0).unwrap())),
+      Some(Effect::Delay(Delay::new(9).unwrap())),
+      Some(Effect::SetTempo(NonZeroU8::new(60).unwrap())),
+      Some(Effect::SetTempo(NonZeroU8::new(240).unwrap())),
+      Some(Effect::Delay(Delay::new(-3).unwrap())),
+      Some(Effect::Delay(Delay::new(3).unwrap())),
+    ];
+    state.patterns[0].tracks = effects
+      .into_iter()
+      .map(|effect| Track {
+        notes: vec![Some(test_note(effect))],
+      })
+      .collect();
+
+    let timeline = Timeline::from_song(&state).unwrap();
+    assert_eq!(timeline.rows[0][0].start_time, Duration::ZERO);
+    assert_eq!(timeline.rows[0][0].duration, Duration::from_micros(62_500));
+    assert_eq!(
+      timeline.notes,
+      [
+        (-56_250_000, 0),
+        (-18_750_000, 6),
+        (0, 1),
+        (0, 2),
+        (0, 4),
+        (0, 5),
+        (18_750_000, 7),
+        (56_250_000, 3),
+      ]
+      .map(|(time, track_index)| NoteEvent {
+        time,
+        sequence_index: 0,
+        row_index: 0,
+        track_index,
+      })
+    );
+  }
+
+  #[test]
+  fn timeline_schedules_each_occurrence_and_sorts_notes_across_rows() {
+    let mut state = minimal_song();
+    state.patterns[0].num_rows = std::num::NonZero::new(3).unwrap();
+    state.patterns[0].rows_per_beat = NonZeroU8::new(16).unwrap();
+    state.patterns[0].tracks.push(Track {
+      notes: vec![Some(test_note(None)), None, Some(test_note(None))],
+    });
+
+    let mut long_pattern = state.patterns[0].clone();
+    long_pattern.title = "Long".to_owned();
+    long_pattern.num_rows = std::num::NonZero::new(1).unwrap();
+    long_pattern.rows_per_beat = NonZeroU8::new(1).unwrap();
+    long_pattern.tracks[0].notes = vec![Some(test_note(Some(Effect::Delay(
+      Delay::new(-9).unwrap(),
+    ))))];
+    state.patterns.push(long_pattern);
+    state.sequence.titles.push("Long".to_owned());
+    state.sequence.titles.push("Pattern".to_owned());
+    state
+      .sequence
+      .titles
+      .push("Missing pool pattern".to_owned());
+    state.sequence.end_of_song = 2;
+
+    let timeline = Timeline::from_song(&state).unwrap();
+    assert_eq!(
+      timeline.rows[1][0].start_time,
+      Duration::from_micros(93_750)
+    );
+    assert_eq!(timeline.rows[1][0].duration, Duration::from_millis(500));
+    assert_eq!(
+      timeline.rows[2][0].start_time,
+      Duration::from_micros(593_750)
+    );
+    assert_eq!(
+      timeline.notes,
+      [
+        (-356_250_000, 1, 0),
+        (0, 0, 0),
+        (62_500_000, 0, 2),
+        (593_750_000, 2, 0),
+        (656_250_000, 2, 2),
+      ]
+      .map(|(time, sequence_index, row_index)| NoteEvent {
+        time,
+        sequence_index,
+        row_index,
+        track_index: 0,
+      })
+    );
   }
 
   #[test]
