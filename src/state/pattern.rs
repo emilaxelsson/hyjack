@@ -3,7 +3,7 @@ use std::num::{NonZero, NonZeroU8};
 use serde::{Deserialize, Serialize, Serializer};
 
 use crate::state::instruments::InstrumentIndex;
-use crate::utils::{Adjustable, sub_one};
+use crate::utils::{Adjustable, sub_one, to_spaced_raw_value};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
@@ -124,7 +124,7 @@ where
 {
   let notes = notes
     .iter()
-    .map(serde_json::value::to_raw_value)
+    .map(to_spaced_raw_value)
     .collect::<Result<Vec<_>, _>>()
     .map_err(serde::ser::Error::custom)?;
   notes.serialize(serializer)

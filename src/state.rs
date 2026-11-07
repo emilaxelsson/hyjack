@@ -625,7 +625,11 @@ mod tests {
     std::fs::remove_file(path).unwrap();
 
     assert!(json.contains(
-      "\"notes\": [\n            {\"octave\":3,\"semitone\":0,\"instrument\":0,\"velocity\":50,\"effect\":null},\n            null,\n            {\"octave\":3,\"semitone\":0,\"instrument\":0,\"velocity\":50,\"effect\":{\"SetTempo\":240}}\n          ]"
+      r#""notes": [
+            {"octave":3, "semitone":0, "instrument":0, "velocity":50, "effect":null},
+            null,
+            {"octave":3, "semitone":0, "instrument":0, "velocity":50, "effect":{"SetTempo":240}}
+          ]"#
     ));
     assert!(json.contains("\"pattern_defaults\": {\n"));
     let expected = serde_json::json!([

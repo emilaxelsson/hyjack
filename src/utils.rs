@@ -1,6 +1,9 @@
+use std::io::{self, Write};
 use std::num::NonZero;
 
 use nonempty::NonEmpty;
+use serde::Serialize;
+use serde_json::value::RawValue;
 
 pub fn sub_one(x: NonZero<usize>) -> usize {
   x.get() - 1
@@ -83,6 +86,37 @@ pub trait Adjustable {
   }
 }
 
+pub fn to_spaced_raw_value<T: Serialize>(value: &T) -> serde_json::Result<Box<RawValue>> {
+  let mut json = Vec::new();
+  let mut serializer = serde_json::Serializer::with_formatter(&mut json, SpacedFormatter);
+  value.serialize(&mut serializer)?;
+  serde_json::from_slice(&json)
+}
+
+struct SpacedFormatter;
+
+impl serde_json::ser::Formatter for SpacedFormatter {
+  fn begin_array_value<W: ?Sized + Write>(
+    &mut self,
+    writer: &mut W,
+    first: bool,
+  ) -> io::Result<()> {
+    if first {
+      Ok(())
+    } else {
+      writer.write_all(b", ")
+    }
+  }
+
+  fn begin_object_key<W: ?Sized + Write>(&mut self, writer: &mut W, first: bool) -> io::Result<()> {
+    if first {
+      Ok(())
+    } else {
+      writer.write_all(b", ")
+    }
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -118,5 +152,18 @@ mod tests {
 
     items.swap(1, 2);
     assert_eq!(items, NonEmpty::from_vec(vec![3, 1, 2]).unwrap());
+  }
+
+  #[test]
+  fn spaced_formatter_preserves_string_commas_and_formats_nested_values() {
+    let value = serde_json::json!({"values": ["a,b", {"first": 1, "second": 2}]});
+
+    let raw = to_spaced_raw_value(&value).unwrap();
+
+    assert_eq!(raw.get(), r#"{"values":["a,b", {"first":1, "second":2}]}"#);
+    assert_eq!(
+      serde_json::from_str::<serde_json::Value>(raw.get()).unwrap(),
+      value
+    );
   }
 }
