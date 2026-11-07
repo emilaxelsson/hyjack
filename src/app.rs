@@ -416,12 +416,12 @@ mod tests {
   }
 
   fn test_state() -> AppState {
-    serde_json::from_str(include_str!("../examples/test.json")).unwrap()
+    serde_json::from_str(include_str!("../tests/test.json")).unwrap()
   }
 
   #[test]
   fn test_song_loads_from_file() {
-    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/test.json");
+    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/test.json");
     let state = AppState::load_from_file(&path).unwrap();
 
     assert_eq!(state.sequence.end_of_song, 7);
