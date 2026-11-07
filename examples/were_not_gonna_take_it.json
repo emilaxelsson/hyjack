@@ -28,20 +28,8 @@
         },
         {
           "notes": [
-            {
-              "octave": 3,
-              "semitone": 0,
-              "instrument": 5,
-              "velocity": 87,
-              "effect": null
-            },
-            {
-              "octave": 3,
-              "semitone": 0,
-              "instrument": 5,
-              "velocity": 60,
-              "effect": null
-            }
+            {"octave":3, "semitone":0, "instrument":5, "velocity":87, "effect":null},
+            {"octave":3, "semitone":0, "instrument":5, "velocity":60, "effect":null}
           ]
         }
       ],
@@ -53,101 +41,41 @@
       "tracks": [
         {
           "notes": [
-            {
-              "octave": 3,
-              "semitone": 0,
-              "instrument": 11,
-              "velocity": 99,
-              "effect": null
-            },
+            {"octave":3, "semitone":0, "instrument":11, "velocity":99, "effect":null},
             null,
-            {
-              "octave": 3,
-              "semitone": 0,
-              "instrument": 11,
-              "velocity": 99,
-              "effect": null
-            },
+            {"octave":3, "semitone":0, "instrument":11, "velocity":99, "effect":null},
             null,
-            {
-              "octave": 3,
-              "semitone": 0,
-              "instrument": 11,
-              "velocity": 99,
-              "effect": null
-            },
+            {"octave":3, "semitone":0, "instrument":11, "velocity":99, "effect":null},
             null,
-            {
-              "octave": 3,
-              "semitone": 0,
-              "instrument": 11,
-              "velocity": 99,
-              "effect": null
-            }
+            {"octave":3, "semitone":0, "instrument":11, "velocity":99, "effect":null}
           ]
         },
         {
           "notes": [
-            {
-              "octave": 3,
-              "semitone": 0,
-              "instrument": 0,
-              "velocity": 99,
-              "effect": null
-            },
+            {"octave":3, "semitone":0, "instrument":0, "velocity":99, "effect":null},
             null,
             null,
             null,
-            {
-              "octave": 3,
-              "semitone": 0,
-              "instrument": 0,
-              "velocity": 99,
-              "effect": null
-            },
+            {"octave":3, "semitone":0, "instrument":0, "velocity":99, "effect":null},
             null,
             null,
-            {
-              "octave": 3,
-              "semitone": 0,
-              "instrument": 0,
-              "velocity": 75,
-              "effect": null
-            }
+            {"octave":3, "semitone":0, "instrument":0, "velocity":75, "effect":null}
           ]
         },
         {
           "notes": [
             null,
             null,
-            {
-              "octave": 3,
-              "semitone": 0,
-              "instrument": 2,
-              "velocity": 99,
-              "effect": null
-            },
+            {"octave":3, "semitone":0, "instrument":2, "velocity":99, "effect":null},
             null,
             null,
             null,
-            {
-              "octave": 3,
-              "semitone": 0,
-              "instrument": 2,
-              "velocity": 99,
-              "effect": null
-            }
+            {"octave":3, "semitone":0, "instrument":2, "velocity":99, "effect":null}
           ]
         },
         {
           "notes": [
-            {
-              "octave": 3,
-              "semitone": 0,
-              "instrument": 5,
-              "velocity": 99,
-              "effect": null
-            }
+            {"octave":3, "semitone":0, "instrument":5, "velocity":99, "effect":null}
           ]
         }
       ],
@@ -159,76 +87,34 @@
       "tracks": [
         {
           "notes": [
-            {
-              "octave": 3,
-              "semitone": 0,
-              "instrument": 11,
-              "velocity": 99,
-              "effect": null
-            },
+            {"octave":3, "semitone":0, "instrument":11, "velocity":99, "effect":null},
             null,
             null,
             null,
-            {
-              "octave": 3,
-              "semitone": 0,
-              "instrument": 11,
-              "velocity": 99,
-              "effect": null
-            },
+            {"octave":3, "semitone":0, "instrument":11, "velocity":99, "effect":null},
             null,
             null,
             null,
-            {
-              "octave": 3,
-              "semitone": 0,
-              "instrument": 11,
-              "velocity": 99,
-              "effect": null
-            },
+            {"octave":3, "semitone":0, "instrument":11, "velocity":99, "effect":null},
             null,
             null,
             null,
-            {
-              "octave": 3,
-              "semitone": 0,
-              "instrument": 11,
-              "velocity": 99,
-              "effect": null
-            }
+            {"octave":3, "semitone":0, "instrument":11, "velocity":99, "effect":null}
           ]
         },
         {
           "notes": [
             null,
             null,
-            {
-              "octave": 3,
-              "semitone": 0,
-              "instrument": 0,
-              "velocity": 99,
-              "effect": null
-            },
+            {"octave":3, "semitone":0, "instrument":0, "velocity":99, "effect":null},
             null,
             null,
             null,
             null,
             null,
-            {
-              "octave": 3,
-              "semitone": 0,
-              "instrument": 0,
-              "velocity": 75,
-              "effect": null
-            },
+            {"octave":3, "semitone":0, "instrument":0, "velocity":75, "effect":null},
             null,
-            {
-              "octave": 3,
-              "semitone": 0,
-              "instrument": 0,
-              "velocity": 99,
-              "effect": null
-            }
+            {"octave":3, "semitone":0, "instrument":0, "velocity":99, "effect":null}
           ]
         },
         {
@@ -237,13 +123,7 @@
             null,
             null,
             null,
-            {
-              "octave": 3,
-              "semitone": 0,
-              "instrument": 2,
-              "velocity": 99,
-              "effect": null
-            },
+            {"octave":3, "semitone":0, "instrument":2, "velocity":99, "effect":null},
             null,
             null,
             null,
@@ -251,13 +131,7 @@
             null,
             null,
             null,
-            {
-              "octave": 3,
-              "semitone": 0,
-              "instrument": 2,
-              "velocity": 99,
-              "effect": null
-            }
+            {"octave":3, "semitone":0, "instrument":2, "velocity":99, "effect":null}
           ]
         },
         {
@@ -276,20 +150,8 @@
             null,
             null,
             null,
-            {
-              "octave": 3,
-              "semitone": 0,
-              "instrument": 5,
-              "velocity": 87,
-              "effect": null
-            },
-            {
-              "octave": 3,
-              "semitone": 0,
-              "instrument": 5,
-              "velocity": 60,
-              "effect": null
-            }
+            {"octave":3, "semitone":0, "instrument":5, "velocity":87, "effect":null},
+            {"octave":3, "semitone":0, "instrument":5, "velocity":60, "effect":null}
           ]
         }
       ],
@@ -310,13 +172,7 @@
         },
         {
           "notes": [
-            {
-              "octave": 3,
-              "semitone": 0,
-              "instrument": 5,
-              "velocity": 99,
-              "effect": null
-            }
+            {"octave":3, "semitone":0, "instrument":5, "velocity":99, "effect":null}
           ]
         }
       ],
