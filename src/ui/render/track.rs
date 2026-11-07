@@ -24,13 +24,13 @@ fn tracker_note_text(octave: Octave, semitone: Semitone) -> String {
 fn note_cell_text(note: &Option<Note>) -> String {
   if let Some(note) = note {
     format!(
-      "{} {:02} v{:02}  ...",
+      "{} {:02} v{:02}  ···",
       tracker_note_text(note.octave, note.semitone),
       note.instrument.0,
       note.velocity.0,
     )
   } else {
-    "... ..  ..  ...".to_string()
+    "··· ··  ··  ···".to_string()
   }
 }
 
