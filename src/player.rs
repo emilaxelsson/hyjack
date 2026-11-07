@@ -339,7 +339,7 @@ mod tests {
   use super::*;
   use crate::state::instruments::InstrumentIndex;
   use crate::state::minimal_song;
-  use crate::state::pattern::{Effect, Note, Octave, Semitone, Velocity};
+  use crate::state::pattern::{Note, Octave, Semitone, Velocity};
 
   struct RecordingMidiSink(Vec<Vec<u8>>);
 
@@ -363,7 +363,12 @@ mod tests {
 
     assert_eq!(
       midi.0,
-      vec![vec![MIDI_PROGRAM_CHANGE, 2], vec![MIDI_NOTE_ON, 36, 25]]
+      vec![
+        vec![MIDI_PROGRAM_CHANGE, 2],
+        vec![MIDI_NOTE_ON, 36, 25],
+        vec![MIDI_PROGRAM_CHANGE, 4],
+        vec![MIDI_NOTE_ON, 40, 102]
+      ]
     );
   }
 
@@ -414,7 +419,10 @@ mod tests {
     player.stop(&mut midi).unwrap();
 
     assert!(player.next_deadline().is_none());
-    assert_eq!(midi.0.last(), Some(&vec![0x80, 36, 0]));
+    assert_eq!(
+      &midi.0[midi.0.len() - 2..],
+      [vec![0x80, 36, 0], vec![0x80, 40, 0]]
+    );
   }
 
   #[test]
@@ -467,23 +475,11 @@ mod tests {
 
   #[test]
   fn linearizes_simultaneous_notes_with_program_changes() {
-    let mut state: AppState = serde_json::from_str(include_str!("../examples/test.json")).unwrap();
+    let state: AppState = serde_json::from_str(include_str!("../examples/test.json")).unwrap();
     let mut player_state = PlayerState {
       sequence_index: 1,
       ..Default::default()
     };
-    let pattern = state
-      .patterns
-      .iter_mut()
-      .find(|pattern| pattern.title == "Intro B")
-      .unwrap();
-    pattern.tracks[1].notes[0] = Some(Note {
-      octave: Octave(3),
-      semitone: Semitone(4),
-      instrument: InstrumentIndex(4),
-      velocity: Velocity(80),
-      effect: None,
-    });
     let now = Instant::now();
     let mut midi = RecordingMidiSink(Vec::new());
     let mut playback = Playback::start(&state, &mut player_state, &mut midi, now).unwrap();
@@ -511,21 +507,7 @@ mod tests {
 
   #[test]
   fn derives_row_time_and_schedule_from_left_to_right_tempo_effects() {
-    let mut state: AppState = serde_json::from_str(include_str!("../examples/test.json")).unwrap();
-    let pattern = state
-      .patterns
-      .iter_mut()
-      .find(|pattern| pattern.title == "Intro B")
-      .unwrap();
-    pattern.tracks[0].notes[0].as_mut().unwrap().effect =
-      Some(Effect::SetTempo(NonZeroU8::new(240).unwrap()));
-    pattern.tracks[1].notes[0] = Some(Note {
-      octave: Octave(3),
-      semitone: Semitone(4),
-      instrument: InstrumentIndex(4),
-      velocity: Velocity(80),
-      effect: Some(Effect::SetTempo(NonZeroU8::new(60).unwrap())),
-    });
+    let state: AppState = serde_json::from_str(include_str!("../examples/test.json")).unwrap();
     let now = Instant::now();
     let mut player_state = PlayerState {
       sequence_index: 1,
@@ -549,6 +531,38 @@ mod tests {
 
     assert_eq!(player_state.time, Duration::from_millis(1_375));
     assert_eq!(playback.next_deadline(), now + Duration::from_millis(375));
+  }
+
+  #[test]
+  fn advances_to_the_next_pattern_with_its_tempo_and_resolution() {
+    let state: AppState = serde_json::from_str(include_str!("../examples/test.json")).unwrap();
+    let mut player_state = PlayerState {
+      sequence_index: 1,
+      row_index: 15,
+      ..Default::default()
+    };
+    let now = Instant::now();
+    let mut midi = RecordingMidiSink(Vec::new());
+    let mut playback = Playback::start(&state, &mut player_state, &mut midi, now).unwrap();
+
+    assert_eq!(player_state.time, Duration::from_millis(2_875));
+    playback
+      .tick(
+        &state,
+        &mut player_state,
+        &mut midi,
+        now + Duration::from_millis(125),
+      )
+      .unwrap();
+
+    assert_eq!(player_state.sequence_index, 2);
+    assert_eq!(player_state.row_index, 0);
+    assert_eq!(player_state.time, Duration::from_secs(3));
+    assert_eq!(playback.next_deadline(), now + Duration::from_millis(250));
+    assert_eq!(
+      midi.0,
+      vec![vec![MIDI_PROGRAM_CHANGE, 2], vec![MIDI_NOTE_ON, 35, 115]]
+    );
   }
 
   #[test]

@@ -420,6 +420,15 @@ mod tests {
   }
 
   #[test]
+  fn test_song_loads_from_file() {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/test.json");
+    let state = AppState::load_from_file(&path).unwrap();
+
+    assert_eq!(state.sequence.end_of_song, 7);
+    assert_eq!(state.get_current_pattern().title, "Intro B");
+  }
+
+  #[test]
   fn note_key_to_semitone_maps_requested_layout() {
     assert_eq!(note_key_to_semitone('a'), Some(Semitone(0)));
     assert_eq!(note_key_to_semitone('w'), Some(Semitone(1)));
@@ -790,13 +799,8 @@ mod tests {
 
   #[test]
   fn inserting_a_note_snaps_velocity_before_preview_and_storage() {
-    use crate::state::instruments::{InstrumentMetadata, InstrumentName, Instruments};
-
     let mut state = test_state();
-    state.instruments = Instruments::DirectMapped(vec![InstrumentMetadata {
-      name: InstrumentName("Layered".to_owned()),
-      velocity_boundaries: vec![0.2, 0.4, 0.8],
-    }]);
+    state.editor_settings.instrument = InstrumentIndex(2);
     state.editor_settings.velocity = Velocity(70);
     let mut midi = RecordingMidiSink(Vec::new());
     let row_index = state.focus.row_index;
@@ -928,6 +932,22 @@ mod tests {
     assert_eq!(state.editor_settings.velocity, Velocity(81));
     assert_eq!(state.editor_settings.instrument, InstrumentIndex(2));
     assert_eq!(state.editor_settings.step, 9);
+  }
+
+  #[test]
+  fn ctrl_enter_copies_a_note_from_the_test_song() {
+    let mut state = test_state();
+    state.focus.row_index = 0;
+
+    let result = handle_edit_pattern_element_event(
+      &mut state,
+      KeyEvent::new(KeyCode::Enter, KeyModifiers::CONTROL),
+    );
+
+    assert!(result.handled);
+    assert_eq!(state.editor_settings.octave, Octave(3));
+    assert_eq!(state.editor_settings.instrument, InstrumentIndex(2));
+    assert_eq!(state.editor_settings.velocity, Velocity(20));
   }
 
   #[test]

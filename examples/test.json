@@ -18,11 +18,11 @@
       "tracks": [
         {
           "notes": [
+            {"octave": 3, "semitone": 0, "instrument": 2, "velocity": 75, "effect": null},
             null,
             null,
             null,
-            null,
-            null,
+            {"octave": 3, "semitone": 2, "instrument": 3, "velocity": 50, "effect": null},
             null,
             null,
             null
@@ -42,7 +42,7 @@
               "semitone": 0,
               "instrument": 2,
               "velocity": 20,
-              "effect": null
+              "effect": {"SetTempo": 240}
             },
             null,
             null,
@@ -63,7 +63,7 @@
         },
         {
           "notes": [
-            null,
+            {"octave": 3, "semitone": 4, "instrument": 4, "velocity": 80, "effect": {"SetTempo": 60}},
             null,
             null,
             null,
@@ -89,9 +89,9 @@
             null,
             {
               "octave": 3,
-              "semitone": 0,
-              "instrument": 2,
-              "velocity": 20,
+              "semitone": 2,
+              "instrument": 3,
+              "velocity": 65,
               "effect": null
             },
             null,
@@ -136,11 +136,11 @@
       "tracks": [
         {
           "notes": [
+            {"octave": 2, "semitone": 11, "instrument": 2, "velocity": 90, "effect": {"SetTempo": 120}},
             null,
             null,
             null,
-            null,
-            null,
+            {"octave": 3, "semitone": 2, "instrument": 3, "velocity": 55, "effect": null},
             null,
             null,
             null
@@ -156,11 +156,11 @@
         {
           "notes": [
             null,
+            {"octave": 4, "semitone": 6, "instrument": 0, "velocity": 35, "effect": null},
             null,
             null,
             null,
-            null,
-            null,
+            {"octave": 4, "semitone": 6, "instrument": 0, "velocity": 85, "effect": null},
             null,
             null
           ]
@@ -174,11 +174,11 @@
       "tracks": [
         {
           "notes": [
+            {"octave": 3, "semitone": 7, "instrument": 1, "velocity": 70, "effect": null},
             null,
             null,
             null,
-            null,
-            null,
+            {"octave": 3, "semitone": 7, "instrument": 1, "velocity": 40, "effect": null},
             null,
             null,
             null
@@ -186,18 +186,18 @@
         }
       ],
       "num_rows": 8,
-      "rows_per_beat": 4
+      "rows_per_beat": 8
     },
     {
       "title": "Verse 1 D",
       "tracks": [
         {
           "notes": [
+            {"octave": 3, "semitone": 0, "instrument": 2, "velocity": 99, "effect": {"SetTempo": 90}},
             null,
             null,
             null,
-            null,
-            null,
+            {"octave": 3, "semitone": 2, "instrument": 3, "velocity": 60, "effect": null},
             null,
             null,
             null
@@ -212,7 +212,7 @@
       "tracks": [
         {
           "notes": [
-            null,
+            {"octave": 4, "semitone": 0, "instrument": 4, "velocity": 95, "effect": {"SetTempo": 120}},
             null,
             null,
             null,
@@ -233,7 +233,7 @@
           "notes": [
             null,
             null,
-            null,
+            {"octave": 2, "semitone": 5, "instrument": 2, "velocity": 45, "effect": null},
             null,
             null,
             null,
@@ -258,14 +258,14 @@
       "Bridge A"
     ],
     "focus_index": 1,
-    "end_of_song": 1
+    "end_of_song": 7
   },
   "instruments": {
     "DirectMapped": [
       {"name": "Hihat", "velocity_boundaries": []},
       {"name": "Ride", "velocity_boundaries": []},
-      {"name": "Kick", "velocity_boundaries": []},
-      {"name": "Snare", "velocity_boundaries": []},
+      {"name": "Kick", "velocity_boundaries": [0.2, 0.4, 0.8]},
+      {"name": "Snare", "velocity_boundaries": [0.5]},
       {"name": "Crash", "velocity_boundaries": []}
     ]
   },
