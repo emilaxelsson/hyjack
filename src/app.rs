@@ -1193,7 +1193,7 @@ fn handle_event(
 
   if key.code == KeyCode::Char(' ') && key.modifiers == KeyModifiers::NONE {
     if let UIMode::Player { previous_mode } = mode {
-      context.player.stop(context.midi)?;
+      context.player.stop();
       return Ok(HandleEventResult {
         handled: true,
         quit: false,
@@ -1418,7 +1418,7 @@ pub fn run_app(
 
       if result.quit {
         if matches!(mode, UIMode::Player { .. }) {
-          player.stop(midi)?;
+          player.stop();
         }
         break;
       }

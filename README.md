@@ -235,3 +235,17 @@ When velocity boundaries are defined for an instrument, Hyjack tries to help you
   * When inserting a new note, the editor's velocity will snap to the nearest layer midpoint. For example, if the editor is set to velocity 70, the above Snare instrument will snap it to the midpoint of layer 3, which is 60.
   * When adjusting the velocity of an existing note using up/down or page up/page down, the velocity will snap to the nearest layer midpoint as well.
   * However, exact velocities can still be set manually using digits on the keyboard.
+
+
+
+## MIDI details
+
+### Note-off
+
+Hyjack does not send note-off messages, including when playback stops. Instruments that sustain until note-off may therefore keep sounding. This is usually not a problem for drums, as they typically have short decay times. It is also normally desired to have the sounds overlap when multiple sequential beats on the same drum are played. Hence, note-off for drums doesn't make much sense.
+
+Long-sustaining instruments such as a bassz guitar are a different story. You usually don't want sequential bass notes to overlap (unless you're deliberately playing a chord or a legato passage). Hydrogen can handle this by setting "Auto-Stop Note" for such instruments. This means that the old note stops automatically when a new note is played, even if no note-off message is received.
+
+With "Auto-Stop Note" enabled, chords or legato can only be achieved by playing different instruments. For example, you can have two bass instruments based on the same set of samples.
+
+"Auto-Stop Note" solves the problem of sequential notes. However, you still want to be able to explicitly stop a note when needed. This feature has not been implemented, but Hyjack will soon have an explicit note-off command.

@@ -75,7 +75,6 @@ pub fn select_midi_sink() -> Result<Box<dyn MidiSink>> {
 pub struct Playback {
   next_row_at: Instant,
   timeline: Timeline,
-  active_notes: Vec<u8>,
   last_program: Option<u8>,
 }
 
@@ -132,11 +131,8 @@ impl Player {
       .tick(song, &mut self.state, midi, now)
   }
 
-  pub fn stop(&mut self, midi: &mut dyn MidiSink) -> Result<()> {
-    if let Some(mut playback) = self.playback.take() {
-      playback.stop(midi)?;
-    }
-    Ok(())
+  pub fn stop(&mut self) {
+    self.playback = None;
   }
 }
 
@@ -153,7 +149,6 @@ impl Playback {
     let mut playback = Self {
       next_row_at: now + timeline.row(player)?.duration,
       timeline,
-      active_notes: Vec::new(),
       last_program: None,
     };
     playback.play_row(song, player, midi)?;
@@ -181,17 +176,12 @@ impl Playback {
     Ok(())
   }
 
-  pub fn stop(&mut self, midi: &mut dyn MidiSink) -> Result<()> {
-    self.release_notes(midi)
-  }
-
   fn play_row(
     &mut self,
     song: &AppState,
     player: &PlayerState,
     midi: &mut dyn MidiSink,
   ) -> Result<()> {
-    self.release_notes(midi)?;
     let notes: Vec<_> = current_pattern(song, player)?
       .tracks
       .iter()
@@ -207,14 +197,6 @@ impl Playback {
 
       let pitch = midi_pitch_from_octave(note.octave, note.semitone);
       midi.send(&[MIDI_NOTE_ON | MIDI_CHANNEL, pitch, note.midi_velocity()])?;
-      self.active_notes.push(pitch);
-    }
-    Ok(())
-  }
-
-  fn release_notes(&mut self, midi: &mut dyn MidiSink) -> Result<()> {
-    for pitch in self.active_notes.drain(..) {
-      midi.send(&[0x80 | MIDI_CHANNEL, pitch, 0])?;
     }
     Ok(())
   }
@@ -339,7 +321,7 @@ mod tests {
   use super::*;
   use crate::state::instruments::InstrumentIndex;
   use crate::state::minimal_song;
-  use crate::state::pattern::{Note, Octave, Semitone, Velocity};
+  use crate::state::pattern::{Note, Octave, Semitone, Track, Velocity};
 
   struct RecordingMidiSink(Vec<Vec<u8>>);
 
@@ -416,18 +398,27 @@ mod tests {
     assert!(player.next_deadline().is_none());
     player.start(&state, &mut midi, Instant::now()).unwrap();
     assert!(player.next_deadline().is_some());
-    player.stop(&mut midi).unwrap();
+    let messages_before_stop = midi.0.clone();
+    player.stop();
 
     assert!(player.next_deadline().is_none());
-    assert_eq!(
-      &midi.0[midi.0.len() - 2..],
-      [vec![0x80, 36, 0], vec![0x80, 40, 0]]
-    );
+    assert_eq!(midi.0, messages_before_stop);
+    player.stop();
+    assert!(player.next_deadline().is_none());
   }
 
   #[test]
   fn minimal_one_track_one_note_song_plays_loops_and_stops() {
-    let state = minimal_song();
+    let mut state = minimal_song();
+    state.patterns[0].tracks.push(Track {
+      notes: vec![Some(Note {
+        octave: Octave(3),
+        semitone: Semitone(4),
+        instrument: InstrumentIndex(2),
+        velocity: Velocity(80),
+        effect: None,
+      })],
+    });
     let now = Instant::now();
     let mut midi = RecordingMidiSink(Vec::new());
     let mut player = Player::default();
@@ -441,6 +432,7 @@ mod tests {
       player.next_deadline(),
       Some(now + Duration::from_millis(125))
     );
+    let initial_messages = midi.0.clone();
 
     player
       .tick(&state, &mut midi, now + Duration::from_millis(125))
@@ -448,8 +440,11 @@ mod tests {
 
     assert_eq!(player.state().sequence_index, 0);
     assert_eq!(player.state().row_index, 0);
+    assert_eq!(initial_messages.len(), 2);
+    assert_eq!(midi.0.len(), 3);
+    assert_eq!(midi.0[2], initial_messages[1]);
 
-    player.stop(&mut midi).unwrap();
+    player.stop();
     assert!(player.next_deadline().is_none());
   }
 
@@ -494,15 +489,11 @@ mod tests {
       ]
     );
 
+    let next_deadline = playback.next_deadline();
     playback
-      .tick(
-        &state,
-        &mut player_state,
-        &mut midi,
-        now + Duration::from_millis(125),
-      )
+      .tick(&state, &mut player_state, &mut midi, next_deadline)
       .unwrap();
-    assert_eq!(midi.0[4..], [vec![0x80, 36, 0], vec![0x80, 40, 0]]);
+    assert_eq!(midi.0.len(), 4);
   }
 
   #[test]
