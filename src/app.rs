@@ -404,7 +404,7 @@ mod tests {
   use super::*;
   use crate::player::{MIDI_NOTE_ON, MIDI_PROGRAM_CHANGE, SilentMidiSink};
   use crate::state::minimal_song;
-  use crate::state::pattern::{Note, Octave, TrackColumn, Velocity};
+  use crate::state::pattern::{Delay, Effect, Note, Octave, Track, TrackColumn, Velocity};
 
   struct RecordingMidiSink(Vec<Vec<u8>>);
 
@@ -417,6 +417,98 @@ mod tests {
 
   fn test_state() -> AppState {
     serde_json::from_str(include_str!("../tests/test.json")).unwrap()
+  }
+
+  #[test]
+  fn playback_deadlines_are_processed_during_continuous_input() {
+    let mut state = minimal_song();
+    let mut note = crate::state::test_state().patterns[0].tracks[0].notes[0]
+      .clone()
+      .unwrap();
+    note.effect = Some(Effect::Delay(Delay::new(9).unwrap()));
+    state.patterns[0].tracks.push(Track {
+      notes: vec![Some(note)],
+    });
+    let start = Instant::now();
+    let mut player = Player::default();
+    let mut midi = RecordingMidiSink(Vec::new());
+    player.start(&state, &mut midi, start).unwrap();
+    let mode = UIMode::Player {
+      previous_mode: Box::new(UIMode::EditPattern),
+    };
+
+    for (before, after, expected_timeout, expected_tick) in [
+      (0, 60_000, 100_000, false),
+      (60_000, 112_499, 52_500, false),
+      (112_499, 112_500, 1, true),
+      (112_500, 125_000, 12_500, true),
+    ] {
+      let mut times = [
+        start + Duration::from_micros(before),
+        start + Duration::from_micros(after),
+      ]
+      .into_iter();
+      let (input_ready, ticked) = poll_and_process_playback(
+        &mode,
+        &state,
+        &mut player,
+        &mut midi,
+        || times.next().unwrap(),
+        |timeout| {
+          assert_eq!(timeout, Duration::from_micros(expected_timeout));
+          Ok(true)
+        },
+      )
+      .unwrap();
+      assert!(input_ready);
+      assert_eq!(ticked, expected_tick);
+    }
+
+    assert_eq!(
+      midi.0,
+      vec![vec![MIDI_PROGRAM_CHANGE, 0], vec![MIDI_NOTE_ON, 36, 64]]
+    );
+    assert_eq!(player.state().time, Duration::ZERO);
+  }
+
+  #[test]
+  fn poll_timeout_processes_playback_and_edit_mode_does_not_tick() {
+    let state = crate::state::test_state();
+    let start = Instant::now();
+    let mut player = Player::default();
+    let mut midi = RecordingMidiSink(Vec::new());
+    player.start(&state, &mut midi, start).unwrap();
+    let mode = UIMode::Player {
+      previous_mode: Box::new(UIMode::EditPattern),
+    };
+    let deadline = player.next_deadline().unwrap();
+    let mut times = [start, deadline].into_iter();
+    let result = poll_and_process_playback(
+      &mode,
+      &state,
+      &mut player,
+      &mut midi,
+      || times.next().unwrap(),
+      |_| Ok(false),
+    )
+    .unwrap();
+    assert_eq!(result, (false, true));
+
+    let messages = midi.0.clone();
+    let result = poll_and_process_playback(
+      &UIMode::EditPattern,
+      &state,
+      &mut player,
+      &mut midi,
+      || panic!("edit mode does not need the clock"),
+      |timeout| {
+        assert_eq!(timeout, MAX_EVENT_POLL_TIMEOUT);
+        Ok(true)
+      },
+    )
+    .unwrap();
+    assert_eq!(result, (true, false));
+    assert_eq!(midi.0, messages);
   }
 
   #[test]
@@ -1353,6 +1445,48 @@ fn sync_viewport(
   }
 }
 
+/// Polls for input until the next playback deadline or the maximum poll timeout.
+///
+/// In player mode, processes due playback events after polling, even when input
+/// is ready. `now` and `poll` are injected to allow deterministic testing.
+/// Returns `(input_ready, ticked)` and propagates polling or playback errors.
+fn poll_and_process_playback(
+  mode: &UIMode,
+  state: &AppState,
+  player: &mut Player,
+  midi: &mut dyn MidiSink,
+  mut now: impl FnMut() -> Instant,
+  poll: impl FnOnce(Duration) -> io::Result<bool>,
+) -> Result<(bool, bool)> {
+  let playing = matches!(mode, UIMode::Player { .. });
+  let timeout = if playing {
+    player
+      .next_deadline()
+      .expect("Player mode requires active playback")
+      .saturating_duration_since(now())
+      .min(MAX_EVENT_POLL_TIMEOUT)
+  } else {
+    MAX_EVENT_POLL_TIMEOUT
+  };
+  let input_ready = poll(timeout)?;
+  let ticked = if playing {
+    let current_time = now();
+    if current_time
+      >= player
+        .next_deadline()
+        .expect("Player mode requires active playback")
+    {
+      player.tick(state, midi, current_time)?;
+      true
+    } else {
+      false
+    }
+  } else {
+    false
+  };
+  Ok((input_ready, ticked))
+}
+
 pub fn run_app(
   terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
   song_file_path: &Path,
@@ -1392,16 +1526,19 @@ pub fn run_app(
       );
     })?;
 
-    let timeout = match &mode {
-      UIMode::Player { .. } => player
-        .next_deadline()
-        .expect("Player mode requires active playback")
-        .saturating_duration_since(Instant::now())
-        .min(MAX_EVENT_POLL_TIMEOUT),
-      _ => MAX_EVENT_POLL_TIMEOUT,
-    };
+    let (input_ready, ticked) =
+      poll_and_process_playback(&mode, &state, &mut player, midi, Instant::now, event::poll)?;
+    if ticked {
+      sync_player_position(
+        &mut state,
+        &player,
+        &mut sequence_scroll_state,
+        &mut pattern_scroll_state,
+        viewports,
+      );
+    }
 
-    if event::poll(timeout)? {
+    if input_ready {
       let event = event::read()?;
 
       let result = {
@@ -1447,15 +1584,6 @@ pub fn run_app(
 
       sync_viewport(
         viewport_sync,
-        &mut state,
-        &player,
-        &mut sequence_scroll_state,
-        &mut pattern_scroll_state,
-        viewports,
-      );
-    } else if matches!(mode, UIMode::Player { .. }) {
-      player.tick(&state, midi, Instant::now())?;
-      sync_player_position(
         &mut state,
         &player,
         &mut sequence_scroll_state,

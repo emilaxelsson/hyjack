@@ -645,6 +645,110 @@ mod tests {
   }
 
   #[test]
+  fn repeated_pattern_occurrences_and_loops_each_play_once() {
+    let mut state = minimal_song();
+    state.patterns[0].tracks.push(Track {
+      notes: vec![Some(pitched_note(0, 1, Some(3)))],
+    });
+    state.sequence.titles.push("Pattern".to_owned());
+    state.sequence.end_of_song = 1;
+    let now = Instant::now();
+    let mut player = Player::default();
+    let mut midi = RecordingMidiSink(Vec::new());
+    player.start(&state, &mut midi, now).unwrap();
+    assert_eq!(
+      player.next_deadline(),
+      Some(now + Duration::from_micros(37_500))
+    );
+
+    player
+      .tick(&state, &mut midi, now + Duration::from_micros(37_499))
+      .unwrap();
+    assert!(midi.0.is_empty());
+    player
+      .tick(&state, &mut midi, now + Duration::from_millis(540))
+      .unwrap();
+    assert_eq!(
+      midi.0,
+      vec![
+        vec![MIDI_PROGRAM_CHANGE, 1],
+        vec![MIDI_NOTE_ON, 36, 64],
+        vec![MIDI_NOTE_ON, 36, 64],
+        vec![MIDI_NOTE_ON, 36, 64],
+        vec![MIDI_NOTE_ON, 36, 64],
+        vec![MIDI_NOTE_ON, 36, 64],
+      ]
+    );
+    assert_eq!(player.state().sequence_index, 0);
+    assert_eq!(player.state().time, Duration::ZERO);
+    assert_eq!(
+      player.next_deadline(),
+      Some(now + Duration::from_millis(625))
+    );
+  }
+
+  #[test]
+  fn stopping_discards_pending_delayed_notes() {
+    let mut state = minimal_song();
+    state.patterns[0].tracks.push(Track {
+      notes: vec![Some(pitched_note(0, 1, Some(9)))],
+    });
+    let now = Instant::now();
+    let mut player = Player::default();
+    let mut midi = RecordingMidiSink(Vec::new());
+    player.start(&state, &mut midi, now).unwrap();
+    player.stop();
+
+    assert!(player.next_deadline().is_none());
+    assert!(
+      player
+        .tick(&state, &mut midi, now + Duration::from_secs(1))
+        .is_err()
+    );
+    assert!(midi.0.is_empty());
+  }
+
+  #[test]
+  fn past_early_note_from_next_loop_is_not_clamped_on_mid_song_start() {
+    let mut state = minimal_song();
+    state.patterns[0].rows_per_beat = NonZeroU8::new(1).unwrap();
+    state.patterns[0].tracks.push(Track {
+      notes: vec![Some(pitched_note(0, 1, Some(-9)))],
+    });
+    let mut short_pattern = state.patterns[0].clone();
+    short_pattern.title = "Short".to_owned();
+    short_pattern.num_rows = std::num::NonZero::new(20).unwrap();
+    short_pattern.rows_per_beat = NonZeroU8::new(16).unwrap();
+    short_pattern.tracks.clear();
+    state.patterns.push(short_pattern);
+    state.sequence.titles.push("Short".to_owned());
+    state.sequence.end_of_song = 1;
+    let now = Instant::now();
+    let mut player = Player::default();
+    player.state_mut().sequence_index = 1;
+    player.state_mut().row_index = 19;
+    let mut midi = RecordingMidiSink(Vec::new());
+    player.start(&state, &mut midi, now).unwrap();
+    assert!(midi.0.is_empty());
+
+    player
+      .tick(&state, &mut midi, now + Duration::from_micros(706_249))
+      .unwrap();
+    assert!(midi.0.is_empty());
+    assert_eq!(
+      player.next_deadline(),
+      Some(now + Duration::from_micros(706_250))
+    );
+    player
+      .tick(&state, &mut midi, now + Duration::from_micros(706_250))
+      .unwrap();
+    assert_eq!(
+      midi.0,
+      vec![vec![MIDI_PROGRAM_CHANGE, 1], vec![MIDI_NOTE_ON, 36, 64]]
+    );
+  }
+
+  #[test]
   fn starting_mid_song_clamps_future_rows_without_replaying_earlier_rows() {
     let mut state = minimal_song();
     state.patterns[0].num_rows = std::num::NonZero::new(3).unwrap();
@@ -1049,8 +1153,11 @@ mod tests {
     let mut midi = RecordingMidiSink(Vec::new());
     let mut playback = Playback::start(&state, &mut player_state, &mut midi, now).unwrap();
 
-    assert_eq!(player_state.time, Duration::from_millis(1_125));
-    assert_eq!(playback.next_deadline(), now + Duration::from_millis(125));
+    assert_eq!(player_state.time, Duration::from_micros(1_031_250));
+    assert_eq!(
+      playback.next_deadline(),
+      now + Duration::from_micros(31_250)
+    );
 
     playback
       .tick(
@@ -1061,8 +1168,11 @@ mod tests {
       )
       .unwrap();
 
-    assert_eq!(player_state.time, Duration::from_millis(1_375));
-    assert_eq!(playback.next_deadline(), now + Duration::from_millis(375));
+    assert_eq!(player_state.time, Duration::from_micros(1_281_250));
+    assert_eq!(
+      playback.next_deadline(),
+      now + Duration::from_micros(281_250)
+    );
   }
 
   #[test]
@@ -1077,20 +1187,23 @@ mod tests {
     let mut midi = RecordingMidiSink(Vec::new());
     let mut playback = Playback::start(&state, &mut player_state, &mut midi, now).unwrap();
 
-    assert_eq!(player_state.time, Duration::from_millis(2_875));
+    assert_eq!(player_state.time, Duration::from_micros(1_468_750));
     playback
       .tick(
         &state,
         &mut player_state,
         &mut midi,
-        now + Duration::from_millis(125),
+        now + Duration::from_micros(31_250),
       )
       .unwrap();
 
     assert_eq!(player_state.sequence_index, 2);
     assert_eq!(player_state.row_index, 0);
-    assert_eq!(player_state.time, Duration::from_secs(3));
-    assert_eq!(playback.next_deadline(), now + Duration::from_millis(250));
+    assert_eq!(player_state.time, Duration::from_millis(1_500));
+    assert_eq!(
+      playback.next_deadline(),
+      now + Duration::from_micros(156_250)
+    );
     assert_eq!(
       midi.0,
       vec![vec![MIDI_PROGRAM_CHANGE, 2], vec![MIDI_NOTE_ON, 35, 115]]

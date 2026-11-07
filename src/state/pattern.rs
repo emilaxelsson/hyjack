@@ -105,11 +105,19 @@ pub struct Note {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Effect {
   SetTempo(NonZeroU8),
-  /// A note's timing offset in tenths of its row duration.
+
+  /// A note's timing offset, from -9 through 9 tenths of its row duration.
   ///
   /// Negative values specify early playback, positive values late playback, and
   /// zero the row boundary. The row duration is calculated after tempo effects
-  /// on that row.
+  /// on that row, in track order. For example, on a 125 ms row, a delay of 3
+  /// schedules the note 37.5 ms after the boundary.
+  ///
+  /// Early notes can play before their pattern or loop begins. On playback
+  /// start, notes from the selected row or later in the initial traversal
+  /// whose scheduled times have passed play immediately; earlier rows are not
+  /// replayed. Later loops use their normal timing. Scheduling is best-effort,
+  /// not hard real-time.
   Delay(Delay),
 }
 
