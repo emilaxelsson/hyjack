@@ -11,9 +11,10 @@
 //!
 //! Each instrument must have exactly one `instrumentComponent` and an `applyVelocity`
 //! element. When `applyVelocity` is `false`, layer ranges must be valid, within 0–1, and
-//! adjacent in velocity order. Their internal endpoints are sorted and deduplicated to
-//! form the instrument's velocity boundaries. When it is `true`, layer velocities are
-//! ignored and no boundaries are added. Invalid input is reported as an error.
+//! adjacent in velocity order, except that multiple samples may share an identical
+//! range. Their internal endpoints are sorted and deduplicated to form the instrument's
+//! velocity boundaries. When it is `true`, layer velocities are ignored and no boundaries
+//! are added. Invalid input is reported as an error.
 
 use std::io::{self, Write};
 use std::num::NonZeroU8;
@@ -101,7 +102,7 @@ fn instrument(node: Node<'_, '_>) -> Result<InstrumentMetadata> {
     let (previous_min, previous_max, previous_index) = pair[0];
     let (next_min, next_max, next_index) = pair[1];
     ensure!(
-      previous_max == next_min,
+      (previous_min == next_min && previous_max == next_max) || previous_max == next_min,
       "instrument {name:?}: layer {previous_index} ({previous_min}..{previous_max}) and layer {next_index} ({next_min}..{next_max}) are not adjacent"
     );
   }
@@ -308,6 +309,41 @@ mod tests {
           assert!(instruments[0].velocity_boundaries.is_empty());
         }
       }
+    }
+  }
+
+  #[test]
+  fn accepts_repeated_ranges_in_any_sample_order() {
+    let xml = r#"<song><bpm>120</bpm><name>Test</name><instrumentList>
+      <instrument><name>Snare</name><applyVelocity>false</applyVelocity>
+        <instrumentComponent>
+          <layer><min>0.5</min><max>1</max></layer>
+          <layer><min>0</min><max>0.5</max></layer>
+          <layer><min>0.5</min><max>1</max></layer>
+          <layer><min>0</min><max>0.5</max></layer>
+        </instrumentComponent>
+      </instrument></instrumentList></song>"#;
+    assert_eq!(parse_instruments(xml)[0].velocity_boundaries, [0.5]);
+  }
+
+  #[test]
+  fn rejects_different_overlapping_ranges_even_with_repeated_samples() {
+    for (min, max) in [("0", "0.75"), ("0.25", "0.5"), ("0.25", "1")] {
+      let xml = format!(
+        r#"<song><bpm>120</bpm><name>Test</name><instrumentList>
+          <instrument><name>Snare</name><applyVelocity>false</applyVelocity>
+            <instrumentComponent>
+              <layer><min>0</min><max>0.5</max></layer>
+              <layer><min>{min}</min><max>{max}</max></layer>
+              <layer><min>0</min><max>0.5</max></layer>
+            </instrumentComponent>
+          </instrument></instrumentList></song>"#
+      );
+      let error = match convert(&xml) {
+        Ok(_) => panic!("expected overlapping layers to fail"),
+        Err(error) => error.to_string(),
+      };
+      assert!(error.contains("not adjacent"), "{error}");
     }
   }
 
