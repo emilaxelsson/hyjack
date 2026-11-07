@@ -17,6 +17,40 @@ pub struct Semitone(pub u8);
 #[serde(transparent)]
 pub struct Velocity(pub u8);
 
+/// A signed integer guaranteed to be in the range -9 through 9.
+///
+/// Construction and deserialization reject values outside that range. It
+/// serializes as a signed integer.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(try_from = "i8", into = "i8")]
+pub struct Delay(i8);
+
+impl Delay {
+  /// Constructs a delay, returning `None` if the value is outside -9 through 9.
+  pub fn new(value: i8) -> Option<Self> {
+    (-9..=9).contains(&value).then_some(Self(value))
+  }
+
+  /// Returns the contained value.
+  pub fn get(self) -> i8 {
+    self.0
+  }
+}
+
+impl TryFrom<i8> for Delay {
+  type Error = &'static str;
+
+  fn try_from(value: i8) -> Result<Self, Self::Error> {
+    Self::new(value).ok_or("delay must be between -9 and 9")
+  }
+}
+
+impl From<Delay> for i8 {
+  fn from(delay: Delay) -> Self {
+    delay.get()
+  }
+}
+
 impl Octave {
   const LARGE_STEP: u8 = 2;
 }
@@ -71,6 +105,12 @@ pub struct Note {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Effect {
   SetTempo(NonZeroU8),
+  /// A note's timing offset in tenths of its row duration.
+  ///
+  /// Negative values specify early playback, positive values late playback, and
+  /// zero the row boundary. The row duration is calculated after tempo effects
+  /// on that row. Playback scheduling for this effect is not yet implemented.
+  Delay(Delay),
 }
 
 impl Note {
@@ -333,6 +373,72 @@ impl Focus {
 
 pub fn midi_pitch_from_octave(octave: Octave, semitone: Semitone) -> u8 {
   octave.0.saturating_mul(12) + semitone.0
+}
+
+#[cfg(test)]
+mod effect_tests {
+  use super::{Delay, Effect, Note};
+
+  #[test]
+  fn delay_construction_checks_the_full_range() {
+    for value in i8::MIN..=i8::MAX {
+      let delay = Delay::new(value);
+      assert_eq!(delay.is_some(), (-9..=9).contains(&value));
+      assert_eq!(Delay::try_from(value).ok(), delay);
+      if let Some(delay) = delay {
+        assert_eq!(delay.get(), value);
+      }
+    }
+  }
+
+  #[test]
+  fn delay_effect_json_round_trips() {
+    for value in -9..=9 {
+      let effect = Effect::Delay(Delay::new(value).unwrap());
+      let json = serde_json::json!({ "Delay": value });
+      assert_eq!(serde_json::to_value(effect).unwrap(), json);
+      assert_eq!(serde_json::from_value::<Effect>(json).unwrap(), effect);
+    }
+  }
+
+  #[test]
+  fn delay_deserialization_rejects_invalid_values() {
+    for json in [
+      r#"{"Delay":-10}"#,
+      r#"{"Delay":10}"#,
+      r#"{"Delay":-129}"#,
+      r#"{"Delay":128}"#,
+      r#"{"Delay":1.5}"#,
+      r#"{"Delay":"3"}"#,
+    ] {
+      assert!(serde_json::from_str::<Effect>(json).is_err(), "{json}");
+    }
+  }
+
+  #[test]
+  fn note_effect_json_remains_compatible() {
+    let note = r#"{"octave":3,"semitone":0,"instrument":0,"velocity":50"#;
+    let without_effect: Note = serde_json::from_str(&format!("{note}}}")).unwrap();
+    assert_eq!(without_effect.effect, None);
+
+    let with_tempo: Note =
+      serde_json::from_str(&format!(r#"{note},"effect":{{"SetTempo":120}}}}"#)).unwrap();
+    assert_eq!(
+      serde_json::to_value(with_tempo).unwrap()["effect"],
+      serde_json::json!({ "SetTempo": 120 })
+    );
+
+    let with_delay: Note =
+      serde_json::from_str(&format!(r#"{note},"effect":{{"Delay":-3}}}}"#)).unwrap();
+    assert_eq!(
+      with_delay.effect,
+      Some(Effect::Delay(Delay::new(-3).unwrap()))
+    );
+    assert_eq!(
+      serde_json::to_value(with_delay).unwrap()["effect"],
+      serde_json::json!({ "Delay": -3 })
+    );
+  }
 }
 
 #[cfg(test)]
