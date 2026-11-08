@@ -444,7 +444,8 @@ mod tests {
   use super::*;
   use crate::state::instruments::InstrumentIndex;
   use crate::state::minimal_song;
-  use crate::state::pattern::{Delay, Note, Octave, Semitone, Track, Velocity};
+  use crate::state::pattern::{Note, Octave, Semitone, Track, Velocity};
+  use crate::utils::TwoDigits;
 
   struct RecordingMidiSink(Vec<Vec<u8>>);
 
@@ -473,7 +474,7 @@ mod tests {
   }
 
   fn delay_effect(value: i8) -> Effect {
-    let magnitude = Delay::new(value.unsigned_abs()).unwrap();
+    let magnitude = TwoDigits::new(value.unsigned_abs()).unwrap();
     if value < 0 {
       Effect::Advance(magnitude)
     } else {
@@ -893,14 +894,14 @@ mod tests {
   fn timeline_schedules_delays_after_all_row_tempo_effects() {
     let mut state = minimal_song();
     let effects = [
-      Some(Effect::Advance(Delay::new(90).unwrap())),
+      Some(Effect::Advance(TwoDigits::new(90).unwrap())),
       None,
-      Some(Effect::Delay(Delay::new(0).unwrap())),
-      Some(Effect::Delay(Delay::new(90).unwrap())),
+      Some(Effect::Delay(TwoDigits::new(0).unwrap())),
+      Some(Effect::Delay(TwoDigits::new(90).unwrap())),
       Some(Effect::SetTempo(NonZeroU8::new(60).unwrap())),
       Some(Effect::SetTempo(NonZeroU8::new(240).unwrap())),
-      Some(Effect::Advance(Delay::new(30).unwrap())),
-      Some(Effect::Delay(Delay::new(30).unwrap())),
+      Some(Effect::Advance(TwoDigits::new(30).unwrap())),
+      Some(Effect::Delay(TwoDigits::new(30).unwrap())),
     ];
     state.patterns[0].tracks = effects
       .into_iter()
@@ -939,7 +940,7 @@ mod tests {
     state.patterns[0].tracks = [
       delay_effect(-99),
       delay_effect(-1),
-      Effect::Advance(Delay::new(0).unwrap()),
+      Effect::Advance(TwoDigits::new(0).unwrap()),
       delay_effect(0),
       delay_effect(1),
       delay_effect(99),
@@ -985,7 +986,7 @@ mod tests {
     long_pattern.num_rows = std::num::NonZero::new(1).unwrap();
     long_pattern.rows_per_beat = NonZeroU8::new(1).unwrap();
     long_pattern.tracks[0].notes = vec![Some(test_note(Some(Effect::Advance(
-      Delay::new(90).unwrap(),
+      TwoDigits::new(90).unwrap(),
     ))))];
     state.patterns.push(long_pattern);
     state.sequence.titles.push("Long".to_owned());

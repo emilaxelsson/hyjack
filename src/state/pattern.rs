@@ -3,7 +3,7 @@ use std::num::{NonZero, NonZeroU8};
 use serde::{Deserialize, Serialize, Serializer};
 
 use crate::state::instruments::InstrumentIndex;
-use crate::utils::{Adjustable, sub_one, to_spaced_raw_value};
+use crate::utils::{Adjustable, TwoDigits, sub_one, to_spaced_raw_value};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
@@ -16,40 +16,6 @@ pub struct Semitone(pub u8);
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Velocity(pub u8);
-
-/// A percentage guaranteed to be in the range 0 through 99.
-///
-/// Construction and deserialization reject values outside that range. It
-/// serializes as an unsigned integer.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(try_from = "u8", into = "u8")]
-pub struct Delay(u8);
-
-impl Delay {
-  /// Constructs a delay, returning `None` if the value is greater than 99.
-  pub fn new(value: u8) -> Option<Self> {
-    (value <= 99).then_some(Self(value))
-  }
-
-  /// Returns the contained value.
-  pub fn get(self) -> u8 {
-    self.0
-  }
-}
-
-impl TryFrom<u8> for Delay {
-  type Error = &'static str;
-
-  fn try_from(value: u8) -> Result<Self, Self::Error> {
-    Self::new(value).ok_or("delay must be between 0 and 99")
-  }
-}
-
-impl From<Delay> for u8 {
-  fn from(delay: Delay) -> Self {
-    delay.get()
-  }
-}
 
 impl Octave {
   const LARGE_STEP: u8 = 2;
@@ -111,7 +77,7 @@ pub enum Effect {
   /// Zero specifies the row boundary. The row duration is calculated after tempo effects
   /// on that row, in track order. For example, on a 125 ms row, a delay of 30 schedules
   /// the note 37.5 ms after the boundary.
-  Delay(Delay),
+  Delay(TwoDigits),
 
   /// Play a note early by 0% through 99% of its row duration.
   ///
@@ -119,7 +85,7 @@ pub enum Effect {
   /// from the selected row or later in the initial traversal whose scheduled times have
   /// passed play immediately; earlier rows are not replayed. Later loops use their normal
   /// timing. Scheduling is best-effort, not hard real-time.
-  Advance(Delay),
+  Advance(TwoDigits),
 }
 
 impl Effect {
@@ -391,30 +357,18 @@ pub fn midi_pitch_from_octave(octave: Octave, semitone: Semitone) -> u8 {
 
 #[cfg(test)]
 mod effect_tests {
-  use super::{Delay, Effect, Note};
-
-  #[test]
-  fn delay_construction_checks_the_full_range() {
-    for value in u8::MIN..=u8::MAX {
-      let delay = Delay::new(value);
-      assert_eq!(delay.is_some(), value <= 99);
-      assert_eq!(Delay::try_from(value).ok(), delay);
-      if let Some(delay) = delay {
-        assert_eq!(delay.get(), value);
-      }
-    }
-  }
+  use super::{Effect, Note, TwoDigits};
 
   #[test]
   fn delay_effect_json_round_trips() {
     for value in 0..=99 {
       for (effect, json) in [
         (
-          Effect::Delay(Delay::new(value).unwrap()),
+          Effect::Delay(TwoDigits::new(value).unwrap()),
           serde_json::json!({ "Delay": value }),
         ),
         (
-          Effect::Advance(Delay::new(value).unwrap()),
+          Effect::Advance(TwoDigits::new(value).unwrap()),
           serde_json::json!({ "Advance": value }),
         ),
       ] {
@@ -448,8 +402,8 @@ mod effect_tests {
     );
 
     for (name, effect) in [
-      ("Delay", Effect::Delay(Delay::new(35).unwrap())),
-      ("Advance", Effect::Advance(Delay::new(35).unwrap())),
+      ("Delay", Effect::Delay(TwoDigits::new(35).unwrap())),
+      ("Advance", Effect::Advance(TwoDigits::new(35).unwrap())),
     ] {
       let with_delay: Note =
         serde_json::from_str(&format!(r#"{note},"effect":{{"{name}":35}}}}"#)).unwrap();

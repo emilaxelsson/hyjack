@@ -434,7 +434,8 @@ mod tests {
   use super::*;
   use crate::player::{MIDI_NOTE_ON, MIDI_PROGRAM_CHANGE, SilentMidiSink};
   use crate::state::minimal_song;
-  use crate::state::pattern::{Delay, Effect, Note, Octave, Track, TrackColumn, Velocity};
+  use crate::state::pattern::{Effect, Note, Octave, Track, TrackColumn, Velocity};
+  use crate::utils::TwoDigits;
 
   struct RecordingMidiSink(Vec<Vec<u8>>);
 
@@ -455,7 +456,7 @@ mod tests {
     let mut note = crate::state::test_state().patterns[0].tracks[0].notes[0]
       .clone()
       .unwrap();
-    note.effect = Some(Effect::Delay(Delay::new(90).unwrap()));
+    note.effect = Some(Effect::Delay(TwoDigits::new(90).unwrap()));
     state.patterns[0].tracks.push(Track {
       notes: vec![Some(note)],
     });
@@ -916,7 +917,7 @@ mod tests {
     }
     assert!(midi.0.is_empty());
 
-    state.set_focused_note_effect(Some(Effect::Delay(Delay::new(3).unwrap())));
+    state.set_focused_note_effect(Some(Effect::Delay(TwoDigits::new(3).unwrap())));
     handle_edit_pattern_event(
       &mut state,
       &mut scroll,
@@ -927,7 +928,7 @@ mod tests {
     .unwrap();
     assert_eq!(
       state.get_current_pattern().get_note(0, 0).unwrap().effect,
-      Some(Effect::Delay(Delay::new(3).unwrap()))
+      Some(Effect::Delay(TwoDigits::new(3).unwrap()))
     );
     let result = handle_edit_pattern_event(
       &mut state,
@@ -940,7 +941,7 @@ mod tests {
     assert!(!result.handled);
     assert_eq!(
       state.get_current_pattern().get_note(0, 0).unwrap().effect,
-      Some(Effect::Delay(Delay::new(3).unwrap()))
+      Some(Effect::Delay(TwoDigits::new(3).unwrap()))
     );
   }
 
@@ -948,8 +949,8 @@ mod tests {
   fn delete_clears_effect_before_removing_note_only_in_effect_column() {
     for effect in [
       Effect::SetTempo(NonZeroU8::new(120).unwrap()),
-      Effect::Delay(Delay::new(3).unwrap()),
-      Effect::Advance(Delay::new(3).unwrap()),
+      Effect::Delay(TwoDigits::new(3).unwrap()),
+      Effect::Advance(TwoDigits::new(3).unwrap()),
     ] {
       let mut state = crate::state::test_state();
       state.focus.track_column = TrackColumn::Effect;
@@ -1228,7 +1229,7 @@ mod tests {
   fn pattern_element_tempo_keys_leave_other_effects_and_empty_notes_unchanged() {
     let mut state = crate::state::test_state();
     state.focus.track_column = TrackColumn::Effect;
-    for effect in [None, Some(Effect::Delay(Delay::new(3).unwrap()))] {
+    for effect in [None, Some(Effect::Delay(TwoDigits::new(3).unwrap()))] {
       state.set_focused_note_effect(effect);
       for key in [
         KeyCode::Up,

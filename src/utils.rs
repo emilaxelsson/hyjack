@@ -2,7 +2,7 @@ use std::io::{self, Write};
 use std::num::NonZero;
 
 use nonempty::NonEmpty;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::value::RawValue;
 
 pub fn sub_one(x: NonZero<usize>) -> usize {
@@ -117,6 +117,40 @@ impl serde_json::ser::Formatter for SpacedFormatter {
   }
 }
 
+/// A value guaranteed to be in the range 0 through 99.
+///
+/// Construction and deserialization reject values outside that range. It
+/// serializes as an unsigned integer.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(try_from = "u8", into = "u8")]
+pub struct TwoDigits(u8);
+
+impl TwoDigits {
+  /// Constructs a two-digit value, returning `None` if the value is greater than 99.
+  pub fn new(value: u8) -> Option<Self> {
+    (value <= 99).then_some(Self(value))
+  }
+
+  /// Returns the contained value.
+  pub fn get(self) -> u8 {
+    self.0
+  }
+}
+
+impl TryFrom<u8> for TwoDigits {
+  type Error = &'static str;
+
+  fn try_from(value: u8) -> Result<Self, Self::Error> {
+    Self::new(value).ok_or("two-digit value must be between 0 and 99")
+  }
+}
+
+impl From<TwoDigits> for u8 {
+  fn from(d: TwoDigits) -> Self {
+    d.get()
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -165,5 +199,17 @@ mod tests {
       serde_json::from_str::<serde_json::Value>(raw.get()).unwrap(),
       value
     );
+  }
+
+  #[test]
+  fn two_digits_construction_checks_the_full_range() {
+    for value in u8::MIN..=u8::MAX {
+      let d = TwoDigits::new(value);
+      assert_eq!(d.is_some(), value <= 99);
+      assert_eq!(TwoDigits::try_from(value).ok(), d);
+      if let Some(d) = d {
+        assert_eq!(d.get(), value);
+      }
+    }
   }
 }

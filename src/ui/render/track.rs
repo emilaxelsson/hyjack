@@ -179,7 +179,7 @@ mod tests {
   use std::num::NonZeroU8;
 
   use super::*;
-  use crate::state::pattern::Delay;
+  use crate::utils::TwoDigits;
 
   #[test]
   fn tempo_effects_render_in_the_three_character_column() {
@@ -201,8 +201,8 @@ mod tests {
       );
     }
     for effect in [
-      Effect::Delay(Delay::new(3).unwrap()),
-      Effect::Advance(Delay::new(3).unwrap()),
+      Effect::Delay(TwoDigits::new(3).unwrap()),
+      Effect::Advance(TwoDigits::new(3).unwrap()),
     ] {
       note.effect = Some(effect);
       assert_eq!(note_cell_text(&Some(note.clone())), "C-3 00 v50  ···");
