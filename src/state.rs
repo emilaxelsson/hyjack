@@ -40,7 +40,7 @@ pub struct AppState {
   #[serde(skip, default)]
   velocity_digit_entry: Option<DigitEntry>,
   #[serde(skip, default)]
-  tempo_digit_entry: Option<DigitEntry>,
+  effect_digit_entry: Option<DigitEntry>,
 }
 
 #[derive(Clone, Copy)]
@@ -87,7 +87,7 @@ impl AppState {
       editor_settings: EditorSettings::default(),
       instrument_digit_entry: None,
       velocity_digit_entry: None,
-      tempo_digit_entry: None,
+      effect_digit_entry: None,
     }
   }
 
@@ -459,14 +459,15 @@ impl AppState {
           .adjust_velocity(note.instrument, &mut note.velocity, increase, small_step);
       }
       TrackColumn::Effect => {
-        if let Some(Effect::SetTempo(bpm)) = &mut note.effect {
+        if let Some(effect) = &mut note.effect {
+          let value = effect.value_mut();
           let step = if small_step { 1 } else { 10 };
-          let value = if increase {
-            bpm.get().saturating_add(step)
+          let adjusted = if increase {
+            value.get().saturating_add(step)
           } else {
-            bpm.get().saturating_sub(step)
+            value.get().saturating_sub(step)
           };
-          *bpm = TwoDigits::new(value.min(99)).unwrap();
+          *value = TwoDigits::new(adjusted.min(99)).unwrap();
         }
       }
     }
@@ -500,8 +501,8 @@ impl AppState {
         note.velocity = Velocity(if maximum { Velocity::MAX } else { 0 });
       }
       TrackColumn::Effect => {
-        if let Some(Effect::SetTempo(bpm)) = &mut note.effect {
-          *bpm = TwoDigits::new(if maximum { 99 } else { 0 }).unwrap();
+        if let Some(effect) = &mut note.effect {
+          *effect.value_mut() = TwoDigits::new(if maximum { 99 } else { 0 }).unwrap();
         }
       }
     }
@@ -541,9 +542,9 @@ impl AppState {
     pattern.set_note(self.focus.row_index, self.focus.track_index, note);
   }
 
-  /// Replace the focused note's effect and start a fresh tempo digit entry.
+  /// Replace the focused note's effect and start a fresh effect digit entry.
   pub fn set_focused_note_effect(&mut self, effect: Option<Effect>) {
-    self.tempo_digit_entry = None;
+    self.effect_digit_entry = None;
     let pattern_index = self.get_current_pattern_index();
     let Some(pattern) = self.patterns.get_mut(pattern_index) else {
       return;
@@ -555,9 +556,9 @@ impl AppState {
     pattern.set_note(self.focus.row_index, self.focus.track_index, note);
   }
 
-  /// Set the focused tempo effect from a digit typed in the pattern editor.
-  pub fn set_focused_note_tempo_digit(&mut self, digit: u8, now: Instant) {
-    assert!(digit <= 9, "tempo digit must be between 0 and 9");
+  /// Set the focused effect value from a digit typed in the pattern editor.
+  pub fn set_focused_note_effect_digit(&mut self, digit: u8, now: Instant) {
+    assert!(digit <= 9, "effect digit must be between 0 and 9");
     let pattern_index = self.get_current_pattern_index();
     let Some(pattern) = self.patterns.get_mut(pattern_index) else {
       return;
@@ -565,12 +566,12 @@ impl AppState {
     let Some(mut note) = pattern.get_note(self.focus.row_index, self.focus.track_index) else {
       return;
     };
-    if !matches!(note.effect, Some(Effect::SetTempo(_))) {
+    let Some(effect) = &mut note.effect else {
       return;
-    }
+    };
 
-    let value = enter_digit(&mut self.tempo_digit_entry, digit, now);
-    note.effect = Some(Effect::SetTempo(TwoDigits::new(value).unwrap()));
+    let value = enter_digit(&mut self.effect_digit_entry, digit, now);
+    *effect.value_mut() = TwoDigits::new(value).unwrap();
     pattern.set_note(self.focus.row_index, self.focus.track_index, note);
   }
 
@@ -618,7 +619,7 @@ pub fn test_state() -> AppState {
     editor_settings: EditorSettings::default(),
     instrument_digit_entry: None,
     velocity_digit_entry: None,
-    tempo_digit_entry: None,
+    effect_digit_entry: None,
   }
 }
 
@@ -1352,25 +1353,31 @@ mod tests {
   }
 
   #[test]
-  fn tempo_digits_pair_roll_over_and_time_out() {
-    let mut state = test_state();
-    let start = Instant::now();
-    state.set_focused_note_effect(Some(Effect::SetTempo(TwoDigits::new(0).unwrap())));
-    for (digit, millis, value) in [(0, 0, 0), (9, 999, 9), (9, 1000, 99), (2, 2001, 2)] {
-      state.set_focused_note_tempo_digit(digit, start + Duration::from_millis(millis));
+  fn effect_digits_pair_roll_over_and_time_out() {
+    for constructor in [
+      Effect::SetTempo as fn(TwoDigits) -> Effect,
+      Effect::Delay,
+      Effect::Advance,
+    ] {
+      let mut state = test_state();
+      let start = Instant::now();
+      state.set_focused_note_effect(Some(constructor(TwoDigits::new(0).unwrap())));
+      for (digit, millis, value) in [(0, 0, 0), (9, 999, 9), (9, 1000, 99), (2, 2001, 2)] {
+        state.set_focused_note_effect_digit(digit, start + Duration::from_millis(millis));
+        assert_eq!(
+          state.get_current_pattern().get_note(0, 0).unwrap().effect,
+          Some(constructor(TwoDigits::new(value).unwrap()))
+        );
+      }
+
+      state.set_focused_note_effect(None);
+      state.set_focused_note_effect_digit(9, start + Duration::from_millis(2002));
+      state.set_focused_note_effect(Some(constructor(TwoDigits::new(0).unwrap())));
+      state.set_focused_note_effect_digit(3, start + Duration::from_millis(2003));
       assert_eq!(
         state.get_current_pattern().get_note(0, 0).unwrap().effect,
-        Some(Effect::SetTempo(TwoDigits::new(value).unwrap()))
+        Some(constructor(TwoDigits::new(3).unwrap()))
       );
     }
-
-    state.set_focused_note_effect(None);
-    state.set_focused_note_tempo_digit(9, start + Duration::from_millis(2002));
-    state.set_focused_note_effect(Some(Effect::SetTempo(TwoDigits::new(0).unwrap())));
-    state.set_focused_note_tempo_digit(3, start + Duration::from_millis(2003));
-    assert_eq!(
-      state.get_current_pattern().get_note(0, 0).unwrap().effect,
-      Some(Effect::SetTempo(TwoDigits::new(3).unwrap()))
-    );
   }
 }

@@ -91,6 +91,12 @@ pub enum Effect {
 
 impl Effect {
   pub const TEMPO_BASE: u8 = 100;
+
+  pub fn value_mut(&mut self) -> &mut TwoDigits {
+    match self {
+      Self::SetTempo(value) | Self::Delay(value) | Self::Advance(value) => value,
+    }
+  }
 }
 
 impl Note {

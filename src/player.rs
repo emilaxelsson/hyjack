@@ -1246,8 +1246,8 @@ mod tests {
     state.initial_bpm = NonZeroU8::new(80).unwrap();
     state.set_focused_note_effect(Some(Effect::SetTempo(TwoDigits::new(0).unwrap())));
     let now = Instant::now();
-    state.set_focused_note_tempo_digit(2, now);
-    state.set_focused_note_tempo_digit(0, now);
+    state.set_focused_note_effect_digit(2, now);
+    state.set_focused_note_effect_digit(0, now);
 
     let json = serde_json::to_string(&state).unwrap();
     let loaded: AppState = serde_json::from_str(&json).unwrap();

@@ -25,7 +25,9 @@ fn note_cell_text(note: &Option<Note>) -> String {
   if let Some(note) = note {
     let effect = match note.effect {
       Some(Effect::SetTempo(tempo)) => format!("T{:02}", tempo.get()),
-      _ => "···".to_owned(),
+      Some(Effect::Delay(delay)) => format!("D{:02}", delay.get()),
+      Some(Effect::Advance(advance)) => format!("E{:02}", advance.get()),
+      None => "···".to_owned(),
     };
     format!(
       "{} {:02} v{:02}  {}",
@@ -175,25 +177,26 @@ mod tests {
   use crate::utils::TwoDigits;
 
   #[test]
-  fn tempo_effects_render_in_the_three_character_column() {
+  fn effects_render_in_the_three_character_column() {
     let mut note = crate::state::test_state()
       .get_current_pattern()
       .get_note(0, 0)
       .unwrap();
-    for (value, text) in [(0, "T00"), (20, "T20"), (99, "T99")] {
-      note.effect = Some(Effect::SetTempo(TwoDigits::new(value).unwrap()));
-      assert_eq!(
-        note_cell_text(&Some(note.clone())),
-        format!("C-3 00 v50  {text}")
-      );
-    }
-    for effect in [
-      Effect::Delay(TwoDigits::new(3).unwrap()),
-      Effect::Advance(TwoDigits::new(3).unwrap()),
+    for (constructor, prefix) in [
+      (Effect::SetTempo as fn(TwoDigits) -> Effect, 'T'),
+      (Effect::Delay, 'D'),
+      (Effect::Advance, 'E'),
     ] {
-      note.effect = Some(effect);
-      assert_eq!(note_cell_text(&Some(note.clone())), "C-3 00 v50  ···");
+      for value in [0, 3, 20, 99] {
+        note.effect = Some(constructor(TwoDigits::new(value).unwrap()));
+        assert_eq!(
+          note_cell_text(&Some(note.clone())),
+          format!("C-3 00 v50  {prefix}{value:02}")
+        );
+      }
     }
+    note.effect = None;
+    assert_eq!(note_cell_text(&Some(note)), "C-3 00 v50  ···");
     assert_eq!(note_cell_text(&None), "··· ··  ··  ···");
   }
 }

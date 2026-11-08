@@ -145,7 +145,10 @@ Editing:
 When effect column focused on existing note:
 
   * `T` – Set a tempo effect to `T00` (100 BPM) in the effect column
-  * Use digit key to edit value (00 - 99 corresponding to 100–199 BPM)
+  * `D` – Set a delay effect to `D00`
+  * `E` – Set an advance effect to `E00`
+  * Use digit keys to edit the value: 00–99 corresponds to 100–199 BPM for tempo,
+    or 0–99% of the row duration for delay and advance
 
 Navigation:
 

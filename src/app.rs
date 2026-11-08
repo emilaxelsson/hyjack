@@ -364,10 +364,17 @@ fn handle_edit_pattern_event(
     }
     KeyCode::Char(ch)
       if state.focus.track_column == TrackColumn::Effect
-        && ch.eq_ignore_ascii_case(&'t')
+        && matches!(ch.to_ascii_lowercase(), 't' | 'd' | 'e')
         && can_type_note(key.modifiers) =>
     {
-      state.set_focused_note_effect(Some(Effect::SetTempo(TwoDigits::new(0).unwrap())));
+      let value = TwoDigits::new(0).unwrap();
+      let effect = match ch.to_ascii_lowercase() {
+        't' => Effect::SetTempo(value),
+        'd' => Effect::Delay(value),
+        'e' => Effect::Advance(value),
+        _ => unreachable!(),
+      };
+      state.set_focused_note_effect(Some(effect));
       handled = true;
     }
     KeyCode::Char(ch)
@@ -376,7 +383,7 @@ fn handle_edit_pattern_event(
         && can_type_note(key.modifiers) =>
     {
       if let Some(digit) = ch.to_digit(10) {
-        state.set_focused_note_tempo_digit(digit as u8, Instant::now());
+        state.set_focused_note_effect_digit(digit as u8, Instant::now());
         handled = true;
       }
     }
@@ -894,6 +901,15 @@ mod tests {
       ('T', Some(Effect::SetTempo(TwoDigits::new(0).unwrap()))),
       ('9', Some(Effect::SetTempo(TwoDigits::new(9).unwrap()))),
       ('9', Some(Effect::SetTempo(TwoDigits::new(99).unwrap()))),
+      ('d', Some(Effect::Delay(TwoDigits::new(0).unwrap()))),
+      ('3', Some(Effect::Delay(TwoDigits::new(3).unwrap()))),
+      ('0', Some(Effect::Delay(TwoDigits::new(30).unwrap()))),
+      ('E', Some(Effect::Advance(TwoDigits::new(0).unwrap()))),
+      ('0', Some(Effect::Advance(TwoDigits::new(0).unwrap()))),
+      ('9', Some(Effect::Advance(TwoDigits::new(9).unwrap()))),
+      ('t', Some(Effect::SetTempo(TwoDigits::new(0).unwrap()))),
+      ('D', Some(Effect::Delay(TwoDigits::new(0).unwrap()))),
+      ('e', Some(Effect::Advance(TwoDigits::new(0).unwrap()))),
     ] {
       let result = handle_edit_pattern_event(
         &mut state,
@@ -914,19 +930,6 @@ mod tests {
     }
     assert!(midi.0.is_empty());
 
-    state.set_focused_note_effect(Some(Effect::Delay(TwoDigits::new(3).unwrap())));
-    handle_edit_pattern_event(
-      &mut state,
-      &mut scroll,
-      &player,
-      &mut midi,
-      KeyEvent::from(KeyCode::Char('5')),
-    )
-    .unwrap();
-    assert_eq!(
-      state.get_current_pattern().get_note(0, 0).unwrap().effect,
-      Some(Effect::Delay(TwoDigits::new(3).unwrap()))
-    );
     let result = handle_edit_pattern_event(
       &mut state,
       &mut scroll,
@@ -938,7 +941,7 @@ mod tests {
     assert!(!result.handled);
     assert_eq!(
       state.get_current_pattern().get_note(0, 0).unwrap().effect,
-      Some(Effect::Delay(TwoDigits::new(3).unwrap()))
+      Some(Effect::Advance(TwoDigits::new(0).unwrap()))
     );
   }
 
@@ -1018,13 +1021,13 @@ mod tests {
   }
 
   #[test]
-  fn effect_keys_do_not_create_notes_and_t_remains_a_note_key_elsewhere() {
+  fn effect_keys_do_not_create_notes_and_remain_note_keys_elsewhere() {
     let mut state = minimal_song();
     state.focus.track_column = TrackColumn::Effect;
     let mut midi = RecordingMidiSink(Vec::new());
     let mut scroll = ScrollViewState::default();
     let player = Player::default();
-    for ch in ['t', '1', '.'] {
+    for ch in ['t', 'd', 'e', '1', '.'] {
       handle_edit_pattern_event(
         &mut state,
         &mut scroll,
@@ -1049,18 +1052,21 @@ mod tests {
     assert!(state.get_current_pattern().tracks.is_empty());
 
     state.focus.track_column = TrackColumn::Note;
-    handle_edit_pattern_event(
-      &mut state,
-      &mut scroll,
-      &player,
-      &mut midi,
-      KeyEvent::from(KeyCode::Char('t')),
-    )
-    .unwrap();
-    assert_eq!(
-      state.get_current_pattern().get_note(0, 0).unwrap().semitone,
-      Semitone(6)
-    );
+    for (ch, semitone) in [('t', 6), ('d', 4), ('e', 3)] {
+      state.focus.row_index = 0;
+      handle_edit_pattern_event(
+        &mut state,
+        &mut scroll,
+        &player,
+        &mut midi,
+        KeyEvent::from(KeyCode::Char(ch)),
+      )
+      .unwrap();
+      assert_eq!(
+        state.get_current_pattern().get_note(0, 0).unwrap().semitone,
+        Semitone(semitone)
+      );
+    }
     assert!(!midi.0.is_empty());
   }
 
@@ -1181,58 +1187,62 @@ mod tests {
   }
 
   #[test]
-  fn pattern_element_tempo_keys_adjust_and_clamp_the_effect() {
-    let mut state = crate::state::test_state();
-    state.focus.track_column = TrackColumn::Effect;
-    state.set_focused_note_effect(Some(Effect::SetTempo(TwoDigits::new(20).unwrap())));
-    let original = state.get_current_pattern().get_note(0, 0).unwrap();
-
-    for (key, bpm) in [
-      (KeyCode::Up, 121),
-      (KeyCode::Down, 120),
-      (KeyCode::PageUp, 130),
-      (KeyCode::PageDown, 120),
-      (KeyCode::Home, 100),
-      (KeyCode::Down, 100),
-      (KeyCode::PageDown, 100),
-      (KeyCode::End, 199),
-      (KeyCode::Up, 199),
-      (KeyCode::PageUp, 199),
-      (KeyCode::PageDown, 189),
+  fn pattern_element_keys_adjust_and_clamp_effects() {
+    for constructor in [
+      Effect::SetTempo as fn(TwoDigits) -> Effect,
+      Effect::Delay,
+      Effect::Advance,
     ] {
-      assert!(handle_edit_pattern_element_event(&mut state, KeyEvent::from(key)).handled);
-      let note = state.get_current_pattern().get_note(0, 0).unwrap();
-      assert_eq!(
-        note.effect,
-        Some(Effect::SetTempo(TwoDigits::new(bpm - 100).unwrap()))
-      );
-      assert_eq!(note.octave, original.octave);
-      assert_eq!(note.semitone, original.semitone);
-      assert_eq!(note.instrument, original.instrument);
-      assert_eq!(note.velocity, original.velocity);
+      let mut state = crate::state::test_state();
+      state.focus.track_column = TrackColumn::Effect;
+      state.set_focused_note_effect(Some(constructor(TwoDigits::new(20).unwrap())));
+      let original = state.get_current_pattern().get_note(0, 0).unwrap();
+
+      for (key, value) in [
+        (KeyCode::Up, 21),
+        (KeyCode::Down, 20),
+        (KeyCode::PageUp, 30),
+        (KeyCode::PageDown, 20),
+        (KeyCode::Home, 0),
+        (KeyCode::Down, 0),
+        (KeyCode::PageDown, 0),
+        (KeyCode::End, 99),
+        (KeyCode::Up, 99),
+        (KeyCode::PageUp, 99),
+        (KeyCode::PageDown, 89),
+      ] {
+        assert!(handle_edit_pattern_element_event(&mut state, KeyEvent::from(key)).handled);
+        let note = state.get_current_pattern().get_note(0, 0).unwrap();
+        assert_eq!(
+          note.effect,
+          Some(constructor(TwoDigits::new(value).unwrap()))
+        );
+        assert_eq!(note.octave, original.octave);
+        assert_eq!(note.semitone, original.semitone);
+        assert_eq!(note.instrument, original.instrument);
+        assert_eq!(note.velocity, original.velocity);
+      }
     }
   }
 
   #[test]
-  fn pattern_element_tempo_keys_leave_other_effects_and_empty_notes_unchanged() {
+  fn pattern_element_effect_keys_leave_missing_effects_and_notes_unchanged() {
     let mut state = crate::state::test_state();
     state.focus.track_column = TrackColumn::Effect;
-    for effect in [None, Some(Effect::Delay(TwoDigits::new(3).unwrap()))] {
-      state.set_focused_note_effect(effect);
-      for key in [
-        KeyCode::Up,
-        KeyCode::Down,
-        KeyCode::PageUp,
-        KeyCode::PageDown,
-        KeyCode::Home,
-        KeyCode::End,
-      ] {
-        handle_edit_pattern_element_event(&mut state, KeyEvent::from(key));
-        assert_eq!(
-          state.get_current_pattern().get_note(0, 0).unwrap().effect,
-          effect
-        );
-      }
+    state.set_focused_note_effect(None);
+    for key in [
+      KeyCode::Up,
+      KeyCode::Down,
+      KeyCode::PageUp,
+      KeyCode::PageDown,
+      KeyCode::Home,
+      KeyCode::End,
+    ] {
+      handle_edit_pattern_element_event(&mut state, KeyEvent::from(key));
+      assert_eq!(
+        state.get_current_pattern().get_note(0, 0).unwrap().effect,
+        None
+      );
     }
     state.remove_focused_note();
     handle_edit_pattern_element_event(&mut state, KeyEvent::from(KeyCode::Up));
