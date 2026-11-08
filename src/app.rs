@@ -1,5 +1,4 @@
 use std::io;
-use std::num::NonZeroU8;
 use std::path::Path;
 use std::time::{Duration, Instant};
 
@@ -21,6 +20,7 @@ use crate::ui::component::input_dialog::InputDialog;
 use crate::ui::render::pattern::scroll_cursor_into_view;
 use crate::ui::render::style::{ERROR_BANNER_STYLE, INFO_BANNER_STYLE};
 use crate::ui::render::{DrawState, draw_ui, scroll_focused_sequence_into_view};
+use crate::utils::TwoDigits;
 
 const SAVE_BANNER_TIMEOUT: Duration = Duration::from_millis(1400);
 const MAX_EVENT_POLL_TIMEOUT: Duration = Duration::from_millis(100);
@@ -367,9 +367,7 @@ fn handle_edit_pattern_event(
         && ch.eq_ignore_ascii_case(&'t')
         && can_type_note(key.modifiers) =>
     {
-      state.set_focused_note_effect(Some(Effect::SetTempo(
-        NonZeroU8::new(Effect::MIN_EDITABLE_TEMPO).unwrap(),
-      )));
+      state.set_focused_note_effect(Some(Effect::SetTempo(TwoDigits::new(0).unwrap())));
       handled = true;
     }
     KeyCode::Char(ch)
@@ -435,7 +433,6 @@ mod tests {
   use crate::player::{MIDI_NOTE_ON, MIDI_PROGRAM_CHANGE, SilentMidiSink};
   use crate::state::minimal_song;
   use crate::state::pattern::{Effect, Note, Octave, Track, TrackColumn, Velocity};
-  use crate::utils::TwoDigits;
 
   struct RecordingMidiSink(Vec<Vec<u8>>);
 
@@ -894,9 +891,9 @@ mod tests {
     let player = Player::default();
 
     for (key, expected) in [
-      ('T', Some(Effect::SetTempo(NonZeroU8::new(100).unwrap()))),
-      ('9', Some(Effect::SetTempo(NonZeroU8::new(109).unwrap()))),
-      ('9', Some(Effect::SetTempo(NonZeroU8::new(199).unwrap()))),
+      ('T', Some(Effect::SetTempo(TwoDigits::new(0).unwrap()))),
+      ('9', Some(Effect::SetTempo(TwoDigits::new(9).unwrap()))),
+      ('9', Some(Effect::SetTempo(TwoDigits::new(99).unwrap()))),
     ] {
       let result = handle_edit_pattern_event(
         &mut state,
@@ -948,7 +945,7 @@ mod tests {
   #[test]
   fn delete_clears_effect_before_removing_note_only_in_effect_column() {
     for effect in [
-      Effect::SetTempo(NonZeroU8::new(120).unwrap()),
+      Effect::SetTempo(TwoDigits::new(20).unwrap()),
       Effect::Delay(TwoDigits::new(3).unwrap()),
       Effect::Advance(TwoDigits::new(3).unwrap()),
     ] {
@@ -1007,7 +1004,7 @@ mod tests {
     ] {
       let mut state = crate::state::test_state();
       state.focus.track_column = column;
-      state.set_focused_note_effect(Some(Effect::SetTempo(NonZeroU8::new(120).unwrap())));
+      state.set_focused_note_effect(Some(Effect::SetTempo(TwoDigits::new(20).unwrap())));
       handle_edit_pattern_event(
         &mut state,
         &mut ScrollViewState::default(),
@@ -1187,7 +1184,7 @@ mod tests {
   fn pattern_element_tempo_keys_adjust_and_clamp_the_effect() {
     let mut state = crate::state::test_state();
     state.focus.track_column = TrackColumn::Effect;
-    state.set_focused_note_effect(Some(Effect::SetTempo(NonZeroU8::new(120).unwrap())));
+    state.set_focused_note_effect(Some(Effect::SetTempo(TwoDigits::new(20).unwrap())));
     let original = state.get_current_pattern().get_note(0, 0).unwrap();
 
     for (key, bpm) in [
@@ -1207,21 +1204,12 @@ mod tests {
       let note = state.get_current_pattern().get_note(0, 0).unwrap();
       assert_eq!(
         note.effect,
-        Some(Effect::SetTempo(NonZeroU8::new(bpm).unwrap()))
+        Some(Effect::SetTempo(TwoDigits::new(bpm - 100).unwrap()))
       );
       assert_eq!(note.octave, original.octave);
       assert_eq!(note.semitone, original.semitone);
       assert_eq!(note.instrument, original.instrument);
       assert_eq!(note.velocity, original.velocity);
-    }
-
-    for (before, key, after) in [(1, KeyCode::Down, 100), (255, KeyCode::Up, 199)] {
-      state.set_focused_note_effect(Some(Effect::SetTempo(NonZeroU8::new(before).unwrap())));
-      handle_edit_pattern_element_event(&mut state, KeyEvent::from(key));
-      assert_eq!(
-        state.get_current_pattern().get_note(0, 0).unwrap().effect,
-        Some(Effect::SetTempo(NonZeroU8::new(after).unwrap()))
-      );
     }
   }
 

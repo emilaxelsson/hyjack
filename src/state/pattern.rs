@@ -70,7 +70,8 @@ pub struct Note {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Effect {
-  SetTempo(NonZeroU8),
+  /// Set the tempo to 100 BPM plus the stored value.
+  SetTempo(TwoDigits),
 
   /// Play a note late by 0% through 99% of its row duration.
   ///
@@ -89,8 +90,7 @@ pub enum Effect {
 }
 
 impl Effect {
-  pub const MIN_EDITABLE_TEMPO: u8 = 100;
-  pub const MAX_EDITABLE_TEMPO: u8 = 199;
+  pub const TEMPO_BASE: u8 = 100;
 }
 
 impl Note {
@@ -360,9 +360,13 @@ mod effect_tests {
   use super::{Effect, Note, TwoDigits};
 
   #[test]
-  fn delay_effect_json_round_trips() {
+  fn two_digit_effects_json_round_trip() {
     for value in 0..=99 {
       for (effect, json) in [
+        (
+          Effect::SetTempo(TwoDigits::new(value).unwrap()),
+          serde_json::json!({ "SetTempo": value }),
+        ),
         (
           Effect::Delay(TwoDigits::new(value).unwrap()),
           serde_json::json!({ "Delay": value }),
@@ -379,8 +383,8 @@ mod effect_tests {
   }
 
   #[test]
-  fn delay_deserialization_rejects_invalid_values() {
-    for name in ["Delay", "Advance"] {
+  fn two_digit_effects_reject_invalid_values() {
+    for name in ["SetTempo", "Delay", "Advance"] {
       for value in ["-100", "-1", "100", "255", "256", "1.5", r#""3""#] {
         let json = format!(r#"{{"{name}":{value}}}"#);
         assert!(serde_json::from_str::<Effect>(&json).is_err(), "{json}");
@@ -395,10 +399,10 @@ mod effect_tests {
     assert_eq!(without_effect.effect, None);
 
     let with_tempo: Note =
-      serde_json::from_str(&format!(r#"{note},"effect":{{"SetTempo":120}}}}"#)).unwrap();
+      serde_json::from_str(&format!(r#"{note},"effect":{{"SetTempo":20}}}}"#)).unwrap();
     assert_eq!(
       serde_json::to_value(with_tempo).unwrap()["effect"],
-      serde_json::json!({ "SetTempo": 120 })
+      serde_json::json!({ "SetTempo": 20 })
     );
 
     for (name, effect) in [

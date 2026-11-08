@@ -341,7 +341,7 @@ impl Timeline {
             .and_then(Option::as_ref)
             .and_then(|note| note.effect)
           {
-            bpm = new_bpm;
+            bpm = NonZeroU8::new(Effect::TEMPO_BASE + new_bpm.get()).unwrap();
           }
         }
 
@@ -898,8 +898,8 @@ mod tests {
       None,
       Some(Effect::Delay(TwoDigits::new(0).unwrap())),
       Some(Effect::Delay(TwoDigits::new(90).unwrap())),
-      Some(Effect::SetTempo(NonZeroU8::new(60).unwrap())),
-      Some(Effect::SetTempo(NonZeroU8::new(240).unwrap())),
+      Some(Effect::SetTempo(TwoDigits::new(0).unwrap())),
+      Some(Effect::SetTempo(TwoDigits::new(50).unwrap())),
       Some(Effect::Advance(TwoDigits::new(30).unwrap())),
       Some(Effect::Delay(TwoDigits::new(30).unwrap())),
     ];
@@ -912,18 +912,18 @@ mod tests {
 
     let timeline = Timeline::from_song(&state).unwrap();
     assert_eq!(timeline.rows[0][0].start_time, Duration::ZERO);
-    assert_eq!(timeline.rows[0][0].duration, Duration::from_micros(62_500));
+    assert_eq!(timeline.rows[0][0].duration, Duration::from_millis(100));
     assert_eq!(
       timeline.notes,
       [
-        (-56_250_000, 0),
-        (-18_750_000, 6),
+        (-90_000_000, 0),
+        (-30_000_000, 6),
         (0, 1),
         (0, 2),
         (0, 4),
         (0, 5),
-        (18_750_000, 7),
-        (56_250_000, 3),
+        (30_000_000, 7),
+        (90_000_000, 3),
       ]
       .map(|(time, track_index)| NoteEvent {
         time,
@@ -1201,11 +1201,8 @@ mod tests {
     let mut midi = RecordingMidiSink(Vec::new());
     let mut playback = Playback::start(&state, &mut player_state, &mut midi, now).unwrap();
 
-    assert_eq!(player_state.time, Duration::from_micros(1_031_250));
-    assert_eq!(
-      playback.next_deadline(),
-      now + Duration::from_micros(31_250)
-    );
+    assert_eq!(player_state.time, Duration::from_millis(1_050));
+    assert_eq!(playback.next_deadline(), now + Duration::from_millis(50));
 
     playback
       .tick(
@@ -1216,18 +1213,38 @@ mod tests {
       )
       .unwrap();
 
-    assert_eq!(player_state.time, Duration::from_micros(1_281_250));
-    assert_eq!(
-      playback.next_deadline(),
-      now + Duration::from_micros(281_250)
-    );
+    assert_eq!(player_state.time, Duration::from_millis(1_300));
+    assert_eq!(playback.next_deadline(), now + Duration::from_millis(300));
+  }
+
+  #[test]
+  fn tempo_effect_boundaries_set_bpm_from_100_to_199() {
+    let mut state = minimal_song();
+    state.patterns[0].tracks.push(Track {
+      notes: vec![Some(test_note(None))],
+    });
+
+    for (value, bpm) in [(0, 100), (99, 199)] {
+      state.patterns[0].tracks[0].notes[0]
+        .as_mut()
+        .unwrap()
+        .effect = Some(Effect::SetTempo(TwoDigits::new(value).unwrap()));
+      let timeline = Timeline::from_song(&state).unwrap();
+      assert_eq!(
+        timeline.rows[0][0].duration,
+        row_duration(
+          NonZeroU8::new(bpm).unwrap(),
+          state.patterns[0].rows_per_beat
+        )
+      );
+    }
   }
 
   #[test]
   fn edited_tempo_is_used_for_row_timing_and_survives_serialization() {
     let mut state = crate::state::test_state();
     state.initial_bpm = NonZeroU8::new(80).unwrap();
-    state.set_focused_note_effect(Some(Effect::SetTempo(NonZeroU8::new(100).unwrap())));
+    state.set_focused_note_effect(Some(Effect::SetTempo(TwoDigits::new(0).unwrap())));
     let now = Instant::now();
     state.set_focused_note_tempo_digit(2, now);
     state.set_focused_note_tempo_digit(0, now);
@@ -1236,7 +1253,7 @@ mod tests {
     let loaded: AppState = serde_json::from_str(&json).unwrap();
     assert_eq!(
       loaded.get_current_pattern().get_note(0, 0).unwrap().effect,
-      Some(Effect::SetTempo(NonZeroU8::new(120).unwrap()))
+      Some(Effect::SetTempo(TwoDigits::new(20).unwrap()))
     );
     let timeline = Timeline::from_song(&loaded).unwrap();
     assert_eq!(timeline.rows[0][0].duration, Duration::from_millis(125));
@@ -1265,23 +1282,20 @@ mod tests {
     let mut midi = RecordingMidiSink(Vec::new());
     let mut playback = Playback::start(&state, &mut player_state, &mut midi, now).unwrap();
 
-    assert_eq!(player_state.time, Duration::from_micros(1_468_750));
+    assert_eq!(player_state.time, Duration::from_millis(1_750));
     playback
       .tick(
         &state,
         &mut player_state,
         &mut midi,
-        now + Duration::from_micros(31_250),
+        now + Duration::from_millis(50),
       )
       .unwrap();
 
     assert_eq!(player_state.sequence_index, 2);
     assert_eq!(player_state.row_index, 0);
-    assert_eq!(player_state.time, Duration::from_millis(1_500));
-    assert_eq!(
-      playback.next_deadline(),
-      now + Duration::from_micros(156_250)
-    );
+    assert_eq!(player_state.time, Duration::from_millis(1_800));
+    assert_eq!(playback.next_deadline(), now + Duration::from_millis(175));
     assert_eq!(
       midi.0,
       vec![vec![MIDI_PROGRAM_CHANGE, 2], vec![MIDI_NOTE_ON, 35, 115]]

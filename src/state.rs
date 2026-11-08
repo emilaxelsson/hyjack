@@ -20,7 +20,7 @@ use crate::state::pattern::{
   TrackColumn, Velocity,
 };
 use crate::state::sequence::Sequence;
-use crate::utils::{Adjustable, fresh_name, nonzero_len};
+use crate::utils::{Adjustable, TwoDigits, fresh_name, nonzero_len};
 
 #[derive(Serialize, Deserialize)]
 pub struct AppState {
@@ -466,9 +466,7 @@ impl AppState {
           } else {
             bpm.get().saturating_sub(step)
           };
-          *bpm =
-            NonZeroU8::new(value.clamp(Effect::MIN_EDITABLE_TEMPO, Effect::MAX_EDITABLE_TEMPO))
-              .unwrap();
+          *bpm = TwoDigits::new(value.min(99)).unwrap();
         }
       }
     }
@@ -503,12 +501,7 @@ impl AppState {
       }
       TrackColumn::Effect => {
         if let Some(Effect::SetTempo(bpm)) = &mut note.effect {
-          *bpm = NonZeroU8::new(if maximum {
-            Effect::MAX_EDITABLE_TEMPO
-          } else {
-            Effect::MIN_EDITABLE_TEMPO
-          })
-          .unwrap();
+          *bpm = TwoDigits::new(if maximum { 99 } else { 0 }).unwrap();
         }
       }
     }
@@ -577,9 +570,7 @@ impl AppState {
     }
 
     let value = enter_digit(&mut self.tempo_digit_entry, digit, now);
-    note.effect = Some(Effect::SetTempo(
-      NonZeroU8::new(Effect::MIN_EDITABLE_TEMPO + value).unwrap(),
-    ));
+    note.effect = Some(Effect::SetTempo(TwoDigits::new(value).unwrap()));
     pattern.set_note(self.focus.row_index, self.focus.track_index, note);
   }
 
@@ -673,7 +664,7 @@ mod tests {
     ));
     let mut state = test_state();
     let mut note_with_effect = state.patterns[0].tracks[0].notes[0].clone().unwrap();
-    note_with_effect.effect = Some(Effect::SetTempo(NonZeroU8::new(240).unwrap()));
+    note_with_effect.effect = Some(Effect::SetTempo(TwoDigits::new(99).unwrap()));
     state.patterns[0].num_rows = NonZero::new(3).unwrap();
     state.patterns[0].tracks[0]
       .notes
@@ -688,14 +679,14 @@ mod tests {
       r#""notes": [
             {"octave":3, "semitone":0, "instrument":0, "velocity":50, "effect":null},
             null,
-            {"octave":3, "semitone":0, "instrument":0, "velocity":50, "effect":{"SetTempo":240}}
+            {"octave":3, "semitone":0, "instrument":0, "velocity":50, "effect":{"SetTempo":99}}
           ]"#
     ));
     assert!(json.contains("\"pattern_defaults\": {\n"));
     let expected = serde_json::json!([
       {"octave": 3, "semitone": 0, "instrument": 0, "velocity": 50, "effect": null},
       null,
-      {"octave": 3, "semitone": 0, "instrument": 0, "velocity": 50, "effect": {"SetTempo": 240}}
+      {"octave": 3, "semitone": 0, "instrument": 0, "velocity": 50, "effect": {"SetTempo": 99}}
     ]);
     assert_eq!(
       serde_json::to_value(&loaded.patterns[0].tracks[0].notes).unwrap(),
@@ -1364,22 +1355,22 @@ mod tests {
   fn tempo_digits_pair_roll_over_and_time_out() {
     let mut state = test_state();
     let start = Instant::now();
-    state.set_focused_note_effect(Some(Effect::SetTempo(NonZeroU8::new(100).unwrap())));
-    for (digit, millis, bpm) in [(0, 0, 100), (9, 999, 109), (9, 1000, 199), (2, 2001, 102)] {
+    state.set_focused_note_effect(Some(Effect::SetTempo(TwoDigits::new(0).unwrap())));
+    for (digit, millis, value) in [(0, 0, 0), (9, 999, 9), (9, 1000, 99), (2, 2001, 2)] {
       state.set_focused_note_tempo_digit(digit, start + Duration::from_millis(millis));
       assert_eq!(
         state.get_current_pattern().get_note(0, 0).unwrap().effect,
-        Some(Effect::SetTempo(NonZeroU8::new(bpm).unwrap()))
+        Some(Effect::SetTempo(TwoDigits::new(value).unwrap()))
       );
     }
 
     state.set_focused_note_effect(None);
     state.set_focused_note_tempo_digit(9, start + Duration::from_millis(2002));
-    state.set_focused_note_effect(Some(Effect::SetTempo(NonZeroU8::new(100).unwrap())));
+    state.set_focused_note_effect(Some(Effect::SetTempo(TwoDigits::new(0).unwrap())));
     state.set_focused_note_tempo_digit(3, start + Duration::from_millis(2003));
     assert_eq!(
       state.get_current_pattern().get_note(0, 0).unwrap().effect,
-      Some(Effect::SetTempo(NonZeroU8::new(103).unwrap()))
+      Some(Effect::SetTempo(TwoDigits::new(3).unwrap()))
     );
   }
 }

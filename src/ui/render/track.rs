@@ -24,12 +24,7 @@ fn tracker_note_text(octave: Octave, semitone: Semitone) -> String {
 fn note_cell_text(note: &Option<Note>) -> String {
   if let Some(note) = note {
     let effect = match note.effect {
-      Some(Effect::SetTempo(bpm))
-        if (Effect::MIN_EDITABLE_TEMPO..=Effect::MAX_EDITABLE_TEMPO).contains(&bpm.get()) =>
-      {
-        format!("T{:02}", bpm.get() - Effect::MIN_EDITABLE_TEMPO)
-      }
-      Some(Effect::SetTempo(_)) => "T??".to_owned(),
+      Some(Effect::SetTempo(tempo)) => format!("T{:02}", tempo.get()),
       _ => "···".to_owned(),
     };
     format!(
@@ -176,8 +171,6 @@ pub fn draw_track_names(
 
 #[cfg(test)]
 mod tests {
-  use std::num::NonZeroU8;
-
   use super::*;
   use crate::utils::TwoDigits;
 
@@ -187,14 +180,8 @@ mod tests {
       .get_current_pattern()
       .get_note(0, 0)
       .unwrap();
-    for (bpm, text) in [
-      (100, "T00"),
-      (120, "T20"),
-      (199, "T99"),
-      (60, "T??"),
-      (240, "T??"),
-    ] {
-      note.effect = Some(Effect::SetTempo(NonZeroU8::new(bpm).unwrap()));
+    for (value, text) in [(0, "T00"), (20, "T20"), (99, "T99")] {
+      note.effect = Some(Effect::SetTempo(TwoDigits::new(value).unwrap()));
       assert_eq!(
         note_cell_text(&Some(note.clone())),
         format!("C-3 00 v50  {text}")
