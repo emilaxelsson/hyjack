@@ -130,16 +130,22 @@ a     s     d  f     g     h     j
 
 Pressing one of these keys when the note column is focused will insert the corresponding note.
 
-Instrument number and velocity can be set using the number keys.
+Instrument number, velocity and effect value can be set using the digit keys.
 
 Editing:
 
-  * `Delete` – Remove the current note
+  * `Delete` – Remove the current note, or remove its effect first if the effect column is focused
   * `Enter` – Edit the focused pattern element. Enters a mode with the following controls:
       - `Up`/`Down` – Increase/decrease value of the focused element
       - `PgUp`/`PgDown` – Increase/decrease value by a larger amount
+      - `Home`/`End` – Set the focused element to its minimum/maximum
       - `Enter`/`Esc` – Exit edit mode
       - `Ctrl+Enter` – Copy this note's attributes (octave, velocity and instrument) to the editor settings
+
+When effect column focused on existing note:
+
+  * `T` – Set a tempo effect to `T00` (100 BPM) in the effect column
+  * Use digit key to edit value (00 - 99 corresponding to 100–199 BPM)
 
 Navigation:
 

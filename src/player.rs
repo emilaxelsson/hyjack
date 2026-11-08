@@ -1176,6 +1176,36 @@ mod tests {
   }
 
   #[test]
+  fn edited_tempo_is_used_for_row_timing_and_survives_serialization() {
+    let mut state = crate::state::test_state();
+    state.initial_bpm = NonZeroU8::new(80).unwrap();
+    state.set_focused_note_effect(Some(Effect::SetTempo(NonZeroU8::new(100).unwrap())));
+    let now = Instant::now();
+    state.set_focused_note_tempo_digit(2, now);
+    state.set_focused_note_tempo_digit(0, now);
+
+    let json = serde_json::to_string(&state).unwrap();
+    let loaded: AppState = serde_json::from_str(&json).unwrap();
+    assert_eq!(
+      loaded.get_current_pattern().get_note(0, 0).unwrap().effect,
+      Some(Effect::SetTempo(NonZeroU8::new(120).unwrap()))
+    );
+    let timeline = Timeline::from_song(&loaded).unwrap();
+    assert_eq!(timeline.rows[0][0].duration, Duration::from_millis(125));
+
+    state.focus.track_column = crate::state::pattern::TrackColumn::Effect;
+    state.adjust_focused_note(true, true);
+    let timeline = Timeline::from_song(&state).unwrap();
+    assert_eq!(
+      timeline.rows[0][0].duration,
+      row_duration(
+        NonZeroU8::new(121).unwrap(),
+        state.patterns[0].rows_per_beat
+      )
+    );
+  }
+
+  #[test]
   fn advances_to_the_next_pattern_with_its_tempo_and_resolution() {
     let state: AppState = serde_json::from_str(include_str!("../tests/test.json")).unwrap();
     let mut player_state = PlayerState {

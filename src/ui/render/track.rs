@@ -4,7 +4,7 @@ use ratatui::layout::{Offset, Position, Rect, Size};
 use ratatui::widgets::{Block, Paragraph};
 use tui_scrollview::{ScrollView, ScrollViewState, ScrollbarVisibility};
 
-use crate::state::pattern::{Note, Octave, Pattern, Semitone, Track, TrackColumn};
+use crate::state::pattern::{Effect, Note, Octave, Pattern, Semitone, Track, TrackColumn};
 use crate::ui::common::rect_from_origin;
 use crate::ui::render::style::{
   ELEMENT_EDITING_FOCUSED_ROW_STYLE, FOCUSED_ROW_STYLE, INACTIVE_FOCUSED_ROW_STYLE,
@@ -23,11 +23,21 @@ fn tracker_note_text(octave: Octave, semitone: Semitone) -> String {
 
 fn note_cell_text(note: &Option<Note>) -> String {
   if let Some(note) = note {
+    let effect = match note.effect {
+      Some(Effect::SetTempo(bpm))
+        if (Effect::MIN_EDITABLE_TEMPO..=Effect::MAX_EDITABLE_TEMPO).contains(&bpm.get()) =>
+      {
+        format!("T{:02}", bpm.get() - Effect::MIN_EDITABLE_TEMPO)
+      }
+      Some(Effect::SetTempo(_)) => "T??".to_owned(),
+      _ => "···".to_owned(),
+    };
     format!(
-      "{} {:02} v{:02}  ···",
+      "{} {:02} v{:02}  {}",
       tracker_note_text(note.octave, note.semitone),
       note.instrument.0,
       note.velocity.0,
+      effect,
     )
   } else {
     "··· ··  ··  ···".to_string()
@@ -162,4 +172,36 @@ pub fn draw_track_names(
   };
   let mut scroll_state = ScrollViewState::with_offset(scroll_offset);
   frame.render_stateful_widget(scroll_view, tracks_area, &mut scroll_state);
+}
+
+#[cfg(test)]
+mod tests {
+  use std::num::NonZeroU8;
+
+  use super::*;
+  use crate::state::pattern::Delay;
+
+  #[test]
+  fn tempo_effects_render_in_the_three_character_column() {
+    let mut note = crate::state::test_state()
+      .get_current_pattern()
+      .get_note(0, 0)
+      .unwrap();
+    for (bpm, text) in [
+      (100, "T00"),
+      (120, "T20"),
+      (199, "T99"),
+      (60, "T??"),
+      (240, "T??"),
+    ] {
+      note.effect = Some(Effect::SetTempo(NonZeroU8::new(bpm).unwrap()));
+      assert_eq!(
+        note_cell_text(&Some(note.clone())),
+        format!("C-3 00 v50  {text}")
+      );
+    }
+    note.effect = Some(Effect::Delay(Delay::new(3).unwrap()));
+    assert_eq!(note_cell_text(&Some(note)), "C-3 00 v50  ···");
+    assert_eq!(note_cell_text(&None), "··· ··  ··  ···");
+  }
 }

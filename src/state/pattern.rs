@@ -121,6 +121,11 @@ pub enum Effect {
   Delay(Delay),
 }
 
+impl Effect {
+  pub const MIN_EDITABLE_TEMPO: u8 = 100;
+  pub const MAX_EDITABLE_TEMPO: u8 = 199;
+}
+
 impl Note {
   pub const MAX_OCTAVE: u8 = 8;
   pub const MAX_SEMITONE: u8 = 11;

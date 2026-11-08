@@ -16,8 +16,8 @@ use crate::state::editor_settings::EditorSettings;
 use crate::state::instruments::{InstrumentIndex, Instruments};
 use crate::state::name::normalize_and_validate_name;
 use crate::state::pattern::{
-  Focus, Note, Octave, Pattern, PatternBounds, PatternDefaults, Semitone, Track, TrackColumn,
-  Velocity,
+  Effect, Focus, Note, Octave, Pattern, PatternBounds, PatternDefaults, Semitone, Track,
+  TrackColumn, Velocity,
 };
 use crate::state::sequence::Sequence;
 use crate::utils::{Adjustable, fresh_name, nonzero_len};
@@ -39,6 +39,8 @@ pub struct AppState {
   instrument_digit_entry: Option<DigitEntry>,
   #[serde(skip, default)]
   velocity_digit_entry: Option<DigitEntry>,
+  #[serde(skip, default)]
+  tempo_digit_entry: Option<DigitEntry>,
 }
 
 #[derive(Clone, Copy)]
@@ -85,6 +87,7 @@ impl AppState {
       editor_settings: EditorSettings::default(),
       instrument_digit_entry: None,
       velocity_digit_entry: None,
+      tempo_digit_entry: None,
     }
   }
 
@@ -455,7 +458,19 @@ impl AppState {
           .instruments
           .adjust_velocity(note.instrument, &mut note.velocity, increase, small_step);
       }
-      TrackColumn::Effect => {}
+      TrackColumn::Effect => {
+        if let Some(Effect::SetTempo(bpm)) = &mut note.effect {
+          let step = if small_step { 1 } else { 10 };
+          let value = if increase {
+            bpm.get().saturating_add(step)
+          } else {
+            bpm.get().saturating_sub(step)
+          };
+          *bpm =
+            NonZeroU8::new(value.clamp(Effect::MIN_EDITABLE_TEMPO, Effect::MAX_EDITABLE_TEMPO))
+              .unwrap();
+        }
+      }
     }
 
     pattern.set_note(self.focus.row_index, self.focus.track_index, note);
@@ -486,7 +501,16 @@ impl AppState {
       TrackColumn::Velocity => {
         note.velocity = Velocity(if maximum { Velocity::MAX } else { 0 });
       }
-      TrackColumn::Effect => {}
+      TrackColumn::Effect => {
+        if let Some(Effect::SetTempo(bpm)) = &mut note.effect {
+          *bpm = NonZeroU8::new(if maximum {
+            Effect::MAX_EDITABLE_TEMPO
+          } else {
+            Effect::MIN_EDITABLE_TEMPO
+          })
+          .unwrap();
+        }
+      }
     }
 
     pattern.set_note(self.focus.row_index, self.focus.track_index, note);
@@ -521,6 +545,41 @@ impl AppState {
     };
 
     note.velocity = Velocity(velocity);
+    pattern.set_note(self.focus.row_index, self.focus.track_index, note);
+  }
+
+  /// Replace the focused note's effect and start a fresh tempo digit entry.
+  pub fn set_focused_note_effect(&mut self, effect: Option<Effect>) {
+    self.tempo_digit_entry = None;
+    let pattern_index = self.get_current_pattern_index();
+    let Some(pattern) = self.patterns.get_mut(pattern_index) else {
+      return;
+    };
+    let Some(mut note) = pattern.get_note(self.focus.row_index, self.focus.track_index) else {
+      return;
+    };
+    note.effect = effect;
+    pattern.set_note(self.focus.row_index, self.focus.track_index, note);
+  }
+
+  /// Set the focused tempo effect from a digit typed in the pattern editor.
+  pub fn set_focused_note_tempo_digit(&mut self, digit: u8, now: Instant) {
+    assert!(digit <= 9, "tempo digit must be between 0 and 9");
+    let pattern_index = self.get_current_pattern_index();
+    let Some(pattern) = self.patterns.get_mut(pattern_index) else {
+      return;
+    };
+    let Some(mut note) = pattern.get_note(self.focus.row_index, self.focus.track_index) else {
+      return;
+    };
+    if !matches!(note.effect, Some(Effect::SetTempo(_))) {
+      return;
+    }
+
+    let value = enter_digit(&mut self.tempo_digit_entry, digit, now);
+    note.effect = Some(Effect::SetTempo(
+      NonZeroU8::new(Effect::MIN_EDITABLE_TEMPO + value).unwrap(),
+    ));
     pattern.set_note(self.focus.row_index, self.focus.track_index, note);
   }
 
@@ -568,6 +627,7 @@ pub fn test_state() -> AppState {
     editor_settings: EditorSettings::default(),
     instrument_digit_entry: None,
     velocity_digit_entry: None,
+    tempo_digit_entry: None,
   }
 }
 
@@ -1298,5 +1358,28 @@ mod tests {
     state.set_focused_note_velocity_digit(2, start + Duration::from_millis(1001));
 
     assert_eq!(focused_velocity(&state), Velocity(2));
+  }
+
+  #[test]
+  fn tempo_digits_pair_roll_over_and_time_out() {
+    let mut state = test_state();
+    let start = Instant::now();
+    state.set_focused_note_effect(Some(Effect::SetTempo(NonZeroU8::new(100).unwrap())));
+    for (digit, millis, bpm) in [(0, 0, 100), (9, 999, 109), (9, 1000, 199), (2, 2001, 102)] {
+      state.set_focused_note_tempo_digit(digit, start + Duration::from_millis(millis));
+      assert_eq!(
+        state.get_current_pattern().get_note(0, 0).unwrap().effect,
+        Some(Effect::SetTempo(NonZeroU8::new(bpm).unwrap()))
+      );
+    }
+
+    state.set_focused_note_effect(None);
+    state.set_focused_note_tempo_digit(9, start + Duration::from_millis(2002));
+    state.set_focused_note_effect(Some(Effect::SetTempo(NonZeroU8::new(100).unwrap())));
+    state.set_focused_note_tempo_digit(3, start + Duration::from_millis(2003));
+    assert_eq!(
+      state.get_current_pattern().get_note(0, 0).unwrap().effect,
+      Some(Effect::SetTempo(NonZeroU8::new(103).unwrap()))
+    );
   }
 }
