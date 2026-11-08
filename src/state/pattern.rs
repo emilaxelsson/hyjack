@@ -17,7 +17,7 @@ pub struct Semitone(pub u8);
 #[serde(transparent)]
 pub struct Velocity(pub u8);
 
-/// A signed integer guaranteed to be in the range -9 through 9.
+/// A signed percentage guaranteed to be in the range -99 through 99.
 ///
 /// Construction and deserialization reject values outside that range. It
 /// serializes as a signed integer.
@@ -26,9 +26,9 @@ pub struct Velocity(pub u8);
 pub struct Delay(i8);
 
 impl Delay {
-  /// Constructs a delay, returning `None` if the value is outside -9 through 9.
+  /// Constructs a delay, returning `None` if the value is outside -99 through 99.
   pub fn new(value: i8) -> Option<Self> {
-    (-9..=9).contains(&value).then_some(Self(value))
+    (-99..=99).contains(&value).then_some(Self(value))
   }
 
   /// Returns the contained value.
@@ -41,7 +41,7 @@ impl TryFrom<i8> for Delay {
   type Error = &'static str;
 
   fn try_from(value: i8) -> Result<Self, Self::Error> {
-    Self::new(value).ok_or("delay must be between -9 and 9")
+    Self::new(value).ok_or("delay must be between -99 and 99")
   }
 }
 
@@ -106,11 +106,11 @@ pub struct Note {
 pub enum Effect {
   SetTempo(NonZeroU8),
 
-  /// A note's timing offset, from -9 through 9 tenths of its row duration.
+  /// A note's timing offset, from -99% through 99% of its row duration.
   ///
   /// Negative values specify early playback, positive values late playback, and
   /// zero the row boundary. The row duration is calculated after tempo effects
-  /// on that row, in track order. For example, on a 125 ms row, a delay of 3
+  /// on that row, in track order. For example, on a 125 ms row, a delay of 30
   /// schedules the note 37.5 ms after the boundary.
   ///
   /// Early notes can play before their pattern or loop begins. On playback
@@ -396,7 +396,7 @@ mod effect_tests {
   fn delay_construction_checks_the_full_range() {
     for value in i8::MIN..=i8::MAX {
       let delay = Delay::new(value);
-      assert_eq!(delay.is_some(), (-9..=9).contains(&value));
+      assert_eq!(delay.is_some(), (-99..=99).contains(&value));
       assert_eq!(Delay::try_from(value).ok(), delay);
       if let Some(delay) = delay {
         assert_eq!(delay.get(), value);
@@ -406,7 +406,7 @@ mod effect_tests {
 
   #[test]
   fn delay_effect_json_round_trips() {
-    for value in -9..=9 {
+    for value in -99..=99 {
       let effect = Effect::Delay(Delay::new(value).unwrap());
       let json = serde_json::json!({ "Delay": value });
       assert_eq!(serde_json::to_value(effect).unwrap(), json);
@@ -417,8 +417,8 @@ mod effect_tests {
   #[test]
   fn delay_deserialization_rejects_invalid_values() {
     for json in [
-      r#"{"Delay":-10}"#,
-      r#"{"Delay":10}"#,
+      r#"{"Delay":-100}"#,
+      r#"{"Delay":100}"#,
       r#"{"Delay":-129}"#,
       r#"{"Delay":128}"#,
       r#"{"Delay":1.5}"#,
@@ -442,14 +442,14 @@ mod effect_tests {
     );
 
     let with_delay: Note =
-      serde_json::from_str(&format!(r#"{note},"effect":{{"Delay":-3}}}}"#)).unwrap();
+      serde_json::from_str(&format!(r#"{note},"effect":{{"Delay":-35}}}}"#)).unwrap();
     assert_eq!(
       with_delay.effect,
-      Some(Effect::Delay(Delay::new(-3).unwrap()))
+      Some(Effect::Delay(Delay::new(-35).unwrap()))
     );
     assert_eq!(
       serde_json::to_value(with_delay).unwrap()["effect"],
-      serde_json::json!({ "Delay": -3 })
+      serde_json::json!({ "Delay": -35 })
     );
   }
 }

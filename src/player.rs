@@ -354,7 +354,7 @@ impl Timeline {
             };
             notes.push(NoteEvent {
               time: Self::duration_nanos(start_time)
-                + Self::duration_nanos(duration) * i128::from(delay) / 10,
+                + Self::duration_nanos(duration) * i128::from(delay) / 100,
               sequence_index,
               row_index,
               track_index,
@@ -480,15 +480,15 @@ mod tests {
       Track {
         notes: vec![
           Some(pitched_note(0, 1, None)),
-          Some(pitched_note(1, 1, Some(3))),
+          Some(pitched_note(1, 1, Some(30))),
         ],
       },
       Track {
-        notes: vec![None, Some(pitched_note(2, 2, Some(-9)))],
+        notes: vec![None, Some(pitched_note(2, 2, Some(-90)))],
       },
       Track {
         notes: vec![
-          Some(pitched_note(3, 3, Some(9))),
+          Some(pitched_note(3, 3, Some(90))),
           Some(pitched_note(4, 3, Some(0))),
         ],
       },
@@ -564,18 +564,18 @@ mod tests {
     state.patterns[0].tracks = vec![
       Track {
         notes: vec![
-          Some(pitched_note(0, 1, Some(3))),
+          Some(pitched_note(0, 1, Some(30))),
           Some(pitched_note(1, 1, None)),
         ],
       },
       Track {
         notes: vec![
-          Some(pitched_note(2, 2, Some(3))),
+          Some(pitched_note(2, 2, Some(30))),
           Some(pitched_note(3, 2, None)),
         ],
       },
       Track {
-        notes: vec![Some(pitched_note(4, 2, Some(1)))],
+        notes: vec![Some(pitched_note(4, 2, Some(10)))],
       },
     ];
     let now = Instant::now();
@@ -614,7 +614,7 @@ mod tests {
   fn early_first_row_note_repeats_before_one_row_loop_boundaries() {
     let mut state = minimal_song();
     state.patterns[0].tracks.push(Track {
-      notes: vec![Some(pitched_note(0, 1, Some(-9)))],
+      notes: vec![Some(pitched_note(0, 1, Some(-90)))],
     });
     let now = Instant::now();
     let mut player = Player::default();
@@ -648,7 +648,7 @@ mod tests {
   fn repeated_pattern_occurrences_and_loops_each_play_once() {
     let mut state = minimal_song();
     state.patterns[0].tracks.push(Track {
-      notes: vec![Some(pitched_note(0, 1, Some(3)))],
+      notes: vec![Some(pitched_note(0, 1, Some(30)))],
     });
     state.sequence.titles.push("Pattern".to_owned());
     state.sequence.end_of_song = 1;
@@ -691,7 +691,7 @@ mod tests {
   fn stopping_discards_pending_delayed_notes() {
     let mut state = minimal_song();
     state.patterns[0].tracks.push(Track {
-      notes: vec![Some(pitched_note(0, 1, Some(9)))],
+      notes: vec![Some(pitched_note(0, 1, Some(90)))],
     });
     let now = Instant::now();
     let mut player = Player::default();
@@ -713,7 +713,7 @@ mod tests {
     let mut state = minimal_song();
     state.patterns[0].rows_per_beat = NonZeroU8::new(1).unwrap();
     state.patterns[0].tracks.push(Track {
-      notes: vec![Some(pitched_note(0, 1, Some(-9)))],
+      notes: vec![Some(pitched_note(0, 1, Some(-90)))],
     });
     let mut short_pattern = state.patterns[0].clone();
     short_pattern.title = "Short".to_owned();
@@ -756,14 +756,14 @@ mod tests {
       Track {
         notes: vec![
           Some(pitched_note(0, 1, None)),
-          Some(pitched_note(1, 1, Some(-9))),
+          Some(pitched_note(1, 1, Some(-90))),
         ],
       },
       Track {
         notes: vec![
           None,
-          Some(pitched_note(2, 2, Some(9))),
-          Some(pitched_note(3, 2, Some(-9))),
+          Some(pitched_note(2, 2, Some(90))),
+          Some(pitched_note(3, 2, Some(-90))),
         ],
       },
     ];
@@ -806,7 +806,7 @@ mod tests {
     long_pattern.num_rows = std::num::NonZero::new(1).unwrap();
     long_pattern.rows_per_beat = NonZeroU8::new(1).unwrap();
     long_pattern.tracks.push(Track {
-      notes: vec![Some(pitched_note(4, 1, Some(-9)))],
+      notes: vec![Some(pitched_note(4, 1, Some(-90)))],
     });
     state.patterns.push(long_pattern);
     state.sequence.titles.push("Long".to_owned());
@@ -858,7 +858,7 @@ mod tests {
     long_pattern.title = "Long".to_owned();
     long_pattern.num_rows = std::num::NonZero::new(1).unwrap();
     long_pattern.rows_per_beat = NonZeroU8::new(1).unwrap();
-    long_pattern.tracks[0].notes = vec![Some(pitched_note(4, 2, Some(-9)))];
+    long_pattern.tracks[0].notes = vec![Some(pitched_note(4, 2, Some(-90)))];
     state.patterns.push(long_pattern);
     state.sequence.titles.push("Long".to_owned());
     state.sequence.end_of_song = 1;
@@ -884,14 +884,14 @@ mod tests {
   fn timeline_schedules_delays_after_all_row_tempo_effects() {
     let mut state = minimal_song();
     let effects = [
-      Some(Effect::Delay(Delay::new(-9).unwrap())),
+      Some(Effect::Delay(Delay::new(-90).unwrap())),
       None,
       Some(Effect::Delay(Delay::new(0).unwrap())),
-      Some(Effect::Delay(Delay::new(9).unwrap())),
+      Some(Effect::Delay(Delay::new(90).unwrap())),
       Some(Effect::SetTempo(NonZeroU8::new(60).unwrap())),
       Some(Effect::SetTempo(NonZeroU8::new(240).unwrap())),
-      Some(Effect::Delay(Delay::new(-3).unwrap())),
-      Some(Effect::Delay(Delay::new(3).unwrap())),
+      Some(Effect::Delay(Delay::new(-30).unwrap())),
+      Some(Effect::Delay(Delay::new(30).unwrap())),
     ];
     state.patterns[0].tracks = effects
       .into_iter()
@@ -925,6 +925,38 @@ mod tests {
   }
 
   #[test]
+  fn timeline_schedules_delays_in_single_percent_increments() {
+    let mut state = minimal_song();
+    state.patterns[0].tracks = [-99, -1, 0, 1, 99]
+      .into_iter()
+      .map(|delay| Track {
+        notes: vec![Some(test_note(Some(Effect::Delay(
+          Delay::new(delay).unwrap(),
+        ))))],
+      })
+      .collect();
+
+    let timeline = Timeline::from_song(&state).unwrap();
+    assert_eq!(timeline.rows[0][0].duration, Duration::from_millis(125));
+    assert_eq!(
+      timeline.notes,
+      [
+        (-123_750_000, 0),
+        (-1_250_000, 1),
+        (0, 2),
+        (1_250_000, 3),
+        (123_750_000, 4),
+      ]
+      .map(|(time, track_index)| NoteEvent {
+        time,
+        sequence_index: 0,
+        row_index: 0,
+        track_index,
+      })
+    );
+  }
+
+  #[test]
   fn timeline_schedules_each_occurrence_and_sorts_notes_across_rows() {
     let mut state = minimal_song();
     state.patterns[0].num_rows = std::num::NonZero::new(3).unwrap();
@@ -938,7 +970,7 @@ mod tests {
     long_pattern.num_rows = std::num::NonZero::new(1).unwrap();
     long_pattern.rows_per_beat = NonZeroU8::new(1).unwrap();
     long_pattern.tracks[0].notes = vec![Some(test_note(Some(Effect::Delay(
-      Delay::new(-9).unwrap(),
+      Delay::new(-90).unwrap(),
     ))))];
     state.patterns.push(long_pattern);
     state.sequence.titles.push("Long".to_owned());

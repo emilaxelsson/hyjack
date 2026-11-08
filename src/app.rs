@@ -455,7 +455,7 @@ mod tests {
     let mut note = crate::state::test_state().patterns[0].tracks[0].notes[0]
       .clone()
       .unwrap();
-    note.effect = Some(Effect::Delay(Delay::new(9).unwrap()));
+    note.effect = Some(Effect::Delay(Delay::new(90).unwrap()));
     state.patterns[0].tracks.push(Track {
       notes: vec![Some(note)],
     });
