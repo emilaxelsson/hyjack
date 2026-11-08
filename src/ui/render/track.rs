@@ -200,8 +200,13 @@ mod tests {
         format!("C-3 00 v50  {text}")
       );
     }
-    note.effect = Some(Effect::Delay(Delay::new(3).unwrap()));
-    assert_eq!(note_cell_text(&Some(note)), "C-3 00 v50  ···");
+    for effect in [
+      Effect::Delay(Delay::new(3).unwrap()),
+      Effect::Advance(Delay::new(3).unwrap()),
+    ] {
+      note.effect = Some(effect);
+      assert_eq!(note_cell_text(&Some(note.clone())), "C-3 00 v50  ···");
+    }
     assert_eq!(note_cell_text(&None), "··· ··  ··  ···");
   }
 }

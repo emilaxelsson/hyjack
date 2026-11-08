@@ -349,12 +349,12 @@ impl Timeline {
         for (track_index, track) in pattern.tracks.iter().enumerate() {
           if let Some(note) = track.notes.get(row_index).and_then(Option::as_ref) {
             let delay = match note.effect {
-              Some(Effect::Delay(delay)) => delay.get(),
+              Some(Effect::Delay(delay)) => i128::from(delay.get()),
+              Some(Effect::Advance(delay)) => -i128::from(delay.get()),
               _ => 0,
             };
             notes.push(NoteEvent {
-              time: Self::duration_nanos(start_time)
-                + Self::duration_nanos(duration) * i128::from(delay) / 100,
+              time: Self::duration_nanos(start_time) + Self::duration_nanos(duration) * delay / 100,
               sequence_index,
               row_index,
               track_index,
@@ -466,10 +466,19 @@ mod tests {
   }
 
   fn pitched_note(semitone: u8, instrument: u8, delay: Option<i8>) -> Note {
-    let mut note = test_note(delay.map(|value| Effect::Delay(Delay::new(value).unwrap())));
+    let mut note = test_note(delay.map(delay_effect));
     note.semitone = Semitone(semitone);
     note.instrument = InstrumentIndex(instrument);
     note
+  }
+
+  fn delay_effect(value: i8) -> Effect {
+    let magnitude = Delay::new(value.unsigned_abs()).unwrap();
+    if value < 0 {
+      Effect::Advance(magnitude)
+    } else {
+      Effect::Delay(magnitude)
+    }
   }
 
   #[test]
@@ -884,13 +893,13 @@ mod tests {
   fn timeline_schedules_delays_after_all_row_tempo_effects() {
     let mut state = minimal_song();
     let effects = [
-      Some(Effect::Delay(Delay::new(-90).unwrap())),
+      Some(Effect::Advance(Delay::new(90).unwrap())),
       None,
       Some(Effect::Delay(Delay::new(0).unwrap())),
       Some(Effect::Delay(Delay::new(90).unwrap())),
       Some(Effect::SetTempo(NonZeroU8::new(60).unwrap())),
       Some(Effect::SetTempo(NonZeroU8::new(240).unwrap())),
-      Some(Effect::Delay(Delay::new(-30).unwrap())),
+      Some(Effect::Advance(Delay::new(30).unwrap())),
       Some(Effect::Delay(Delay::new(30).unwrap())),
     ];
     state.patterns[0].tracks = effects
@@ -927,14 +936,19 @@ mod tests {
   #[test]
   fn timeline_schedules_delays_in_single_percent_increments() {
     let mut state = minimal_song();
-    state.patterns[0].tracks = [-99, -1, 0, 1, 99]
-      .into_iter()
-      .map(|delay| Track {
-        notes: vec![Some(test_note(Some(Effect::Delay(
-          Delay::new(delay).unwrap(),
-        ))))],
-      })
-      .collect();
+    state.patterns[0].tracks = [
+      delay_effect(-99),
+      delay_effect(-1),
+      Effect::Advance(Delay::new(0).unwrap()),
+      delay_effect(0),
+      delay_effect(1),
+      delay_effect(99),
+    ]
+    .into_iter()
+    .map(|effect| Track {
+      notes: vec![Some(test_note(Some(effect)))],
+    })
+    .collect();
 
     let timeline = Timeline::from_song(&state).unwrap();
     assert_eq!(timeline.rows[0][0].duration, Duration::from_millis(125));
@@ -944,8 +958,9 @@ mod tests {
         (-123_750_000, 0),
         (-1_250_000, 1),
         (0, 2),
-        (1_250_000, 3),
-        (123_750_000, 4),
+        (0, 3),
+        (1_250_000, 4),
+        (123_750_000, 5),
       ]
       .map(|(time, track_index)| NoteEvent {
         time,
@@ -969,8 +984,8 @@ mod tests {
     long_pattern.title = "Long".to_owned();
     long_pattern.num_rows = std::num::NonZero::new(1).unwrap();
     long_pattern.rows_per_beat = NonZeroU8::new(1).unwrap();
-    long_pattern.tracks[0].notes = vec![Some(test_note(Some(Effect::Delay(
-      Delay::new(-90).unwrap(),
+    long_pattern.tracks[0].notes = vec![Some(test_note(Some(Effect::Advance(
+      Delay::new(90).unwrap(),
     ))))];
     state.patterns.push(long_pattern);
     state.sequence.titles.push("Long".to_owned());

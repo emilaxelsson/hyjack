@@ -949,6 +949,7 @@ mod tests {
     for effect in [
       Effect::SetTempo(NonZeroU8::new(120).unwrap()),
       Effect::Delay(Delay::new(3).unwrap()),
+      Effect::Advance(Delay::new(3).unwrap()),
     ] {
       let mut state = crate::state::test_state();
       state.focus.track_column = TrackColumn::Effect;

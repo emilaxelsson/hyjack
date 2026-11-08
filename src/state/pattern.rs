@@ -17,35 +17,35 @@ pub struct Semitone(pub u8);
 #[serde(transparent)]
 pub struct Velocity(pub u8);
 
-/// A signed percentage guaranteed to be in the range -99 through 99.
+/// A percentage guaranteed to be in the range 0 through 99.
 ///
 /// Construction and deserialization reject values outside that range. It
-/// serializes as a signed integer.
+/// serializes as an unsigned integer.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(try_from = "i8", into = "i8")]
-pub struct Delay(i8);
+#[serde(try_from = "u8", into = "u8")]
+pub struct Delay(u8);
 
 impl Delay {
-  /// Constructs a delay, returning `None` if the value is outside -99 through 99.
-  pub fn new(value: i8) -> Option<Self> {
-    (-99..=99).contains(&value).then_some(Self(value))
+  /// Constructs a delay, returning `None` if the value is greater than 99.
+  pub fn new(value: u8) -> Option<Self> {
+    (value <= 99).then_some(Self(value))
   }
 
   /// Returns the contained value.
-  pub fn get(self) -> i8 {
+  pub fn get(self) -> u8 {
     self.0
   }
 }
 
-impl TryFrom<i8> for Delay {
+impl TryFrom<u8> for Delay {
   type Error = &'static str;
 
-  fn try_from(value: i8) -> Result<Self, Self::Error> {
-    Self::new(value).ok_or("delay must be between -99 and 99")
+  fn try_from(value: u8) -> Result<Self, Self::Error> {
+    Self::new(value).ok_or("delay must be between 0 and 99")
   }
 }
 
-impl From<Delay> for i8 {
+impl From<Delay> for u8 {
   fn from(delay: Delay) -> Self {
     delay.get()
   }
@@ -106,19 +106,20 @@ pub struct Note {
 pub enum Effect {
   SetTempo(NonZeroU8),
 
-  /// A note's timing offset, from -99% through 99% of its row duration.
+  /// Play a note late by 0% through 99% of its row duration.
   ///
-  /// Negative values specify early playback, positive values late playback, and
-  /// zero the row boundary. The row duration is calculated after tempo effects
-  /// on that row, in track order. For example, on a 125 ms row, a delay of 30
-  /// schedules the note 37.5 ms after the boundary.
-  ///
-  /// Early notes can play before their pattern or loop begins. On playback
-  /// start, notes from the selected row or later in the initial traversal
-  /// whose scheduled times have passed play immediately; earlier rows are not
-  /// replayed. Later loops use their normal timing. Scheduling is best-effort,
-  /// not hard real-time.
+  /// Zero specifies the row boundary. The row duration is calculated after tempo effects
+  /// on that row, in track order. For example, on a 125 ms row, a delay of 30 schedules
+  /// the note 37.5 ms after the boundary.
   Delay(Delay),
+
+  /// Play a note early by 0% through 99% of its row duration.
+  ///
+  /// Early notes can play before their pattern or loop begins. On playback start, notes
+  /// from the selected row or later in the initial traversal whose scheduled times have
+  /// passed play immediately; earlier rows are not replayed. Later loops use their normal
+  /// timing. Scheduling is best-effort, not hard real-time.
+  Advance(Delay),
 }
 
 impl Effect {
@@ -394,9 +395,9 @@ mod effect_tests {
 
   #[test]
   fn delay_construction_checks_the_full_range() {
-    for value in i8::MIN..=i8::MAX {
+    for value in u8::MIN..=u8::MAX {
       let delay = Delay::new(value);
-      assert_eq!(delay.is_some(), (-99..=99).contains(&value));
+      assert_eq!(delay.is_some(), value <= 99);
       assert_eq!(Delay::try_from(value).ok(), delay);
       if let Some(delay) = delay {
         assert_eq!(delay.get(), value);
@@ -406,25 +407,30 @@ mod effect_tests {
 
   #[test]
   fn delay_effect_json_round_trips() {
-    for value in -99..=99 {
-      let effect = Effect::Delay(Delay::new(value).unwrap());
-      let json = serde_json::json!({ "Delay": value });
-      assert_eq!(serde_json::to_value(effect).unwrap(), json);
-      assert_eq!(serde_json::from_value::<Effect>(json).unwrap(), effect);
+    for value in 0..=99 {
+      for (effect, json) in [
+        (
+          Effect::Delay(Delay::new(value).unwrap()),
+          serde_json::json!({ "Delay": value }),
+        ),
+        (
+          Effect::Advance(Delay::new(value).unwrap()),
+          serde_json::json!({ "Advance": value }),
+        ),
+      ] {
+        assert_eq!(serde_json::to_value(effect).unwrap(), json);
+        assert_eq!(serde_json::from_value::<Effect>(json).unwrap(), effect);
+      }
     }
   }
 
   #[test]
   fn delay_deserialization_rejects_invalid_values() {
-    for json in [
-      r#"{"Delay":-100}"#,
-      r#"{"Delay":100}"#,
-      r#"{"Delay":-129}"#,
-      r#"{"Delay":128}"#,
-      r#"{"Delay":1.5}"#,
-      r#"{"Delay":"3"}"#,
-    ] {
-      assert!(serde_json::from_str::<Effect>(json).is_err(), "{json}");
+    for name in ["Delay", "Advance"] {
+      for value in ["-100", "-1", "100", "255", "256", "1.5", r#""3""#] {
+        let json = format!(r#"{{"{name}":{value}}}"#);
+        assert!(serde_json::from_str::<Effect>(&json).is_err(), "{json}");
+      }
     }
   }
 
@@ -441,16 +447,18 @@ mod effect_tests {
       serde_json::json!({ "SetTempo": 120 })
     );
 
-    let with_delay: Note =
-      serde_json::from_str(&format!(r#"{note},"effect":{{"Delay":-35}}}}"#)).unwrap();
-    assert_eq!(
-      with_delay.effect,
-      Some(Effect::Delay(Delay::new(-35).unwrap()))
-    );
-    assert_eq!(
-      serde_json::to_value(with_delay).unwrap()["effect"],
-      serde_json::json!({ "Delay": -35 })
-    );
+    for (name, effect) in [
+      ("Delay", Effect::Delay(Delay::new(35).unwrap())),
+      ("Advance", Effect::Advance(Delay::new(35).unwrap())),
+    ] {
+      let with_delay: Note =
+        serde_json::from_str(&format!(r#"{note},"effect":{{"{name}":35}}}}"#)).unwrap();
+      assert_eq!(with_delay.effect, Some(effect));
+      assert_eq!(
+        serde_json::to_value(with_delay).unwrap()["effect"],
+        serde_json::json!({ (name): 35 })
+      );
+    }
   }
 }
 
