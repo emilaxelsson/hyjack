@@ -365,7 +365,11 @@ fn handle_edit_pattern_event(
     KeyCode::Char(ch)
       if state.focus.track_column == TrackColumn::Effect
         && matches!(ch.to_ascii_lowercase(), 't' | 'd' | 'e')
-        && can_type_note(key.modifiers) =>
+        && can_type_note(key.modifiers)
+        && state
+          .get_current_pattern()
+          .get_note(state.focus.row_index, state.focus.track_index)
+          .is_some() =>
     {
       let value = TwoDigits::new(0).unwrap();
       let effect = match ch.to_ascii_lowercase() {
@@ -1021,13 +1025,13 @@ mod tests {
   }
 
   #[test]
-  fn effect_keys_do_not_create_notes_and_remain_note_keys_elsewhere() {
+  fn effect_digits_do_not_create_notes() {
     let mut state = minimal_song();
     state.focus.track_column = TrackColumn::Effect;
     let mut midi = RecordingMidiSink(Vec::new());
     let mut scroll = ScrollViewState::default();
     let player = Player::default();
-    for ch in ['t', 'd', 'e', '1', '.'] {
+    for ch in ['1', '.'] {
       handle_edit_pattern_event(
         &mut state,
         &mut scroll,
@@ -1050,24 +1054,58 @@ mod tests {
     )
     .unwrap();
     assert!(state.get_current_pattern().tracks.is_empty());
+  }
 
-    state.focus.track_column = TrackColumn::Note;
-    for (ch, semitone) in [('t', 6), ('d', 4), ('e', 3)] {
-      state.focus.row_index = 0;
-      handle_edit_pattern_event(
-        &mut state,
-        &mut scroll,
-        &player,
-        &mut midi,
-        KeyEvent::from(KeyCode::Char(ch)),
-      )
-      .unwrap();
-      assert_eq!(
-        state.get_current_pattern().get_note(0, 0).unwrap().semitone,
-        Semitone(semitone)
-      );
+  #[test]
+  fn effect_keys_insert_notes_in_empty_cells() {
+    for (ch, semitone) in [('t', 6), ('T', 6), ('d', 4), ('D', 4), ('e', 3), ('E', 3)] {
+      for (stored_track, virtual_track) in [(false, false), (true, false), (true, true)] {
+        let mut state = minimal_song();
+        state.patterns[0].num_rows = std::num::NonZeroUsize::new(4).unwrap();
+        if stored_track {
+          state.patterns[0].tracks.push(Track { notes: vec![None] });
+        }
+        if virtual_track {
+          state.track_titles.push("Virtual".to_owned());
+          state.focus.track_index = 1;
+        }
+        state.focus.track_column = TrackColumn::Effect;
+        state.editor_settings.octave = Octave(3);
+        state.editor_settings.velocity = Velocity(70);
+        state.editor_settings.step = 2;
+        let track_index = state.focus.track_index;
+        let mut midi = RecordingMidiSink(Vec::new());
+
+        let result = handle_edit_pattern_event(
+          &mut state,
+          &mut ScrollViewState::default(),
+          &Player::default(),
+          &mut midi,
+          KeyEvent::from(KeyCode::Char(ch)),
+        )
+        .unwrap();
+
+        assert!(result.handled);
+        let note = state
+          .get_current_pattern()
+          .get_note(0, track_index)
+          .unwrap();
+        assert_eq!(note.semitone, Semitone(semitone));
+        assert_eq!(note.octave, state.editor_settings.octave);
+        assert_eq!(note.instrument, state.editor_settings.instrument);
+        assert_eq!(note.velocity, Velocity(70));
+        assert_eq!(note.effect, None);
+        assert_eq!(state.focus.row_index, 2);
+        assert_eq!(state.focus.track_column, TrackColumn::Effect);
+        assert_eq!(
+          midi.0,
+          vec![
+            vec![MIDI_PROGRAM_CHANGE, note.instrument.0],
+            vec![MIDI_NOTE_ON, 36 + semitone, note.midi_velocity()],
+          ]
+        );
+      }
     }
-    assert!(!midi.0.is_empty());
   }
 
   #[test]
