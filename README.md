@@ -251,10 +251,15 @@ When velocity boundaries are defined for an instrument, Hyjack tries to help you
 
 ### Note-off
 
-Hyjack does not send note-off messages, including when playback stops. Instruments that sustain until note-off may therefore keep sounding. This is usually not a problem for drums, as they typically have short decay times. It is also normally desired to have the sounds overlap when multiple sequential beats on the same drum are played. Hence, note-off for drums doesn't make much sense.
+Hyjack only sends note-off in one specific situation: when playing a note with velocity 0. This can be used e.g. to choke a cymbal or to control the length of a bass note.
 
-Long-sustaining instruments such as a bassz guitar are a different story. You usually don't want sequential bass notes to overlap (unless you're deliberately playing a chord or a legato passage). Hydrogen can handle this by setting "Auto-Stop Note" for such instruments. This means that the old note stops automatically when a new note is played, even if no note-off message is received.
+When using Hydrogen as synthesizer, make sure its "Ignore Note-Off" setting is disabled. Otherwise it will ignore note-off messages from Hyjack.
 
-With "Auto-Stop Note" enabled, chords or legato can only be achieved by playing different instruments. For example, you can have two bass instruments based on the same set of samples.
+For ordinary notes (i.e. velocity greater than 0), Hyjack does not send note-off messages. This is usually good for drums, because:
 
-"Auto-Stop Note" solves the problem of sequential notes. However, you still want to be able to explicitly stop a note when needed. This feature has not been implemented, but Hyjack will soon have an explicit note-off command.
+  * Drums typically have short decay times
+  * Multiple sequential hits on the same drum should overlap naturally
+
+Long-sustaining instruments such as a bass guitar are a different story. You usually don't want sequential bass notes to overlap (unless you're deliberately playing a chord or a legato passage). Hydrogen can handle this by setting "Auto-Stop Note" for such instruments. This means that the old note stops automatically when a new note is played, even if no note-off message is received.
+
+With "Auto-Stop Note" enabled, simultaneous notes can only be achieved by playing them on different instruments. For example, you can have two bass instruments based on the same set of samples.

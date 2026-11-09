@@ -13,6 +13,7 @@ use crate::state::pattern::{Effect, Note, Pattern, midi_pitch_from_octave};
 const MIDI_CHANNEL: u8 = 0;
 pub const MIDI_PROGRAM_CHANGE: u8 = 0xc0;
 pub const MIDI_NOTE_ON: u8 = 0x90;
+pub const MIDI_NOTE_OFF: u8 = 0x80;
 
 #[derive(Default)]
 pub struct PlayerState {
@@ -141,6 +142,9 @@ impl Player {
 
   pub fn emit_note_on(&self, note: &Note, midi: &mut dyn MidiSink) -> Result<()> {
     let pitch = midi_pitch_from_octave(note.octave, note.semitone);
+    if note.midi_velocity() == 0 {
+      return midi.send(&[MIDI_NOTE_OFF | MIDI_CHANNEL, pitch, 0]);
+    }
     midi.send(&[MIDI_PROGRAM_CHANGE | MIDI_CHANNEL, note.instrument.0])?;
     midi.send(&[MIDI_NOTE_ON | MIDI_CHANNEL, pitch, note.midi_velocity()])
   }
@@ -281,13 +285,17 @@ impl Playback {
   }
 
   fn play_note(&mut self, note: &Note, midi: &mut dyn MidiSink) -> Result<()> {
+    let pitch = midi_pitch_from_octave(note.octave, note.semitone);
+    if note.midi_velocity() == 0 {
+      return midi.send(&[MIDI_NOTE_OFF | MIDI_CHANNEL, pitch, 0]);
+    }
+
     let program = note.instrument.0;
     if self.last_program != Some(program) {
       midi.send(&[MIDI_PROGRAM_CHANGE | MIDI_CHANNEL, program])?;
       self.last_program = Some(program);
     }
 
-    let pitch = midi_pitch_from_octave(note.octave, note.semitone);
     midi.send(&[MIDI_NOTE_ON | MIDI_CHANNEL, pitch, note.midi_velocity()])
   }
 }
@@ -1159,6 +1167,38 @@ mod tests {
       midi.0,
       vec![vec![MIDI_PROGRAM_CHANGE, 2], vec![MIDI_NOTE_ON, 40, 102]]
     );
+  }
+
+  #[test]
+  fn emits_note_off_for_zero_velocity_without_changing_program() {
+    let mut midi = RecordingMidiSink(Vec::new());
+    let player = Player::default();
+    let mut note = test_note(None);
+    note.velocity = Velocity(0);
+
+    player.emit_note_on(&note, &mut midi).unwrap();
+
+    assert_eq!(midi.0, vec![vec![MIDI_NOTE_OFF, 36, 0]]);
+  }
+
+  #[test]
+  fn playback_sends_note_off_for_zero_velocity_without_changing_program() {
+    let mut state = minimal_song();
+    state.patterns[0].tracks.push(Track {
+      notes: vec![Some(Note {
+        octave: Octave(3),
+        semitone: Semitone(4),
+        instrument: InstrumentIndex(2),
+        velocity: Velocity(0),
+        effect: None,
+      })],
+    });
+    let mut midi = RecordingMidiSink(Vec::new());
+    let mut player = Player::default();
+
+    player.start(&state, &mut midi, Instant::now()).unwrap();
+
+    assert_eq!(midi.0, vec![vec![MIDI_NOTE_OFF, 40, 0]]);
   }
 
   #[test]
